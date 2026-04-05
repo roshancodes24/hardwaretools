@@ -30,6 +30,59 @@ const fmt = (n: number) =>
 const stockStatus = (p: UiProduct): "ok" | "low" | "out" =>
   p.stock === 0 ? "out" : p.stock <= p.lowStock ? "low" : "ok";
 
+type InventorySortKey =
+  | "sku"
+  | "name"
+  | "category"
+  | "price"
+  | "stock"
+  | "unit"
+  | "status";
+
+function statusSortRank(p: UiProduct): number {
+  const st = stockStatus(p);
+  if (st === "out") return 0;
+  if (st === "low") return 1;
+  return 2;
+}
+
+function compareInventoryRows(
+  a: UiProduct,
+  b: UiProduct,
+  key: InventorySortKey,
+  dir: "asc" | "desc"
+): number {
+  const sign = dir === "asc" ? 1 : -1;
+  let cmp = 0;
+  switch (key) {
+    case "sku":
+      cmp = a.sku.localeCompare(b.sku, undefined, { sensitivity: "base" });
+      break;
+    case "name":
+      cmp = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+      break;
+    case "category":
+      cmp = a.category.localeCompare(b.category, undefined, {
+        sensitivity: "base",
+      });
+      break;
+    case "price":
+      cmp = a.price - b.price;
+      break;
+    case "stock":
+      cmp = a.stock - b.stock;
+      break;
+    case "unit":
+      cmp = a.unit.localeCompare(b.unit, undefined, { sensitivity: "base" });
+      break;
+    case "status":
+      cmp = statusSortRank(a) - statusSortRank(b);
+      break;
+  }
+  if (cmp !== 0) return sign * cmp;
+  return a.sku.localeCompare(b.sku, undefined, { sensitivity: "base" });
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // SHARED COMPONENTS
 // ═══════════════════════════════════════════════════════════════════
@@ -37,7 +90,7 @@ function Badge({ status }: { status: "ok" | "low" | "out" }) {
   const map = {
     ok: { bg: "#dcfce7", color: "#16a34a", label: "In Stock" },
     low: { bg: "#fef3c7", color: "#d97706", label: "Low Stock" },
-    out: { bg: "#fee2e2", color: "#dc2626", label: "Out" },
+    out: { bg: "#fee2e2", color: "#dc2626", label: "Out of Stock" },
   };
   const s = map[status];
   return (
@@ -704,19 +757,47 @@ function POSView({
 // ═══════════════════════════════════════════════════════════════════
 function InventoryView({ products }: { products: UiProduct[] }) {
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<InventorySortKey>("sku");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const totalValue = products.reduce((s, p) => s + p.price * p.stock, 0);
   const lowCount = products.filter((p) => stockStatus(p) === "low").length;
   const outCount = products.filter((p) => stockStatus(p) === "out").length;
 
-  const filtered = products.filter((p) => {
+  const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return (
-      p.name.toLowerCase().includes(q) ||
-      p.sku.toLowerCase().includes(q) ||
-      p.category.toLowerCase().includes(q)
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.sku.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q)
     );
-  });
+  }, [products, search]);
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    arr.sort((a, b) => compareInventoryRows(a, b, sortKey, sortDir));
+    return arr;
+  }, [filtered, sortKey, sortDir]);
+
+  const toggleSort = (key: InventorySortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sortColumns: { key: InventorySortKey; label: string }[] = [
+    { key: "sku", label: "SKU" },
+    { key: "name", label: "Product" },
+    { key: "category", label: "Category" },
+    { key: "price", label: "Sale Price" },
+    { key: "stock", label: "Stock" },
+    { key: "unit", label: "Unit" },
+    { key: "status", label: "Status" },
+  ];
 
   const cards = [
     {
@@ -822,34 +903,34 @@ function InventoryView({ products }: { products: UiProduct[] }) {
                 top: 0,
               }}
             >
-              {[
-                "SKU",
-                "Product",
-                "Category",
-                "Sale Price",
-                "Stock",
-                "Unit",
-                "Status",
-              ].map((h) => (
-                <th
-                  key={h}
-                  style={{
-                    padding: "10px 14px",
-                    textAlign: "left",
-                    fontWeight: 600,
-                    color: "#78716c",
-                    fontSize: 12,
-                    background: "#fafaf9",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {h}
-                </th>
-              ))}
+              {sortColumns.map(({ key, label }) => {
+                const active = sortKey === key;
+                return (
+                  <th
+                    key={key}
+                    style={{
+                      padding: "10px 14px",
+                      textAlign: "left",
+                      fontWeight: 600,
+                      color: active ? "#1c1917" : "#78716c",
+                      fontSize: 12,
+                      background: "#fafaf9",
+                      whiteSpace: "nowrap",
+                      cursor: "pointer",
+                      userSelect: "none",
+                    }}
+                    onClick={() => toggleSort(key)}
+                    title="Click to sort"
+                  >
+                    {label}
+                    {active ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {filtered.map((p, i) => {
+            {sorted.map((p, i) => {
               const st = stockStatus(p);
               return (
                 <tr
