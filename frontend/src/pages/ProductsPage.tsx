@@ -1,0 +1,1035 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { api } from "../api/client";
+import { isApiError } from "../api/errors";
+import type { ApiProduct } from "../api/types";
+import {
+  PRODUCT_CATEGORIES,
+  type ProductCategory,
+} from "../productCategories";
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const UNIT_KINDS = ["PIECE", "WEIGHT", "LENGTH", "VOLUME", "PACK", "OTHER"] as const;
+type UnitKindValue = (typeof UNIT_KINDS)[number];
+
+const UNIT_KIND_LABELS: Record<UnitKindValue, string> = {
+  PIECE: "Piece",
+  WEIGHT: "Weight",
+  LENGTH: "Length",
+  VOLUME: "Volume",
+  PACK: "Pack",
+  OTHER: "Other",
+};
+
+const COMMON_UNIT_CODES = [
+  "pc", "kg", "g", "m", "cm", "L", "mL",
+  "box", "roll", "bag", "pair", "set", "sheet", "tin", "drum",
+];
+
+function suggestUnitKind(code: string): UnitKindValue {
+  const c = code.toLowerCase();
+  if (["kg", "g", "mg"].includes(c)) return "WEIGHT";
+  if (["m", "cm", "mm"].includes(c)) return "LENGTH";
+  if (["l", "ml", "litre", "liter"].includes(c)) return "VOLUME";
+  if (["box", "pack", "roll", "bundle", "bag"].includes(c)) return "PACK";
+  return "PIECE";
+}
+
+const CATEGORY_OPTIONS = PRODUCT_CATEGORIES.map((c) => ({
+  value: c,
+  label: c,
+}));
+
+const fmtPrice = (n: number | string | null | undefined) => {
+  if (n == null || n === "") return "—";
+  return `₹${Number(n).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+};
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type ProductDraft = {
+  _id: string;
+  name: string;
+  description: string;
+  category: string;
+  brand: string;
+  baseUnitCode: string;
+  unitKind: UnitKindValue;
+  allowsFractional: boolean;
+  sellingPrice: string;
+  costPrice: string;
+  taxRate: string;
+  currentStock: string;
+  reorderLevel: string;
+};
+
+type RowErrors = Record<string, string>;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function newDraft(overrides: Partial<ProductDraft> = {}): ProductDraft {
+  return {
+    _id: Math.random().toString(36).slice(2),
+    name: "",
+    description: "",
+    category: "Electrical",
+    brand: "",
+    baseUnitCode: "pc",
+    unitKind: "PIECE",
+    allowsFractional: false,
+    sellingPrice: "",
+    costPrice: "",
+    taxRate: "18",
+    currentStock: "0",
+    reorderLevel: "",
+    ...overrides,
+  };
+}
+
+function validateDraft(d: ProductDraft): RowErrors {
+  const e: RowErrors = {};
+  if (!d.name.trim()) e.name = "Required";
+  else if (d.name.trim().length > 500) e.name = "Too long";
+  if (!d.baseUnitCode.trim()) e.baseUnitCode = "Required";
+  const catOk = PRODUCT_CATEGORIES.includes(d.category as ProductCategory);
+  if (!catOk) e.category = "Select Electrical, Hardware, or Paint";
+  const numFields: [keyof ProductDraft, string][] = [
+    ["sellingPrice", "Price"],
+    ["costPrice", "Cost"],
+    ["currentStock", "Stock"],
+    ["reorderLevel", "Reorder"],
+  ];
+  for (const [field, label] of numFields) {
+    const val = d[field] as string;
+    if (val !== "" && (isNaN(Number(val)) || Number(val) < 0))
+      e[field] = `${label} must be ≥ 0`;
+  }
+  if (
+    d.taxRate !== "" &&
+    (isNaN(Number(d.taxRate)) || Number(d.taxRate) < 0 || Number(d.taxRate) > 100)
+  ) {
+    e.taxRate = "Must be 0–100";
+  }
+  return e;
+}
+
+function rowErrorsFromApiDetails(
+  details: { field: string; message: string }[] | undefined,
+  count: number
+): RowErrors[] {
+  const result: RowErrors[] = Array.from({ length: count }, () => ({}));
+  for (const d of details ?? []) {
+    const m = /^products\.(\d+)\.(\w+)$/.exec(d.field);
+    if (m) {
+      const idx = Number(m[1]);
+      const field = m[2];
+      if (idx < count && !result[idx][field]) result[idx][field] = d.message;
+    }
+  }
+  return result;
+}
+
+function singleProductErrorsFromApiDetails(
+  details: { field: string; message: string }[] | undefined
+): RowErrors {
+  const e: RowErrors = {};
+  for (const d of details ?? []) {
+    const m = /^products\.0\.(\w+)$/.exec(d.field);
+    const field = m ? m[1] : d.field;
+    if (!e[field]) e[field] = d.message;
+  }
+  return e;
+}
+
+function statusOf(p: ApiProduct): "ok" | "low" | "out" {
+  const stock = Number(p.currentStock);
+  const reorder = p.reorderLevel ? Number(p.reorderLevel) : 0;
+  if (stock === 0) return "out";
+  if (reorder > 0 && stock <= reorder) return "low";
+  return "ok";
+}
+
+function draftToPayloadItem(d: ProductDraft) {
+  return {
+    name: d.name.trim(),
+    description: d.description.trim() || undefined,
+    category: d.category.trim() as ProductCategory,
+    brand: d.brand.trim() || undefined,
+    baseUnitCode: d.baseUnitCode.trim(),
+    unitKind: d.unitKind,
+    allowsFractional: d.allowsFractional,
+    sellingPrice: d.sellingPrice !== "" ? Number(d.sellingPrice) : undefined,
+    costPrice: d.costPrice !== "" ? Number(d.costPrice) : undefined,
+    taxRate: d.taxRate !== "" ? Number(d.taxRate) : undefined,
+    currentStock: d.currentStock !== "" ? Number(d.currentStock) : 0,
+    reorderLevel: d.reorderLevel !== "" ? Number(d.reorderLevel) : undefined,
+  };
+}
+
+// ── Small reusable field components ──────────────────────────────────────────
+
+function StatusBadge({ status }: { status: "ok" | "low" | "out" }) {
+  const map = {
+    ok: { bg: "#dcfce7", color: "#16a34a", label: "In Stock" },
+    low: { bg: "#fef3c7", color: "#d97706", label: "Low Stock" },
+    out: { bg: "#fee2e2", color: "#dc2626", label: "Out of Stock" },
+  };
+  const s = map[status];
+  return (
+    <span
+      style={{
+        background: s.bg, color: s.color, fontSize: 11, fontWeight: 600,
+        padding: "2px 8px", borderRadius: 4, whiteSpace: "nowrap",
+      }}
+    >
+      {s.label}
+    </span>
+  );
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+
+const mInput: React.CSSProperties = {
+  height: 36, padding: "0 10px", width: "100%",
+  border: "1px solid #e7e5e4", borderRadius: 8,
+  fontSize: 13, outline: "none", background: "#fff", boxSizing: "border-box",
+};
+const mInputErr: React.CSSProperties = { ...mInput, border: "1px solid #dc2626" };
+
+function MField({
+  label, required, error, children,
+}: {
+  label: string; required?: boolean; error?: string; children: React.ReactNode;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+      <label style={{ fontSize: 12, fontWeight: 600, color: "#44403c" }}>
+        {label}
+        {required && <span style={{ color: "#dc2626", marginLeft: 2 }}>*</span>}
+      </label>
+      {children}
+      {error && (
+        <span style={{ fontSize: 11, color: "#dc2626", marginTop: -2 }}>{error}</span>
+      )}
+    </div>
+  );
+}
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        fontSize: 11, fontWeight: 700, color: "#78716c",
+        letterSpacing: "0.07em", textTransform: "uppercase",
+        borderBottom: "1px solid #f0efee", paddingBottom: 6, marginBottom: 2,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ProductModal({
+  open, draft, errors, saving,
+  onClose, onChange, onSave,
+}: {
+  open: boolean;
+  draft: ProductDraft;
+  errors: RowErrors;
+  saving: boolean;
+  onClose: () => void;
+  onChange: (field: keyof ProductDraft, value: string | boolean) => void;
+  onSave: () => void;
+}) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const inp = (
+    field: keyof ProductDraft,
+    type = "text",
+    placeholder = ""
+  ) => (
+    <input
+      value={draft[field] as string}
+      onChange={(e) => onChange(field, e.target.value)}
+      type={type}
+      placeholder={placeholder}
+      style={errors[field] ? mInputErr : mInput}
+    />
+  );
+
+  const two: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 14,
+  };
+
+  return (
+    <div
+      ref={overlayRef}
+      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+      style={{
+        position: "fixed", inset: 0,
+        background: "rgba(0,0,0,0.45)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        zIndex: 1000, padding: 24,
+      }}
+    >
+      <div
+        style={{
+          background: "#fff", borderRadius: 14,
+          width: "100%", maxWidth: 620,
+          maxHeight: "92vh", overflowY: "auto",
+          boxShadow: "0 24px 60px rgba(0,0,0,0.25)",
+          display: "flex", flexDirection: "column",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "18px 24px 14px", borderBottom: "1px solid #f0efee",
+            flexShrink: 0,
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#1c1917" }}>
+              Add Product
+            </div>
+            <div style={{ fontSize: 12, color: "#78716c", marginTop: 2 }}>
+              SKU is assigned automatically when you save (e.g. EL-00001, HW-00001, PT-00001 by category).
+            </div>
+          </div>
+          <button
+            type="button" onClick={onClose}
+            style={{
+              width: 30, height: 30, borderRadius: "50%",
+              border: "1px solid #e7e5e4", background: "#fafaf9",
+              cursor: "pointer", fontSize: 16, color: "#78716c",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Body */}
+        <div
+          style={{
+            padding: "20px 24px",
+            display: "flex", flexDirection: "column", gap: 20,
+            flex: 1, overflowY: "auto",
+          }}
+        >
+          {/* Basic information */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <SectionHeading>Basic Information</SectionHeading>
+            <MField label="Product Name" required error={errors.name}>
+              {inp("name", "text", "e.g. Copper Wire 1.5mm")}
+            </MField>
+            <div style={two}>
+              <MField label="Category" required error={errors.category}>
+                <select
+                  value={draft.category}
+                  onChange={(e) => onChange("category", e.target.value)}
+                  style={errors.category ? mInputErr : mInput}
+                >
+                  {PRODUCT_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </MField>
+              <MField label="Brand" error={errors.brand}>
+                {inp("brand", "text", "e.g. PowerLine")}
+              </MField>
+            </div>
+            <MField label="Description" error={errors.description}>
+              <textarea
+                value={draft.description}
+                onChange={(e) => onChange("description", e.target.value)}
+                placeholder="Optional notes about this product — size, grade, usage, etc."
+                rows={3}
+                style={{
+                  ...mInput,
+                  height: "auto", padding: "8px 10px",
+                  resize: "vertical", lineHeight: 1.5,
+                  fontFamily: "system-ui, -apple-system, sans-serif",
+                  ...(errors.description ? { border: "1px solid #dc2626" } : {}),
+                }}
+              />
+            </MField>
+          </div>
+
+          {/* Unit configuration */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <SectionHeading>Unit Configuration</SectionHeading>
+            <div style={two}>
+              <MField label="Unit Code" required error={errors.baseUnitCode}>
+                <div>
+                  <input
+                    list="modal-unit-codes"
+                    value={draft.baseUnitCode}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      onChange("baseUnitCode", v);
+                      onChange("unitKind", suggestUnitKind(v));
+                    }}
+                    placeholder="pc"
+                    style={errors.baseUnitCode ? mInputErr : mInput}
+                  />
+                  <datalist id="modal-unit-codes">
+                    {COMMON_UNIT_CODES.map((u) => (
+                      <option key={u} value={u} />
+                    ))}
+                  </datalist>
+                </div>
+              </MField>
+              <MField label="Unit Kind" required error={errors.unitKind}>
+                <select
+                  value={draft.unitKind}
+                  onChange={(e) => onChange("unitKind", e.target.value as UnitKindValue)}
+                  style={errors.unitKind ? mInputErr : mInput}
+                >
+                  {UNIT_KINDS.map((k) => (
+                    <option key={k} value={k}>{UNIT_KIND_LABELS[k]}</option>
+                  ))}
+                </select>
+              </MField>
+            </div>
+            <label
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                fontSize: 13, color: "#44403c", cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={draft.allowsFractional}
+                onChange={(e) => onChange("allowsFractional", e.target.checked)}
+                style={{ width: 15, height: 15, cursor: "pointer" }}
+              />
+              Allow fractional quantities (e.g. 0.5 kg, 1.25 m)
+            </label>
+          </div>
+
+          {/* Pricing & tax */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <SectionHeading>Pricing & Tax</SectionHeading>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+              <MField label="Selling Price (₹)" error={errors.sellingPrice}>
+                {inp("sellingPrice", "number", "0.00")}
+              </MField>
+              <MField label="Cost Price (₹)" error={errors.costPrice}>
+                {inp("costPrice", "number", "0.00")}
+              </MField>
+              <MField label="Tax Rate (%)" error={errors.taxRate}>
+                {inp("taxRate", "number", "18")}
+              </MField>
+            </div>
+          </div>
+
+          {/* Inventory */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <SectionHeading>Inventory</SectionHeading>
+            <div style={two}>
+              <MField label="Opening Stock" error={errors.currentStock}>
+                {inp("currentStock", "number", "0")}
+              </MField>
+              <MField label="Reorder Level" error={errors.reorderLevel}>
+                {inp("reorderLevel", "number", "—")}
+              </MField>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            display: "flex", justifyContent: "flex-end", gap: 10,
+            padding: "14px 24px", borderTop: "1px solid #f0efee", flexShrink: 0,
+          }}
+        >
+          <button
+            type="button" onClick={onClose} disabled={saving}
+            style={{
+              height: 38, padding: "0 20px",
+              background: "#fff", border: "1px solid #e7e5e4",
+              borderRadius: 8, fontSize: 13, color: "#44403c", cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button" onClick={onSave} disabled={saving}
+            style={{
+              height: 38, padding: "0 22px",
+              background: saving ? "#e7e5e4" : "#d97706",
+              color: saving ? "#a8a29e" : "#fff",
+              border: "none", borderRadius: 8,
+              fontSize: 13, fontWeight: 600,
+              cursor: saving ? "not-allowed" : "pointer",
+            }}
+          >
+            {saving ? "Saving…" : "Save Product"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Batch-row inline editing ──────────────────────────────────────────────────
+
+const cellInput: React.CSSProperties = {
+  height: 30, padding: "0 7px", width: "100%",
+  border: "1px solid #e7e5e4", borderRadius: 6,
+  fontSize: 12, outline: "none", background: "#fff", boxSizing: "border-box",
+};
+
+function BatchCell({
+  value, onChange, error, type = "text", placeholder = "",
+}: {
+  value: string; onChange: (v: string) => void;
+  error?: string; type?: string; placeholder?: string;
+}) {
+  const style = error
+    ? { ...cellInput, border: "1px solid #dc2626" }
+    : cellInput;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <input
+        value={value} onChange={(e) => onChange(e.target.value)}
+        type={type} placeholder={placeholder} style={style}
+      />
+      {error && (
+        <span style={{ fontSize: 10, color: "#dc2626", lineHeight: 1.2 }}>{error}</span>
+      )}
+    </div>
+  );
+}
+
+function BatchSelectCell({
+  value, options, onChange, error,
+}: {
+  value: string; options: { value: string; label: string }[];
+  onChange: (v: string) => void; error?: string;
+}) {
+  const style = error
+    ? { ...cellInput, border: "1px solid #dc2626" }
+    : cellInput;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} style={style}>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      {error && (
+        <span style={{ fontSize: 10, color: "#dc2626", lineHeight: 1.2 }}>{error}</span>
+      )}
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
+export function ProductsPage({
+  onProductsCreated,
+}: {
+  onProductsCreated: () => Promise<void>;
+}) {
+  // Existing products
+  const [rawProducts, setRawProducts] = useState<ApiProduct[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [search, setSearch] = useState("");
+
+  // Modal (single product)
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalDraft, setModalDraft] = useState<ProductDraft>(() => newDraft());
+  const [modalErrors, setModalErrors] = useState<RowErrors>({});
+  const [modalSaving, setModalSaving] = useState(false);
+
+  // Batch rows (multi-product)
+  const [pendingRows, setPendingRows] = useState<ProductDraft[]>([]);
+  const [rowErrors, setRowErrors] = useState<RowErrors[]>([]);
+  const [batchBannerError, setBatchBannerError] = useState<string | null>(null);
+  const [batchSaving, setBatchSaving] = useState(false);
+
+  // Success feedback
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
+
+  const loadProducts = async () => {
+    setLoadingProducts(true);
+    setLoadError(null);
+    try {
+      setRawProducts(await api.getProducts());
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Failed to load products");
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  useEffect(() => { void loadProducts(); }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    if (!q) return rawProducts;
+    return rawProducts.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.sku.toLowerCase().includes(q) ||
+        (p.category ?? "").toLowerCase().includes(q) ||
+        (p.brand ?? "").toLowerCase().includes(q)
+    );
+  }, [rawProducts, search]);
+
+  // Modal handlers
+  const openModal = () => {
+    setModalDraft(newDraft());
+    setModalErrors({});
+    setSavedMsg(null);
+    setModalOpen(true);
+  };
+
+  const handleModalChange = (field: keyof ProductDraft, value: string | boolean) => {
+    setModalDraft((d) => {
+      const updated = { ...d, [field]: value };
+      if (field === "baseUnitCode" && typeof value === "string")
+        updated.unitKind = suggestUnitKind(value);
+      return updated;
+    });
+    setModalErrors((e) => { const c = { ...e }; delete c[field as string]; return c; });
+  };
+
+  const handleModalSave = async () => {
+    const errs = validateDraft(modalDraft);
+    if (Object.keys(errs).length > 0) { setModalErrors(errs); return; }
+    setModalSaving(true);
+    try {
+      const result = await api.batchCreateProducts({
+        products: [draftToPayloadItem(modalDraft)],
+      });
+      setModalOpen(false);
+      const sku = result.products[0]?.sku;
+      setSavedMsg(
+        sku
+          ? `Product created — assigned SKU ${sku}.`
+          : "Product created successfully."
+      );
+      await loadProducts();
+      await onProductsCreated();
+    } catch (e) {
+      if (isApiError(e) && e.details?.length) {
+        setModalErrors(singleProductErrorsFromApiDetails(e.details));
+      } else {
+        setModalErrors({ _form: e instanceof Error ? e.message : "Failed to save" });
+      }
+    } finally {
+      setModalSaving(false);
+    }
+  };
+
+  // Batch handlers
+  const addBatchRow = () => {
+    setPendingRows((r) => [...r, newDraft()]);
+    setRowErrors((e) => [...e, {}]);
+    setBatchBannerError(null);
+    setSavedMsg(null);
+  };
+
+  const duplicateBatchRow = (i: number) => {
+    const clone = { ...pendingRows[i], _id: Math.random().toString(36).slice(2) };
+    const rows = [...pendingRows]; rows.splice(i + 1, 0, clone);
+    const errs = [...rowErrors]; errs.splice(i + 1, 0, {});
+    setPendingRows(rows);
+    setRowErrors(errs);
+  };
+
+  const removeBatchRow = (i: number) => {
+    setPendingRows((r) => r.filter((_, j) => j !== i));
+    setRowErrors((e) => e.filter((_, j) => j !== i));
+    if (pendingRows.length === 1) setBatchBannerError(null);
+  };
+
+  const updateBatchRow = (i: number, field: keyof ProductDraft, value: string | boolean) => {
+    setPendingRows((rows) =>
+      rows.map((r, j) => {
+        if (j !== i) return r;
+        const updated = { ...r, [field]: value };
+        if (field === "baseUnitCode" && typeof value === "string")
+          updated.unitKind = suggestUnitKind(value);
+        return updated;
+      })
+    );
+    setRowErrors((errs) =>
+      errs.map((e, j) => {
+        if (j !== i) return e;
+        const c = { ...e }; delete c[field as string]; return c;
+      })
+    );
+  };
+
+  const handleBatchSaveAll = async () => {
+    setBatchBannerError(null);
+    setSavedMsg(null);
+    const validatedErrors = pendingRows.map(validateDraft);
+    if (validatedErrors.some((e) => Object.keys(e).length > 0)) {
+      setRowErrors(validatedErrors);
+      setBatchBannerError("Fix the highlighted errors before saving.");
+      return;
+    }
+    setBatchSaving(true);
+    try {
+      const result = await api.batchCreateProducts({
+        products: pendingRows.map(draftToPayloadItem),
+      });
+      setPendingRows([]);
+      setRowErrors([]);
+      const skus = result.products.map((p) => p.sku);
+      const skuPart =
+        skus.length <= 8
+          ? skus.join(", ")
+          : `${skus.slice(0, 8).join(", ")}… (+${skus.length - 8} more)`;
+      setSavedMsg(
+        `${result.created} product${result.created !== 1 ? "s" : ""} created — ${skuPart}`
+      );
+      await loadProducts();
+      await onProductsCreated();
+    } catch (e) {
+      if (isApiError(e) && e.details?.length) {
+        const apiErrs = rowErrorsFromApiDetails(e.details, pendingRows.length);
+        setRowErrors(apiErrs);
+        setBatchBannerError(
+          apiErrs.some((r) => Object.keys(r).length > 0)
+            ? "Some rows have errors — fix them and try again."
+            : (e as Error).message
+        );
+      } else {
+        setBatchBannerError(e instanceof Error ? e.message : "Failed to save");
+      }
+    } finally {
+      setBatchSaving(false);
+    }
+  };
+
+  const unitKindOptions = UNIT_KINDS.map((k) => ({ value: k, label: UNIT_KIND_LABELS[k] }));
+
+  const thStyle: React.CSSProperties = {
+    padding: "9px 10px", textAlign: "left", fontWeight: 600,
+    color: "#78716c", fontSize: 11, background: "#fafaf9",
+    whiteSpace: "nowrap", borderBottom: "1px solid #e7e5e4",
+  };
+  const tdStyle: React.CSSProperties = { padding: "7px 10px", verticalAlign: "top" };
+
+  return (
+    <>
+      {/* ── Modal ── */}
+      <ProductModal
+        open={modalOpen}
+        draft={modalDraft}
+        errors={modalErrors}
+        saving={modalSaving}
+        onClose={() => setModalOpen(false)}
+        onChange={handleModalChange}
+        onSave={handleModalSave}
+      />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, flex: 1, minHeight: 0 }}>
+
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <h1 style={{ fontSize: 18, fontWeight: 600, color: "#1c1917", margin: 0 }}>
+              Products
+            </h1>
+            {!loadingProducts && (
+              <span style={{
+                fontSize: 12, color: "#78716c", background: "#f5f4f0",
+                border: "1px solid #e7e5e4", borderRadius: 12, padding: "1px 8px",
+              }}>
+                {rawProducts.length}
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button" onClick={addBatchRow}
+              style={{
+                height: 36, padding: "0 16px",
+                background: "#fff", border: "1px solid #d97706",
+                borderRadius: 8, fontSize: 13, fontWeight: 500,
+                color: "#d97706", cursor: "pointer",
+              }}
+            >
+              Add Row
+            </button>
+            <button
+              type="button" onClick={openModal}
+              style={{
+                height: 36, padding: "0 16px",
+                background: "#d97706", border: "none",
+                borderRadius: 8, fontSize: 13, fontWeight: 600,
+                color: "#fff", cursor: "pointer",
+              }}
+            >
+              + Add Product
+            </button>
+          </div>
+        </div>
+
+        {/* Saved feedback */}
+        {savedMsg && (
+          <div style={{
+            background: "#dcfce7", color: "#15803d",
+            padding: "10px 14px", borderRadius: 8, fontSize: 13,
+          }}>
+            {savedMsg}
+          </div>
+        )}
+
+        {/* ── Batch rows ─────────────────────────────────────────────────── */}
+        {pendingRows.length > 0 && (
+          <div style={{
+            background: "#fff", border: "1px solid #e7e5e4",
+            borderRadius: 12, overflow: "hidden",
+          }}>
+            {/* Batch header */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "12px 16px", borderBottom: "1px solid #e7e5e4", background: "#fafaf9",
+              flexWrap: "wrap", gap: 8,
+            }}>
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#1c1917" }}>
+                  Batch entry
+                </span>
+                <span style={{ fontSize: 12, color: "#78716c", marginLeft: 6 }}>
+                  {pendingRows.length} row{pendingRows.length !== 1 ? "s" : ""} · SKUs assigned on save
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {batchBannerError && (
+                  <span style={{ fontSize: 12, color: "#dc2626" }}>{batchBannerError}</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setPendingRows([]); setRowErrors([]); setBatchBannerError(null); }}
+                  style={{
+                    height: 30, padding: "0 12px", background: "transparent",
+                    border: "1px solid #e7e5e4", borderRadius: 6,
+                    fontSize: 12, color: "#78716c", cursor: "pointer",
+                  }}
+                >
+                  Clear all
+                </button>
+                <button
+                  type="button" onClick={handleBatchSaveAll} disabled={batchSaving}
+                  style={{
+                    height: 30, padding: "0 16px",
+                    background: batchSaving ? "#e7e5e4" : "#d97706",
+                    color: batchSaving ? "#a8a29e" : "#fff",
+                    border: "none", borderRadius: 6,
+                    fontSize: 12, fontWeight: 600,
+                    cursor: batchSaving ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {batchSaving ? "Saving…" : `Save all (${pendingRows.length})`}
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable table */}
+            <div style={{ overflowX: "auto" }}>
+              <table style={{
+                borderCollapse: "collapse", fontSize: 12,
+                width: "max-content", minWidth: "100%",
+              }}>
+                <thead>
+                  <tr>
+                    {([
+                      ["Name *", 200], ["Category", 110], ["Brand", 110],
+                      ["Unit *", 88], ["Kind *", 100], ["Frac.", 54],
+                      ["Price ₹", 88], ["Cost ₹", 88], ["Tax %", 70],
+                      ["Stock", 88], ["Reorder", 84], ["", 112],
+                    ] as [string, number][]).map(([label, w]) => (
+                      <th key={label} style={{ ...thStyle, minWidth: w }}>{label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingRows.map((row, i) => {
+                    const errs = rowErrors[i] ?? {};
+                    return (
+                      <tr key={row._id} style={{ borderBottom: "1px solid #f5f4f0" }}>
+                        <td style={tdStyle}><BatchCell value={row.name} onChange={(v) => updateBatchRow(i, "name", v)} error={errs.name} placeholder="Product name" /></td>
+                        <td style={tdStyle}>
+                          <BatchSelectCell
+                            value={row.category}
+                            options={CATEGORY_OPTIONS}
+                            onChange={(v) => updateBatchRow(i, "category", v)}
+                            error={errs.category}
+                          />
+                        </td>
+                        <td style={tdStyle}><BatchCell value={row.brand} onChange={(v) => updateBatchRow(i, "brand", v)} placeholder="Brand" /></td>
+                        <td style={tdStyle}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                            <input
+                              list={`units-${row._id}`}
+                              value={row.baseUnitCode}
+                              onChange={(e) => updateBatchRow(i, "baseUnitCode", e.target.value)}
+                              placeholder="pc"
+                              style={errs.baseUnitCode ? { ...cellInput, border: "1px solid #dc2626" } : cellInput}
+                            />
+                            <datalist id={`units-${row._id}`}>
+                              {COMMON_UNIT_CODES.map((u) => <option key={u} value={u} />)}
+                            </datalist>
+                            {errs.baseUnitCode && (
+                              <span style={{ fontSize: 10, color: "#dc2626" }}>{errs.baseUnitCode}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={tdStyle}><BatchSelectCell value={row.unitKind} options={unitKindOptions} onChange={(v) => updateBatchRow(i, "unitKind", v as UnitKindValue)} error={errs.unitKind} /></td>
+                        <td style={{ ...tdStyle, textAlign: "center" }}>
+                          <input type="checkbox" checked={row.allowsFractional} onChange={(e) => updateBatchRow(i, "allowsFractional", e.target.checked)} style={{ marginTop: 6, cursor: "pointer" }} />
+                        </td>
+                        <td style={tdStyle}><BatchCell value={row.sellingPrice} onChange={(v) => updateBatchRow(i, "sellingPrice", v)} error={errs.sellingPrice} type="number" placeholder="0.00" /></td>
+                        <td style={tdStyle}><BatchCell value={row.costPrice} onChange={(v) => updateBatchRow(i, "costPrice", v)} error={errs.costPrice} type="number" placeholder="0.00" /></td>
+                        <td style={tdStyle}><BatchCell value={row.taxRate} onChange={(v) => updateBatchRow(i, "taxRate", v)} error={errs.taxRate} type="number" placeholder="18" /></td>
+                        <td style={tdStyle}><BatchCell value={row.currentStock} onChange={(v) => updateBatchRow(i, "currentStock", v)} error={errs.currentStock} type="number" placeholder="0" /></td>
+                        <td style={tdStyle}><BatchCell value={row.reorderLevel} onChange={(v) => updateBatchRow(i, "reorderLevel", v)} error={errs.reorderLevel} type="number" placeholder="—" /></td>
+                        <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                          <div style={{ display: "flex", gap: 5 }}>
+                            <button
+                              type="button" onClick={() => duplicateBatchRow(i)}
+                              title="Duplicate row"
+                              style={{
+                                height: 28, padding: "0 9px", background: "#f5f4f0",
+                                border: "1px solid #e7e5e4", borderRadius: 6,
+                                fontSize: 11, cursor: "pointer", color: "#44403c",
+                              }}
+                            >Dupe</button>
+                            <button
+                              type="button" onClick={() => removeBatchRow(i)}
+                              title="Remove row"
+                              style={{
+                                height: 28, padding: "0 9px", background: "#fee2e2",
+                                border: "1px solid #fecaca", borderRadius: 6,
+                                fontSize: 11, cursor: "pointer", color: "#dc2626",
+                              }}
+                            >✕</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── Existing products ──────────────────────────────────────────── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minHeight: 200 }}>
+          <input
+            placeholder="Search by name, SKU, category or brand…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              height: 36, padding: "0 12px", border: "1px solid #e7e5e4",
+              borderRadius: 8, fontSize: 13, outline: "none",
+              background: "#fff", maxWidth: 380,
+            }}
+          />
+
+          <div style={{
+            flex: 1, background: "#fff", borderRadius: 12,
+            border: "1px solid #e7e5e4", overflow: "auto",
+          }}>
+            {loadError ? (
+              <div style={{ padding: "40px 24px", color: "#dc2626", fontSize: 13, textAlign: "center" }}>
+                {loadError}
+              </div>
+            ) : loadingProducts ? (
+              <div style={{ padding: 60, color: "#78716c", fontSize: 13, textAlign: "center" }}>
+                Loading…
+              </div>
+            ) : filtered.length === 0 ? (
+              <div style={{ padding: 60, color: "#a8a29e", fontSize: 13, textAlign: "center" }}>
+                {search
+                  ? "No products match your search."
+                  : "No products yet — click + Add Product to begin."}
+              </div>
+            ) : (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #e7e5e4" }}>
+                    {["SKU", "Name", "Category", "Brand", "Unit", "Price", "Cost", "Tax %", "Stock", "Reorder", "Status"].map((h) => (
+                      <th key={h} style={{
+                        padding: "10px 14px", textAlign: "left", fontWeight: 600,
+                        color: "#78716c", fontSize: 12, background: "#fafaf9",
+                        whiteSpace: "nowrap", position: "sticky", top: 0,
+                      }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((p, i) => {
+                    const st = statusOf(p);
+                    return (
+                      <tr key={p.id} style={{
+                        borderBottom: "1px solid #f5f4f0",
+                        background: i % 2 === 0 ? "#fff" : "#fafaf9",
+                      }}>
+                        <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "#78716c", fontSize: 12, whiteSpace: "nowrap" }}>{p.sku}</td>
+                        <td style={{ padding: "10px 14px", fontWeight: 500, color: "#1c1917", maxWidth: 240 }}>{p.name}</td>
+                        <td style={{ padding: "10px 14px", color: "#78716c" }}>{p.category ?? "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "#78716c" }}>{p.brand ?? "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "#78716c", whiteSpace: "nowrap" }}>{p.baseUnitCode}</td>
+                        <td style={{ padding: "10px 14px", fontFamily: "monospace", whiteSpace: "nowrap" }}>{fmtPrice(p.sellingPrice)}</td>
+                        <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "#78716c", whiteSpace: "nowrap" }}>{fmtPrice(p.costPrice)}</td>
+                        <td style={{ padding: "10px 14px", color: "#78716c", whiteSpace: "nowrap" }}>{p.taxRate ? `${p.taxRate}%` : "—"}</td>
+                        <td style={{
+                          padding: "10px 14px", fontFamily: "monospace", fontWeight: 700,
+                          whiteSpace: "nowrap",
+                          color: st === "out" ? "#dc2626" : st === "low" ? "#d97706" : "#1c1917",
+                        }}>
+                          {Number(p.currentStock).toLocaleString("en-IN")}
+                          <span style={{ fontWeight: 400, color: "#a8a29e", fontSize: 11, marginLeft: 3 }}>{p.baseUnitCode}</span>
+                        </td>
+                        <td style={{ padding: "10px 14px", color: "#78716c", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                          {p.reorderLevel ? `${Number(p.reorderLevel).toLocaleString("en-IN")} ${p.baseUnitCode}` : "—"}
+                        </td>
+                        <td style={{ padding: "10px 14px" }}>
+                          <StatusBadge status={st} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
