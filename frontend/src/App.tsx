@@ -17,6 +17,8 @@ import {
   recordFieldErrors,
 } from "./lib/formErrors";
 import { mapApiProduct, type UiProduct } from "./lib/mapProduct";
+import { ProductsPage } from "./pages/ProductsPage";
+import { Sidebar, type Tab } from "./Sidebar";
 
 // ═══════════════════════════════════════════════════════════════════
 // UTILITIES
@@ -154,10 +156,12 @@ function FieldWrap({
   label,
   children,
   error,
+  errorId,
 }: {
   label: string;
   children: ReactNode;
   error?: string;
+  errorId?: string;
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -166,7 +170,9 @@ function FieldWrap({
       </label>
       {children}
       {error ? (
-        <span style={{ fontSize: 12, color: "#dc2626" }}>{error}</span>
+        <span id={errorId} style={{ fontSize: 12, color: "#dc2626" }}>
+          {error}
+        </span>
       ) : null}
     </div>
   );
@@ -1028,11 +1034,13 @@ function PurchaseView({
   suppliers,
   adminUserId,
   onPurchaseComplete,
+  refreshSuppliers,
 }: {
   products: UiProduct[];
   suppliers: ApiSupplier[];
   adminUserId: string;
   onPurchaseComplete: () => Promise<void>;
+  refreshSuppliers: () => Promise<void>;
 }) {
   const empty = {
     productId: "",
@@ -1050,6 +1058,29 @@ function PurchaseView({
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  const newSupplierEmpty = useMemo(
+    () => ({
+      name: "",
+      contactPerson: "",
+      phone: "",
+      email: "",
+      address: "",
+      gstNumber: "",
+      note: "",
+    }),
+    []
+  );
+  const [showAddSupplier, setShowAddSupplier] = useState(false);
+  const [newSupplier, setNewSupplier] = useState(newSupplierEmpty);
+  const [creatingSupplier, setCreatingSupplier] = useState(false);
+  const [newSupplierErrors, setNewSupplierErrors] = useState<
+    Record<string, string>
+  >({});
+  const [supplierPanelMsg, setSupplierPanelMsg] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
   useEffect(() => {
     setFieldErrors({});
   }, [
@@ -1061,6 +1092,10 @@ function PurchaseView({
     form.notes,
   ]);
 
+  useEffect(() => {
+    setNewSupplierErrors({});
+  }, [newSupplier]);
+
   const purchaseFormBanner = useMemo(() => {
     const extra = Object.entries(fieldErrors).filter(
       ([k]) => !PURCHASE_INLINE_ERROR_KEYS.has(k)
@@ -1071,6 +1106,99 @@ function PurchaseView({
 
   const set = (k: keyof typeof empty, v: string) =>
     setForm((f) => ({ ...f, [k]: v }));
+
+  const duplicateSupplierMsg =
+    "This supplier already exists. Select it from the dropdown or enter a different name.";
+  const normalizedNewSupplierName = newSupplier.name.trim().toLocaleLowerCase();
+  const matchingSupplier = useMemo(() => {
+    if (!normalizedNewSupplierName) return undefined;
+    return suppliers.find(
+      (s) => s.name.trim().toLocaleLowerCase() === normalizedNewSupplierName
+    );
+  }, [normalizedNewSupplierName, suppliers]);
+
+  const setNewSupplierField = (
+    k: keyof typeof newSupplierEmpty,
+    v: string
+  ) => {
+    setNewSupplier((s) => ({ ...s, [k]: v }));
+    if (k === "name") {
+      setForm((f) => {
+        if (!f.supplierId) return f;
+        const selected = suppliers.find((s) => s.id === f.supplierId);
+        if (!selected) return f;
+        const selectedName = selected.name.trim().toLocaleLowerCase();
+        if (selectedName !== v.trim().toLocaleLowerCase()) return f;
+        return { ...f, supplierId: "" };
+      });
+    }
+    setSupplierPanelMsg(null);
+  };
+
+  const handleCreateSupplier = async () => {
+    if (creatingSupplier) return;
+    const trimmedName = newSupplier.name.trim();
+    if (!trimmedName) {
+      setNewSupplierErrors({ name: "Name is required" });
+      return;
+    }
+    if (matchingSupplier) {
+      setNewSupplierErrors({ name: duplicateSupplierMsg });
+      setForm((f) => ({ ...f, supplierId: matchingSupplier.id }));
+      return;
+    }
+    setCreatingSupplier(true);
+    setNewSupplierErrors({});
+    setSupplierPanelMsg(null);
+    try {
+      const s = await api.createSupplier({
+        name: trimmedName,
+        contactPerson: newSupplier.contactPerson.trim() || undefined,
+        phone: newSupplier.phone.trim() || undefined,
+        email: newSupplier.email.trim() || undefined,
+        address: newSupplier.address.trim() || undefined,
+        gstNumber: newSupplier.gstNumber.trim() || undefined,
+        note: newSupplier.note.trim() || undefined,
+      });
+      await refreshSuppliers();
+      setForm((f) => ({ ...f, supplierId: s.id }));
+      setNewSupplier({ ...newSupplierEmpty });
+      setShowAddSupplier(false);
+      setSupplierPanelMsg({
+        type: "success",
+        text: `“${s.name}” added and selected.`,
+      });
+    } catch (e) {
+      if (isApiError(e)) {
+        if (
+          e.status === 409 &&
+          (e.code === "SUPPLIER_ALREADY_EXISTS" || e.field === "supplierName")
+        ) {
+          setNewSupplierErrors({ name: duplicateSupplierMsg });
+          const conflictMatch = suppliers.find(
+            (s) => s.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase()
+          );
+          if (conflictMatch) {
+            setForm((f) => ({ ...f, supplierId: conflictMatch.id }));
+          }
+          return;
+        }
+        const fe: Record<string, string> = {};
+        for (const d of e.details ?? []) {
+          if (!fe[d.field]) fe[d.field] = d.message;
+        }
+        setNewSupplierErrors(fe);
+        setSupplierPanelMsg({ type: "error", text: e.message });
+      } else {
+        setSupplierPanelMsg({
+          type: "error",
+          text: e instanceof Error ? e.message : "Could not create supplier",
+        });
+      }
+    } finally {
+      setCreatingSupplier(false);
+    }
+  };
 
   const selectedProduct = products.find((p) => p.id === form.productId);
 
@@ -1155,17 +1283,238 @@ function PurchaseView({
         <FieldWrap label="Supplier *" error={fieldErrors.supplierId}>
           <select
             value={form.supplierId}
-            onChange={(e) => set("supplierId", e.target.value)}
+            onChange={(e) => {
+              set("supplierId", e.target.value);
+              if (e.target.value) {
+                setNewSupplierErrors((prev) => {
+                  if (!prev.name) return prev;
+                  const next = { ...prev };
+                  delete next.name;
+                  return next;
+                });
+              }
+            }}
             style={{ ...inputStyle, padding: "0 10px", cursor: "pointer" }}
           >
             <option value="">— Select supplier —</option>
             {suppliers.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name}
+                {matchingSupplier?.id === s.id
+                  ? `${s.name} (matches new supplier name)`
+                  : s.name}
               </option>
             ))}
           </select>
         </FieldWrap>
+
+        {supplierPanelMsg && (
+          <div
+            style={{
+              fontSize: 13,
+              color:
+                supplierPanelMsg.type === "success" ? "#16a34a" : "#dc2626",
+            }}
+          >
+            {supplierPanelMsg.text}
+          </div>
+        )}
+
+        <div>
+          <button
+            type="button"
+            onClick={() => {
+              setShowAddSupplier((v) => !v);
+              setSupplierPanelMsg(null);
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#b45309",
+              cursor: "pointer",
+              textDecoration: "underline",
+            }}
+          >
+            {showAddSupplier ? "Hide new supplier form" : "+ Add new supplier"}
+          </button>
+        </div>
+
+        {showAddSupplier && (
+          <div
+            style={{
+              border: "1px solid #e7e5e4",
+              borderRadius: 10,
+              padding: 16,
+              background: "#fafaf9",
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#44403c",
+              }}
+            >
+              New supplier
+            </div>
+            <FieldWrap
+              label="Name *"
+              error={newSupplierErrors.name}
+              errorId="new-supplier-name-error"
+            >
+              <input
+                value={newSupplier.name}
+                onBlur={() => {
+                  if (matchingSupplier) {
+                    setNewSupplierErrors({ name: duplicateSupplierMsg });
+                  }
+                }}
+                onChange={(e) =>
+                  setNewSupplierField("name", e.target.value)
+                }
+                placeholder="Supplier name"
+                aria-invalid={Boolean(newSupplierErrors.name)}
+                aria-describedby={
+                  newSupplierErrors.name ? "new-supplier-name-error" : undefined
+                }
+                style={{
+                  ...inputStyle,
+                  borderColor: newSupplierErrors.name ? "#fca5a5" : "#e7e5e4",
+                }}
+              />
+            </FieldWrap>
+            {matchingSupplier && !newSupplierErrors.name && (
+              <div
+                style={{
+                  background: "#fef3c7",
+                  color: "#92400e",
+                  borderRadius: 8,
+                  padding: "8px 10px",
+                  fontSize: 12,
+                }}
+              >
+                Similar existing supplier found: <strong>{matchingSupplier.name}</strong>
+                . You can select it from the dropdown.
+              </div>
+            )}
+            <FieldWrap
+              label="Contact person"
+              error={newSupplierErrors.contactPerson}
+            >
+              <input
+                value={newSupplier.contactPerson}
+                onChange={(e) =>
+                  setNewSupplierField("contactPerson", e.target.value)
+                }
+                style={{
+                  ...inputStyle,
+                  borderColor: newSupplierErrors.contactPerson
+                    ? "#fca5a5"
+                    : "#e7e5e4",
+                }}
+              />
+            </FieldWrap>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 12,
+              }}
+            >
+              <FieldWrap label="Phone" error={newSupplierErrors.phone}>
+                <input
+                  value={newSupplier.phone}
+                  onChange={(e) =>
+                    setNewSupplierField("phone", e.target.value)
+                  }
+                  style={{
+                    ...inputStyle,
+                    borderColor: newSupplierErrors.phone ? "#fca5a5" : "#e7e5e4",
+                  }}
+                />
+              </FieldWrap>
+              <FieldWrap label="Email" error={newSupplierErrors.email}>
+                <input
+                  type="email"
+                  value={newSupplier.email}
+                  onChange={(e) =>
+                    setNewSupplierField("email", e.target.value)
+                  }
+                  style={{
+                    ...inputStyle,
+                    borderColor: newSupplierErrors.email ? "#fca5a5" : "#e7e5e4",
+                  }}
+                />
+              </FieldWrap>
+            </div>
+            <FieldWrap label="Address" error={newSupplierErrors.address}>
+              <input
+                value={newSupplier.address}
+                onChange={(e) =>
+                  setNewSupplierField("address", e.target.value)
+                }
+                style={{
+                  ...inputStyle,
+                  borderColor: newSupplierErrors.address ? "#fca5a5" : "#e7e5e4",
+                }}
+              />
+            </FieldWrap>
+            <FieldWrap label="GST number" error={newSupplierErrors.gstNumber}>
+              <input
+                value={newSupplier.gstNumber}
+                onChange={(e) =>
+                  setNewSupplierField("gstNumber", e.target.value)
+                }
+                style={{
+                  ...inputStyle,
+                  borderColor: newSupplierErrors.gstNumber
+                    ? "#fca5a5"
+                    : "#e7e5e4",
+                }}
+              />
+            </FieldWrap>
+            <FieldWrap label="Note" error={newSupplierErrors.note}>
+              <textarea
+                value={newSupplier.note}
+                onChange={(e) =>
+                  setNewSupplierField("note", e.target.value)
+                }
+                rows={2}
+                style={{
+                  padding: "8px 12px",
+                  border: `1px solid ${newSupplierErrors.note ? "#fca5a5" : "#e7e5e4"}`,
+                  borderRadius: 8,
+                  fontSize: 14,
+                  resize: "vertical",
+                  outline: "none",
+                  fontFamily: "inherit",
+                }}
+              />
+            </FieldWrap>
+            <button
+              type="button"
+              onClick={handleCreateSupplier}
+              disabled={creatingSupplier}
+              style={{
+                height: 40,
+                background: "#78716c",
+                color: "#fff",
+                border: "none",
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: creatingSupplier ? "wait" : "pointer",
+              }}
+            >
+              {creatingSupplier ? "Saving…" : "Save supplier"}
+            </button>
+          </div>
+        )}
 
         <FieldWrap label="Product *" error={fieldErrors.productId}>
           <select
@@ -1612,17 +1961,32 @@ function AdjustmentView({
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// HOME VIEW
+// ═══════════════════════════════════════════════════════════════════
+function HomeView() {
+  return (
+    <div style={{ padding: 24 }}>
+      <h2
+        style={{
+          fontSize: 18,
+          fontWeight: 500,
+          color: "#1c1917",
+          margin: "0 0 16px",
+        }}
+      >
+        Dashboard
+      </h2>
+      <p style={{ color: "#78716c", margin: 0 }}>Summary view coming soon.</p>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // APP ROOT
 // ═══════════════════════════════════════════════════════════════════
-const TABS = [
-  { id: "pos", label: "Point of Sale" },
-  { id: "inventory", label: "Inventory" },
-  { id: "purchase", label: "Purchases" },
-  { id: "adjustment", label: "Stock Adjust" },
-] as const;
 
 export default function App() {
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("pos");
+  const [tab, setTab] = useState<Tab>("home");
   const [products, setProducts] = useState<UiProduct[]>([]);
   const [suppliers, setSuppliers] = useState<ApiSupplier[]>([]);
   const [adminUserId, setAdminUserId] = useState("");
@@ -1633,6 +1997,11 @@ export default function App() {
   const refreshProducts = useCallback(async () => {
     const raw = await api.getProducts();
     setProducts(raw.map(mapApiProduct));
+  }, []);
+
+  const refreshSuppliers = useCallback(async () => {
+    const sups = await api.getSuppliers();
+    setSuppliers(sups);
   }, []);
 
   useEffect(() => {
@@ -1664,163 +2033,124 @@ export default function App() {
     };
   }, []);
 
-  const today = new Date().toLocaleDateString("en-IN", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-
   return (
     <div
       style={{
-        minHeight: "100vh",
-        background: "#f5f4f0",
-        fontFamily: "system-ui, -apple-system, sans-serif",
         display: "flex",
-        flexDirection: "column",
+        minHeight: "100vh",
+        fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
-      <div
-        style={{
-          background: "#1c1917",
-          height: 54,
-          padding: "0 24px",
-          display: "flex",
-          alignItems: "center",
-          gap: 28,
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            style={{
-              width: 28,
-              height: 28,
-              background: "#d97706",
-              borderRadius: 6,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#fff"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M3 3h18l-2 13H5L3 3z" />
-              <circle cx="9" cy="20" r="1" />
-              <circle cx="15" cy="20" r="1" />
-            </svg>
-          </div>
-          <span style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>
-            Raj Electrical, Hardware and Paints
-          </span>
-          <span style={{ color: "#57534e", fontSize: 13, marginLeft: 4 }}>
-            POS & Inventory
-          </span>
-        </div>
-
-        <nav style={{ display: "flex", flex: 1 }}>
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              style={{
-                height: 54,
-                padding: "0 16px",
-                background: "none",
-                border: "none",
-                borderBottom:
-                  tab === t.id ? "2px solid #d97706" : "2px solid transparent",
-                color: tab === t.id ? "#d97706" : "#a8a29e",
-                fontWeight: tab === t.id ? 600 : 400,
-                fontSize: 14,
-                cursor: "pointer",
-                transition: "color 0.15s",
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
-
-        <div
-          style={{ color: "#57534e", fontSize: 12, whiteSpace: "nowrap" }}
-        >
-          {today}
-        </div>
-      </div>
+      <Sidebar activeTab={tab} onTabChange={setTab} />
 
       <div
         style={{
           flex: 1,
-          padding: "20px 24px",
           display: "flex",
           flexDirection: "column",
-          minHeight: 0,
-          overflow: "hidden",
+          minWidth: 0,
         }}
       >
-        {loading && (
+        <div
+          style={{
+            background: "#1c1917",
+            height: 48,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            padding: "0 20px",
+            gap: 16,
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ color: "#a8a29e", fontSize: 13 }}>
+            {new Date().toLocaleDateString("en-IN", { dateStyle: "long" })}
+          </span>
+        </div>
+
+        <main
+          style={{
+            flex: 1,
+            background: "#f5f4f0",
+            overflowY: "auto",
+            minHeight: 0,
+          }}
+        >
           <div
             style={{
-              textAlign: "center",
-              padding: 80,
-              color: "#78716c",
-              fontSize: 14,
+              padding: "20px 24px",
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 0,
+              boxSizing: "border-box",
             }}
           >
-            Loading products…
+            {loading && (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: 80,
+                  color: "#78716c",
+                  fontSize: 14,
+                }}
+              >
+                Loading products…
+              </div>
+            )}
+            {error && (
+              <div
+                style={{
+                  background: "#fee2e2",
+                  color: "#dc2626",
+                  padding: "14px 18px",
+                  borderRadius: 10,
+                  fontSize: 14,
+                }}
+              >
+                Error: {error}
+              </div>
+            )}
+            {!loading && !error && (
+              <>
+                {tab === "home" && <HomeView />}
+                {tab === "products" && (
+                  <ProductsPage onProductsCreated={refreshProducts} />
+                )}
+                {tab === "pos" && (
+                  <POSView
+                    products={products}
+                    cashierUserId={cashierUserId}
+                    onSaleComplete={refreshProducts}
+                  />
+                )}
+                {tab === "inventory" && (
+                  <InventoryView products={products} />
+                )}
+                {tab === "purchase" && (
+                  <PurchaseView
+                    products={products}
+                    suppliers={suppliers}
+                    adminUserId={adminUserId}
+                    onPurchaseComplete={refreshProducts}
+                    refreshSuppliers={refreshSuppliers}
+                  />
+                )}
+                {tab === "adjustment" && (
+                  <AdjustmentView
+                    products={products}
+                    adminUserId={adminUserId}
+                    onAdjustmentComplete={refreshProducts}
+                  />
+                )}
+                {tab === "reporting" && (
+                  <div style={{ padding: 24, color: "#78716c" }}>
+                    Reporting is not enabled.
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        )}
-        {error && (
-          <div
-            style={{
-              background: "#fee2e2",
-              color: "#dc2626",
-              padding: "14px 18px",
-              borderRadius: 10,
-              fontSize: 14,
-            }}
-          >
-            Error: {error}
-          </div>
-        )}
-        {!loading && !error && (
-          <>
-            {tab === "pos" && (
-              <POSView
-                products={products}
-                cashierUserId={cashierUserId}
-                onSaleComplete={refreshProducts}
-              />
-            )}
-            {tab === "inventory" && <InventoryView products={products} />}
-            {tab === "purchase" && (
-              <PurchaseView
-                products={products}
-                suppliers={suppliers}
-                adminUserId={adminUserId}
-                onPurchaseComplete={refreshProducts}
-              />
-            )}
-            {tab === "adjustment" && (
-              <AdjustmentView
-                products={products}
-                adminUserId={adminUserId}
-                onAdjustmentComplete={refreshProducts}
-              />
-            )}
-          </>
-        )}
+        </main>
       </div>
     </div>
   );

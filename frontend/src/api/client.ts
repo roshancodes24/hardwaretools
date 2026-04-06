@@ -2,9 +2,12 @@ import { parseErrorResponse } from "./errors";
 import type {
   ApiProduct,
   ApiSupplier,
+  BatchCreateProductsBody,
+  BatchCreateProductsResult,
   CreatePurchaseBody,
   CreateSaleBody,
   CreateStockAdjustmentBody,
+  CreateSupplierBody,
   ProductRecord,
   PurchaseRecord,
   SaleRecord,
@@ -47,6 +50,13 @@ export const api = {
     return request<ApiSupplier[]>("/api/suppliers");
   },
 
+  createSupplier(payload: CreateSupplierBody): Promise<ApiSupplier> {
+    return request<ApiSupplier>("/api/suppliers", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
   getProducts(): Promise<ApiProduct[]> {
     return request<ApiProduct[]>("/api/products");
   },
@@ -69,6 +79,15 @@ export const api = {
     payload: CreateStockAdjustmentBody
   ): Promise<ProductRecord> {
     return request<ProductRecord>("/api/stock-adjustments", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  batchCreateProducts(
+    payload: BatchCreateProductsBody
+  ): Promise<BatchCreateProductsResult> {
+    return request<BatchCreateProductsResult>("/api/products/batch", {
       method: "POST",
       body: JSON.stringify(payload),
     });

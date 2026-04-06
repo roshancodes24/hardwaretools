@@ -87,7 +87,7 @@ model User {
 
 model Supplier {
   id            String  @id @default(cuid())
-  name          String
+  name          String  @unique
   contactPerson String?
   phone         String?
   email         String?
@@ -100,7 +100,6 @@ model Supplier {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([name])
 }
 
 model Product {

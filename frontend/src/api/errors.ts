@@ -6,12 +6,21 @@ export type FieldDetail = {
 export class ApiError extends Error {
   readonly status: number;
   readonly details?: FieldDetail[];
+  readonly code?: string;
+  readonly field?: string;
 
-  constructor(message: string, status: number, details?: FieldDetail[]) {
+  constructor(
+    message: string,
+    status: number,
+    details?: FieldDetail[],
+    meta?: { code?: string; field?: string }
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.details = details;
+    this.code = meta?.code;
+    this.field = meta?.field;
   }
 }
 
@@ -40,19 +49,39 @@ function normalizeDetails(raw: unknown): FieldDetail[] | undefined {
   return out.length ? out : undefined;
 }
 
+function toPlainMessage(raw: string, fallbackText: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return fallbackText;
+  if (/<!doctype html>|<html/i.test(trimmed)) return fallbackText;
+  return trimmed;
+}
+
 export function parseErrorResponse(
   status: number,
   body: unknown,
   fallbackText: string
 ): ApiError {
   if (typeof body === "object" && body !== null && "error" in body) {
-    const errMsg = (body as { error: unknown }).error;
-    const message =
-      typeof errMsg === "string" && errMsg.length > 0 ? errMsg : fallbackText;
+    const rawError = (body as { error: unknown }).error;
+    let message = fallbackText;
+    let code: string | undefined;
+    let field: string | undefined;
+
+    if (typeof rawError === "string" && rawError.length > 0) {
+      message = toPlainMessage(rawError, fallbackText);
+    } else if (typeof rawError === "object" && rawError !== null) {
+      const msg = (rawError as { message?: unknown }).message;
+      const c = (rawError as { code?: unknown }).code;
+      const f = (rawError as { field?: unknown }).field;
+      if (typeof msg === "string" && msg.length > 0) message = msg;
+      if (typeof c === "string") code = c;
+      if (typeof f === "string") field = f;
+    }
+
     const details = normalizeDetails(
       (body as { details?: unknown }).details
     );
-    return new ApiError(message, status, details);
+    return new ApiError(message, status, details, { code, field });
   }
   return new ApiError(fallbackText, status, undefined);
 }

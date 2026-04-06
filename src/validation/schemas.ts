@@ -77,3 +77,89 @@ export type CreatePurchaseValidated = z.infer<typeof createPurchaseSchema>;
 export type CreateStockAdjustmentValidated = z.infer<
   typeof createStockAdjustmentSchema
 >;
+
+const optionalSupplierTrimmed = (max: number, label: string) =>
+  z.preprocess(
+    (v) => (v === null || v === undefined || v === "" ? undefined : v),
+    z.string().trim().max(max, `${label} is too long`).optional()
+  );
+
+export const createSupplierSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(200, "Name is too long"),
+  contactPerson: optionalSupplierTrimmed(200, "Contact person"),
+  phone: optionalSupplierTrimmed(50, "Phone"),
+  email: z.preprocess(
+    (v) => (v === null || v === undefined || v === "" ? undefined : v),
+    z
+      .string()
+      .trim()
+      .max(255, "Email is too long")
+      .email("Invalid email")
+      .optional()
+  ),
+  address: optionalSupplierTrimmed(500, "Address"),
+  gstNumber: optionalSupplierTrimmed(50, "GST number"),
+  note: optionalSupplierTrimmed(5000, "Note"),
+});
+
+export type CreateSupplierValidated = z.infer<typeof createSupplierSchema>;
+
+// ── Product batch creation ──────────────────────────────────────────────────
+
+const optionalNonNegative = z.preprocess(
+  (v) => (v === null || v === undefined || v === "" ? undefined : v),
+  z.coerce.number().finite("Must be finite").min(0, "Must be ≥ 0").optional()
+);
+
+export const productCreateItemSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(500, "Name is too long"),
+  description: z.string().trim().max(2000).optional(),
+  category: z.enum(["Electrical", "Hardware", "Paint"], {
+    error: "Category must be Electrical, Hardware, or Paint",
+  }),
+  brand: z.string().trim().max(200).optional(),
+  baseUnitCode: z
+    .string()
+    .trim()
+    .min(1, "Unit code is required")
+    .max(50, "Unit code is too long"),
+  unitKind: z.enum(["PIECE", "WEIGHT", "LENGTH", "VOLUME", "PACK", "OTHER"]),
+  allowsFractional: z.boolean().optional().default(false),
+  sellingPrice: optionalNonNegative,
+  costPrice: optionalNonNegative,
+  taxRate: z.preprocess(
+    (v) => (v === null || v === undefined || v === "" ? undefined : v),
+    z.coerce
+      .number()
+      .finite()
+      .min(0, "Tax must be ≥ 0")
+      .max(100, "Tax must be ≤ 100")
+      .optional()
+  ),
+  currentStock: z.preprocess(
+    (v) => (v === null || v === undefined || v === "" ? 0 : v),
+    z.coerce.number().finite().min(0, "Stock must be ≥ 0").default(0)
+  ),
+  reorderLevel: optionalNonNegative,
+});
+
+export const batchCreateProductsSchema = z.object({
+  products: z
+    .array(productCreateItemSchema)
+    .min(1, "At least one product is required"),
+});
+
+export type ProductCreateItemValidated = z.infer<
+  typeof productCreateItemSchema
+>;
+export type BatchCreateProductsValidated = z.infer<
+  typeof batchCreateProductsSchema
+>;
