@@ -93,6 +93,3 @@ export const api = {
     });
   },
 };
-
-export { ApiError } from "./errors";
-export type { FieldDetail } from "./errors";

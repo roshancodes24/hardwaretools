@@ -1,11 +1,3 @@
-// Sidebar.tsx
-// Drop this file into frontend/src/Sidebar.tsx
-// Import and render it in App.tsx, replacing the existing top tab strip.
-//
-// Usage in App.tsx:
-//   import { Sidebar } from './Sidebar';
-//   <Sidebar activeTab={activeTab} onTabChange={setActiveTab} userRole={session?.role} />
-
 import { useState } from 'react';
 import { FEATURE_FLAGS } from './featureFlags';
 

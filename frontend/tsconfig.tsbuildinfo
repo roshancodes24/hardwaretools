@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/sidebar.tsx","./src/featureflags.ts","./src/main.tsx","./src/productcategories.ts","./src/vite-env.d.ts","./src/api/client.ts","./src/api/errors.ts","./src/api/types.ts","./src/lib/allocatelinediscounts.ts","./src/lib/formerrors.ts","./src/lib/mapproduct.ts","./src/pages/productspage.tsx"],"version":"5.7.3"}

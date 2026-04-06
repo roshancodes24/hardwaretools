@@ -4,3 +4,6 @@ node_modules
 
 /generated/prisma
 New folder/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+*.tsbuildinfo

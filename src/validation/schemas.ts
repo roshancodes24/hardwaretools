@@ -157,9 +157,6 @@ export const batchCreateProductsSchema = z.object({
     .min(1, "At least one product is required"),
 });
 
-export type ProductCreateItemValidated = z.infer<
-  typeof productCreateItemSchema
->;
 export type BatchCreateProductsValidated = z.infer<
   typeof batchCreateProductsSchema
 >;

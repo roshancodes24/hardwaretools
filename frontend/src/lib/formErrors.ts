@@ -20,13 +20,11 @@ export function lineErrorsFromDetails(
 
 /** Top-level / non-line field errors (first message per field path) */
 export function recordFieldErrors(
-  details: FieldDetail[] | undefined,
-  options?: { skipLineNested?: boolean }
+  details: FieldDetail[] | undefined
 ): Record<string, string> {
-  const skip = options?.skipLineNested ?? true;
   const out: Record<string, string> = {};
   for (const d of details ?? []) {
-    if (skip && /^lines\.\d+\./.test(d.field)) continue;
+    if (/^lines\.\d+\./.test(d.field)) continue;
     if (!out[d.field]) out[d.field] = d.message;
   }
   return out;

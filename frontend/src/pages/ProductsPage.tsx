@@ -35,11 +35,6 @@ function suggestUnitKind(code: string): UnitKindValue {
   return "PIECE";
 }
 
-const CATEGORY_OPTIONS = PRODUCT_CATEGORIES.map((c) => ({
-  value: c,
-  label: c,
-}));
-
 const fmtPrice = (n: number | string | null | undefined) => {
   if (n == null || n === "") return "—";
   return `₹${Number(n).toLocaleString("en-IN", {
@@ -387,7 +382,6 @@ function ProductModal({
                     onChange={(e) => {
                       const v = e.target.value;
                       onChange("baseUnitCode", v);
-                      onChange("unitKind", suggestUnitKind(v));
                     }}
                     placeholder="pc"
                     style={errors.baseUnitCode ? mInputErr : mInput}
@@ -599,6 +593,15 @@ export function ProductsPage({
         (p.brand ?? "").toLowerCase().includes(q)
     );
   }, [rawProducts, search]);
+
+  const categoryOptions = useMemo(
+    () =>
+      PRODUCT_CATEGORIES.map((c) => ({
+        value: c,
+        label: c,
+      })),
+    []
+  );
 
   // Modal handlers
   const openModal = () => {
@@ -882,7 +885,7 @@ export function ProductsPage({
                         <td style={tdStyle}>
                           <BatchSelectCell
                             value={row.category}
-                            options={CATEGORY_OPTIONS}
+                              options={categoryOptions}
                             onChange={(v) => updateBatchRow(i, "category", v)}
                             error={errs.category}
                           />

@@ -1,6 +1,5 @@
 import {
   Prisma,
-  PrismaClient,
   PurchaseStatus,
   SaleStatus,
   StockMovementType,
