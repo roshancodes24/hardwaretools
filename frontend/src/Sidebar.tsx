@@ -19,16 +19,75 @@ interface SidebarProps {
 
 type NavLeaf = { id: Tab; label: string };
 
+const NAV_ICONS: Record<Tab, ReactNode> = {
+  home: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="4.5" y="4.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.7" />
+      <rect x="14.5" y="4.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.7" />
+      <rect x="4.5" y="14.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.7" />
+      <rect x="14.5" y="14.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  ),
+  pos: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M7 5h10l1 4H6l1-4Z" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M6 9v9a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M10 13h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  ),
+  reporting: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 19V9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M12 19V5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M19 19v-7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  ),
+  products: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4.5 5.5h15M4.5 18.5h15" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M6 5.5v13" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M18 5.5v13" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  ),
+  promotion: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M8 3h8l5 5v8l-5 5H8l-5-5V8l5-5Z" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M9 15l6-6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <circle cx="9" cy="9" r="1" fill="currentColor" />
+      <circle cx="15" cy="15" r="1" fill="currentColor" />
+    </svg>
+  ),
+  inventory: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" stroke="currentColor" strokeWidth="1.7" />
+      <path d="m4 7.5 8 4.5 8-4.5" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  ),
+  purchase: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 4v16M4 12h16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  ),
+  adjustment: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 12h14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="m13 6 6 6-6 6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+};
+
 function NavButton({
   label,
   active,
   onClick,
   compact,
+  icon,
 }: {
   label: string;
   active: boolean;
   onClick: () => void;
   compact?: boolean;
+  icon?: ReactNode;
 }) {
   return (
     <button
@@ -37,6 +96,9 @@ function NavButton({
       style={{
         width: "100%",
         textAlign: "left",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
         border: "1px solid",
         borderColor: active ? "var(--accent)" : "transparent",
         background: active ? "var(--accent-soft)" : "transparent",
@@ -47,6 +109,7 @@ function NavButton({
         fontWeight: active ? 600 : 500,
         cursor: "pointer",
         transition: "all 0.14s ease",
+        lineHeight: 1.2,
       }}
       onMouseOver={(e) => {
         if (!active) {
@@ -61,7 +124,22 @@ function NavButton({
         }
       }}
     >
-      {label}
+      {icon ? (
+        <span
+          style={{
+            width: 20,
+            height: 20,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: active ? 1 : 0.85,
+            flexShrink: 0,
+          }}
+        >
+          {icon}
+        </span>
+      ) : null}
+      <span>{label}</span>
     </button>
   );
 }
@@ -78,7 +156,7 @@ function NavGroup({
   children: ReactNode;
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <button
         type="button"
         onClick={onToggle}
@@ -95,7 +173,7 @@ function NavGroup({
           fontWeight: 700,
           textTransform: "uppercase",
           letterSpacing: "0.08em",
-          padding: "0 4px",
+          padding: "0 4px 0 6px",
         }}
       >
         <span>{title}</span>
@@ -155,10 +233,21 @@ export function Sidebar({ activeTab, onTabChange, userRole }: SidebarProps) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <NavButton label="Home" active={activeTab === "home"} onClick={() => onTabChange("home")} />
-        <NavButton label="Sell (POS)" active={activeTab === "pos"} onClick={() => onTabChange("pos")} />
+        <NavButton
+          label="Home"
+          icon={NAV_ICONS.home}
+          active={activeTab === "home"}
+          onClick={() => onTabChange("home")}
+        />
+        <NavButton
+          label="Sell (POS)"
+          icon={NAV_ICONS.pos}
+          active={activeTab === "pos"}
+          onClick={() => onTabChange("pos")}
+        />
         <NavButton
           label="Reporting"
+          icon={NAV_ICONS.reporting}
           active={activeTab === "reporting"}
           onClick={() => onTabChange("reporting")}
         />
@@ -173,6 +262,7 @@ export function Sidebar({ activeTab, onTabChange, userRole }: SidebarProps) {
               key={item.id}
               compact
               label={item.label}
+              icon={NAV_ICONS[item.id]}
               active={activeTab === item.id}
               onClick={() => onTabChange(item.id)}
             />
@@ -189,6 +279,7 @@ export function Sidebar({ activeTab, onTabChange, userRole }: SidebarProps) {
           <NavButton
             compact
             label="Overview"
+            icon={NAV_ICONS.inventory}
             active={activeTab === "inventory"}
             onClick={() => onTabChange("inventory")}
           />
@@ -197,12 +288,14 @@ export function Sidebar({ activeTab, onTabChange, userRole }: SidebarProps) {
               <NavButton
                 compact
                 label="Purchases"
+                icon={NAV_ICONS.purchase}
                 active={activeTab === "purchase"}
                 onClick={() => onTabChange("purchase")}
               />
               <NavButton
                 compact
                 label="Adjustments"
+                icon={NAV_ICONS.adjustment}
                 active={activeTab === "adjustment"}
                 onClick={() => onTabChange("adjustment")}
               />
