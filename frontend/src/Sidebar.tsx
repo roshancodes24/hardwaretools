@@ -21,7 +21,7 @@ type NavLeaf = { id: Tab; label: string };
 
 const NAV_ICONS: Record<Tab, ReactNode> = {
   home: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <rect x="4.5" y="4.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.7" />
       <rect x="14.5" y="4.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.7" />
       <rect x="4.5" y="14.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.7" />
@@ -29,28 +29,28 @@ const NAV_ICONS: Record<Tab, ReactNode> = {
     </svg>
   ),
   pos: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M7 5h10l1 4H6l1-4Z" stroke="currentColor" strokeWidth="1.7" />
       <path d="M6 9v9a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9" stroke="currentColor" strokeWidth="1.7" />
       <path d="M10 13h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
     </svg>
   ),
   reporting: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M5 19V9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
       <path d="M12 19V5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
       <path d="M19 19v-7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
     </svg>
   ),
   products: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M4.5 5.5h15M4.5 18.5h15" stroke="currentColor" strokeWidth="1.7" />
       <path d="M6 5.5v13" stroke="currentColor" strokeWidth="1.7" />
       <path d="M18 5.5v13" stroke="currentColor" strokeWidth="1.7" />
     </svg>
   ),
   promotion: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M8 3h8l5 5v8l-5 5H8l-5-5V8l5-5Z" stroke="currentColor" strokeWidth="1.7" />
       <path d="M9 15l6-6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
       <circle cx="9" cy="9" r="1" fill="currentColor" />
@@ -58,18 +58,18 @@ const NAV_ICONS: Record<Tab, ReactNode> = {
     </svg>
   ),
   inventory: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" stroke="currentColor" strokeWidth="1.7" />
       <path d="m4 7.5 8 4.5 8-4.5" stroke="currentColor" strokeWidth="1.7" />
     </svg>
   ),
   purchase: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M12 4v16M4 12h16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
     </svg>
   ),
   adjustment: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M5 12h14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
       <path d="m13 6 6 6-6 6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -100,9 +100,9 @@ function NavButton({
         alignItems: "center",
         gap: 10,
         border: "1px solid",
-        borderColor: active ? "var(--accent)" : "transparent",
-        background: active ? "var(--accent-soft)" : "transparent",
-        color: active ? "var(--accent)" : "var(--sidebar-text)",
+        borderColor: active ? "rgba(37,99,235,0.4)" : "transparent",
+        background: active ? "rgba(18,34,78,0.72)" : "transparent",
+        color: active ? "#f8fafc" : "var(--sidebar-text)",
         borderRadius: 10,
         padding: compact ? "8px 10px" : "10px 12px",
         fontSize: compact ? 12.5 : 13,
@@ -110,6 +110,7 @@ function NavButton({
         cursor: "pointer",
         transition: "all 0.14s ease",
         lineHeight: 1.2,
+        boxShadow: active ? "inset 0 0 0 1px rgba(59,130,246,0.16)" : "none",
       }}
       onMouseOver={(e) => {
         if (!active) {
@@ -127,13 +128,16 @@ function NavButton({
       {icon ? (
         <span
           style={{
-            width: 20,
-            height: 20,
+            width: 22,
+            height: 22,
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
             opacity: active ? 1 : 0.85,
             flexShrink: 0,
+            borderRadius: 6,
+            background: active ? "rgba(37,99,235,0.2)" : "transparent",
+            color: active ? "#3b82f6" : "currentColor",
           }}
         >
           {icon}

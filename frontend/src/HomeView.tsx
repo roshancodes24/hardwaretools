@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Tab } from "./Sidebar";
 
 interface HomeViewProps {
@@ -22,6 +23,10 @@ export function HomeView({ onTabChange }: HomeViewProps) {
     { time: "11:40 AM", type: "Adjustment", reference: "ADJ-0193", amount: 0, status: "Applied" },
     { time: "01:15 PM", type: "Sale", reference: "SAL-1085", amount: 16450, status: "Completed" },
   ];
+  const [showAllActivity, setShowAllActivity] = useState(false);
+  const visibleActivity = showAllActivity
+    ? recentActivity
+    : recentActivity.slice(0, 10);
 
   const statCards = [
     { label: "Today's sales", value: fmtInr(todaysSales), tone: "accent" },
@@ -36,9 +41,9 @@ export function HomeView({ onTabChange }: HomeViewProps) {
         {statCards.map((card) => {
           const valueColor =
             card.tone === "danger"
-              ? "var(--danger)"
+              ? "#dc2626"
               : card.tone === "warning"
-                ? "var(--accent)"
+                ? "#d97706"
                 : "var(--text)";
           return (
             <div
@@ -156,7 +161,7 @@ export function HomeView({ onTabChange }: HomeViewProps) {
             </tr>
           </thead>
           <tbody>
-            {recentActivity.map((row, i) => (
+            {visibleActivity.map((row, i) => (
               <tr key={`${row.reference}-${i}`} style={{ background: i % 2 ? "var(--surface-subtle)" : "var(--surface)" }}>
                 <td style={{ padding: "9px 12px", color: "var(--text)" }}>{row.time}</td>
                 <td style={{ padding: "9px 12px", color: "var(--text)" }}>{row.type}</td>
@@ -169,6 +174,34 @@ export function HomeView({ onTabChange }: HomeViewProps) {
             ))}
           </tbody>
         </table>
+        {recentActivity.length > 10 && (
+          <div
+            style={{
+              padding: "10px 12px",
+              borderTop: "1px solid var(--border)",
+              display: "flex",
+              justifyContent: "flex-end",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setShowAllActivity((v) => !v)}
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                background: "var(--surface)",
+                color: "var(--text)",
+                height: 32,
+                padding: "0 12px",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {showAllActivity ? "Show less activity" : "View more activity"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

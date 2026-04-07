@@ -47,6 +47,7 @@ export function PromotionsPage({
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [productQuery, setProductQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [rowBusyId, setRowBusyId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -61,9 +62,16 @@ export function PromotionsPage({
     [products]
   );
 
+  const productTypeaheadMatches = useMemo(() => {
+    const q = productQuery.trim().toLowerCase();
+    if (!q) return productOptions;
+    return productOptions.filter((p) => p.label.toLowerCase().includes(q));
+  }, [productOptions, productQuery]);
+
   const resetForm = () => {
     setForm({ ...emptyForm });
     setSelectedProducts([]);
+    setProductQuery("");
     setEditingId(null);
   };
 
@@ -82,6 +90,7 @@ export function PromotionsPage({
       note: p.note ?? "",
     });
     setSelectedProducts(p.productIds ?? []);
+    setProductQuery("");
   };
 
   const submit = async () => {
@@ -226,38 +235,82 @@ export function PromotionsPage({
           </select>
         )}
         {form.scope === "PRODUCT" && (
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: 10,
-              maxHeight: 160,
-              overflowY: "auto",
-              padding: 8,
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
-            }}
-          >
-            {productOptions.map((p) => (
-              <label
-                key={p.id}
-                style={{ fontSize: 12, color: "var(--text)", display: "flex", gap: 8 }}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedProducts.includes(p.id)}
-                  onChange={(e) =>
-                    setSelectedProducts((cur) =>
-                      e.target.checked
-                        ? [...cur, p.id]
-                        : cur.filter((id) => id !== p.id)
-                    )
-                  }
-                />
-                {p.label}
-              </label>
-            ))}
-          </div>
+          <>
+            <input
+              placeholder="Search product by name or SKU"
+              value={productQuery}
+              onChange={(e) => setProductQuery(e.target.value)}
+              style={inputStyle}
+            />
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>
+              {selectedProducts.length} selected
+            </div>
+            {selectedProducts.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {selectedProducts.map((id) => {
+                  const label = productOptions.find((p) => p.id === id)?.label ?? id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() =>
+                        setSelectedProducts((cur) => cur.filter((x) => x !== id))
+                      }
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 999,
+                        padding: "2px 8px",
+                        background: "var(--surface-subtle)",
+                        color: "var(--text)",
+                        fontSize: 11,
+                        cursor: "pointer",
+                      }}
+                      title="Remove product"
+                    >
+                      {label} ×
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+                maxHeight: 180,
+                overflowY: "auto",
+                padding: 8,
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              {productTypeaheadMatches.map((p) => (
+                <label
+                  key={p.id}
+                  style={{ fontSize: 12, color: "var(--text)", display: "flex", gap: 8 }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedProducts.includes(p.id)}
+                    onChange={(e) =>
+                      setSelectedProducts((cur) =>
+                        e.target.checked
+                          ? [...cur, p.id]
+                          : cur.filter((id) => id !== p.id)
+                      )
+                    }
+                  />
+                  {p.label}
+                </label>
+              ))}
+              {productTypeaheadMatches.length === 0 && (
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                  No matching products.
+                </div>
+              )}
+            </div>
+          </>
         )}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <input

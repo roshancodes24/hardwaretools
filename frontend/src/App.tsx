@@ -1123,17 +1123,6 @@ function POSView({
                     {savingCustomer ? "Saving…" : "Save customer"}
                   </button>
                 ) : null}
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: "#a8a29e",
-                    marginTop: 6,
-                    lineHeight: 1.35,
-                  }}
-                >
-                  Checkout without saving keeps this sale as walk-in only (not
-                  added to customers).
-                </div>
               </>
             )}
           </div>
@@ -1279,22 +1268,36 @@ function POSView({
 // ═══════════════════════════════════════════════════════════════════
 function InventoryView({ products }: { products: UiProduct[] }) {
   const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
   const [sortKey, setSortKey] = useState<InventorySortKey>("sku");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  const totalValue = products.reduce((s, p) => s + p.price * p.stock, 0);
-  const lowCount = products.filter((p) => stockStatus(p) === "low").length;
-  const outCount = products.filter((p) => stockStatus(p) === "out").length;
+  const categoryOptions = useMemo(
+    () => ["All", ...new Set(products.map((p) => p.category))],
+    [products]
+  );
+
+  const scopedProducts = useMemo(
+    () =>
+      categoryFilter === "All"
+        ? products
+        : products.filter((p) => p.category === categoryFilter),
+    [products, categoryFilter]
+  );
+
+  const totalValue = scopedProducts.reduce((s, p) => s + p.price * p.stock, 0);
+  const lowCount = scopedProducts.filter((p) => stockStatus(p) === "low").length;
+  const outCount = scopedProducts.filter((p) => stockStatus(p) === "out").length;
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return products.filter(
+    return scopedProducts.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
         p.sku.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q)
     );
-  }, [products, search]);
+  }, [scopedProducts, search]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -1324,7 +1327,7 @@ function InventoryView({ products }: { products: UiProduct[] }) {
   const cards = [
     {
       label: "Total SKUs",
-      value: String(products.length),
+      value: String(scopedProducts.length),
       color: "#1c1917",
       mono: false,
     },
@@ -1337,13 +1340,13 @@ function InventoryView({ products }: { products: UiProduct[] }) {
     {
       label: "Low Stock",
       value: String(lowCount),
-      color: "var(--accent)",
+      color: "#d97706",
       mono: false,
     },
     {
       label: "Out of Stock",
       value: String(outCount),
-      color: "var(--muted)",
+      color: "#dc2626",
       mono: false,
     },
   ];
@@ -1394,12 +1397,25 @@ function InventoryView({ products }: { products: UiProduct[] }) {
         ))}
       </div>
 
-      <input
-        placeholder="Search by name, SKU or category..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={{ ...inputStyle, maxWidth: 380 }}
-      />
+      <div style={{ display: "flex", gap: 10, alignItems: "center", width: "100%" }}>
+        <input
+          placeholder="Search by name, SKU or category..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ ...inputStyle, flex: 1, maxWidth: 560 }}
+        />
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          style={{ ...inputStyle, width: 220, marginLeft: 12 }}
+        >
+          {categoryOptions.map((c) => (
+            <option key={c} value={c}>
+              {c === "All" ? "All Categories" : c}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div
         style={{
