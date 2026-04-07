@@ -848,6 +848,7 @@ async function main() {
         saleNumber: "SAL-0001",
         status: SaleStatus.COMPLETED,
         customerName: "Walk-in Customer",
+        customerNameSnapshot: "Walk-in Customer",
         customerPhone: "9000000000",
         note: "First sample sale",
         subtotal: "675.00",

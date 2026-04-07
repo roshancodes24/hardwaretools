@@ -1,10 +1,12 @@
 import { parseErrorResponse } from "./errors";
 import type {
+  ApiCustomer,
   ApiProduct,
   ApiPromotion,
   ApiSupplier,
   BatchCreateProductsBody,
   BatchCreateProductsResult,
+  CreateCustomerBody,
   CreatePromotionBody,
   CreatePurchaseBody,
   CreateSaleBody,
@@ -14,6 +16,7 @@ import type {
   PurchaseRecord,
   SaleRecord,
   SessionResponse,
+  UpdatePromotionBody,
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
@@ -52,6 +55,21 @@ export const api = {
     return request<ApiSupplier[]>("/api/suppliers");
   },
 
+  getCustomers(): Promise<ApiCustomer[]> {
+    return request<ApiCustomer[]>("/api/customers");
+  },
+
+  getCustomer(id: string): Promise<ApiCustomer> {
+    return request<ApiCustomer>(`/api/customers/${encodeURIComponent(id)}`);
+  },
+
+  createCustomer(payload: CreateCustomerBody): Promise<ApiCustomer> {
+    return request<ApiCustomer>("/api/customers", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
   createSupplier(payload: CreateSupplierBody): Promise<ApiSupplier> {
     return request<ApiSupplier>("/api/suppliers", {
       method: "POST",
@@ -67,6 +85,19 @@ export const api = {
     return request<ApiPromotion>("/api/promotions", {
       method: "POST",
       body: JSON.stringify(payload),
+    });
+  },
+
+  updatePromotion(id: string, payload: UpdatePromotionBody): Promise<ApiPromotion> {
+    return request<ApiPromotion>(`/api/promotions/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  deletePromotion(id: string): Promise<void> {
+    return request<void>(`/api/promotions/${encodeURIComponent(id)}`, {
+      method: "DELETE",
     });
   },
 

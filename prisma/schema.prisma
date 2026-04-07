@@ -95,7 +95,7 @@ model Supplier {
   id            String  @id @default(cuid())
   name          String  @unique
   contactPerson String?
-  phone         String?
+  phone         String? @unique
   email         String?
   address       String?
   gstNumber     String?
@@ -105,7 +105,21 @@ model Supplier {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
 
+model Customer {
+  id      String  @id @default(cuid())
+  name    String
+  phone   String? @unique
+  email   String?
+  address String?
+
+  sales Sale[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
 }
 
 model Product {
@@ -159,8 +173,8 @@ model Promotion {
   note       String?
 
   products  PromotionProduct[]
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
 
   @@index([scope, isActive])
   @@index([category])
@@ -282,10 +296,14 @@ model Sale {
   id         String @id @default(cuid())
   saleNumber String @unique
 
-  status        SaleStatus @default(DRAFT)
-  customerName  String?
-  customerPhone String?
-  note          String?
+  status               SaleStatus @default(DRAFT)
+  customerName         String?
+  customerPhone        String?
+  customerId           String?
+  customer             Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerNameSnapshot String?
+
+  note String?
 
   subtotal       Decimal @default(0) @db.Decimal(14, 2)
   discountAmount Decimal @default(0) @db.Decimal(14, 2)
@@ -305,6 +323,7 @@ model Sale {
 
   @@index([status, createdAt])
   @@index([customerPhone])
+  @@index([customerId])
 }
 
 model SaleLine {

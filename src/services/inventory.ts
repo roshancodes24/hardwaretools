@@ -35,6 +35,7 @@ type SaleLineInput = {
 
 type CreateSaleInput = {
   createdById: string;
+  customerId?: string;
   customerName?: string;
   customerPhone?: string;
   note?: string;
@@ -306,12 +307,45 @@ export async function createSale(input: CreateSaleInput) {
     const paidAmount = money(dec(input.paidAmount ?? totalAmount));
     const balanceAmount = money(totalAmount.minus(paidAmount));
 
+    let resolvedCustomerId: string | null = null;
+    let customerNameSnapshot: string | null = null;
+    let customerName: string | null = null;
+    let customerPhone: string | null =
+      input.customerPhone != null &&
+      String(input.customerPhone).trim() !== ""
+        ? String(input.customerPhone).trim()
+        : null;
+
+    if (input.customerId) {
+      const cust = await tx.customer.findUnique({
+        where: { id: input.customerId },
+      });
+      if (!cust) {
+        throw new Error("Customer not found");
+      }
+      resolvedCustomerId = cust.id;
+      customerNameSnapshot = cust.name;
+      customerName = cust.name;
+      if (!customerPhone && cust.phone) {
+        customerPhone = cust.phone;
+      }
+    } else if (
+      input.customerName != null &&
+      String(input.customerName).trim() !== ""
+    ) {
+      const n = String(input.customerName).trim();
+      customerNameSnapshot = n;
+      customerName = n;
+    }
+
     const sale = await tx.sale.create({
       data: {
         saleNumber,
         status: SaleStatus.COMPLETED,
-        customerName: input.customerName,
-        customerPhone: input.customerPhone,
+        customerId: resolvedCustomerId,
+        customerNameSnapshot,
+        customerName,
+        customerPhone,
         note: input.note,
         subtotal: money(subtotal),
         discountAmount,

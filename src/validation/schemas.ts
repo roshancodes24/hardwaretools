@@ -15,6 +15,12 @@ const nonNegativeStock = z.coerce
   .finite("Must be a finite number")
   .min(0, "Must be greater than or equal to 0");
 
+const optionalSupplierTrimmed = (max: number, label: string) =>
+  z.preprocess(
+    (v) => (v === null || v === undefined || v === "" ? undefined : v),
+    z.string().trim().max(max, `${label} is too long`).optional()
+  );
+
 export const saleLineSchema = z.object({
   productId: z.string().trim().min(1, "productId is required"),
   productUnitId: z.string().trim().min(1, "productUnitId is required"),
@@ -24,8 +30,14 @@ export const saleLineSchema = z.object({
   lineTax: nonNegativeMoney.optional().default(0),
 });
 
+const optionalCustomerId = z.preprocess(
+  (v) => (v === null || v === undefined || v === "" ? undefined : v),
+  z.string().trim().min(1, "customerId is invalid").optional()
+);
+
 export const createSaleSchema = z.object({
   createdById: z.string().trim().min(1, "createdById is required"),
+  customerId: optionalCustomerId,
   customerName: z.string().trim().max(500).optional(),
   customerPhone: z.string().trim().max(50).optional(),
   note: z.string().max(5000).optional(),
@@ -73,16 +85,35 @@ export const createStockAdjustmentSchema = z.object({
 });
 
 export type CreateSaleValidated = z.infer<typeof createSaleSchema>;
+
+export const createCustomerSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(500, "Name is too long"),
+  phone: z
+    .string()
+    .trim()
+    .min(1, "Phone number is required to save a customer.")
+    .max(50, "Phone is too long"),
+  email: z.preprocess(
+    (v) => (v === null || v === undefined || v === "" ? undefined : v),
+    z
+      .string()
+      .trim()
+      .max(255, "Email is too long")
+      .email("Invalid email")
+      .optional()
+  ),
+  address: optionalSupplierTrimmed(500, "Address"),
+});
+
+export type CreateCustomerValidated = z.infer<typeof createCustomerSchema>;
 export type CreatePurchaseValidated = z.infer<typeof createPurchaseSchema>;
 export type CreateStockAdjustmentValidated = z.infer<
   typeof createStockAdjustmentSchema
 >;
-
-const optionalSupplierTrimmed = (max: number, label: string) =>
-  z.preprocess(
-    (v) => (v === null || v === undefined || v === "" ? undefined : v),
-    z.string().trim().max(max, `${label} is too long`).optional()
-  );
 
 export const createSupplierSchema = z.object({
   name: z
@@ -180,6 +211,8 @@ export const createPromotionSchema = z
   });
 
 export type CreatePromotionValidated = z.infer<typeof createPromotionSchema>;
+export const updatePromotionSchema = createPromotionSchema;
+export type UpdatePromotionValidated = z.infer<typeof updatePromotionSchema>;
 
 // ── Product batch creation ──────────────────────────────────────────────────
 

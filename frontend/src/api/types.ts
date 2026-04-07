@@ -59,6 +59,21 @@ export type CreateSupplierBody = {
   note?: string;
 };
 
+export type ApiCustomer = {
+  id: string;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+};
+
+export type CreateCustomerBody = {
+  name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+};
+
 export type PromotionScope = "CART" | "PRODUCT" | "CATEGORY";
 
 export type ApiPromotion = {
@@ -87,6 +102,7 @@ export type CreatePromotionBody = {
   endsAt?: string;
   note?: string;
 };
+export type UpdatePromotionBody = CreatePromotionBody;
 
 export type SessionResponse = {
   adminUserId: string;
@@ -104,6 +120,7 @@ export type SaleLineBody = {
 
 export type CreateSaleBody = {
   createdById: string;
+  customerId?: string;
   customerName?: string;
   customerPhone?: string;
   note?: string;
@@ -164,6 +181,10 @@ export type BatchCreateProductsResult = {
 export type SaleRecord = {
   id: string;
   saleNumber: string;
+  customerId?: string | null;
+  customerName?: string | null;
+  customerNameSnapshot?: string | null;
+  customerPhone?: string | null;
 };
 
 export type PurchaseRecord = {

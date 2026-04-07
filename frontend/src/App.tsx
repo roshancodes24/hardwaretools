@@ -8,7 +8,13 @@ import {
 } from "react";
 import { api } from "./api/client";
 import { isApiError } from "./api/errors";
-import type { ApiProduct, ApiPromotion, ApiSupplier } from "./api/types";
+import type {
+  ApiCustomer,
+  ApiProduct,
+  ApiPromotion,
+  ApiSupplier,
+  CreateSaleBody,
+} from "./api/types";
 import { allocateLineDiscounts } from "./lib/allocateLineDiscounts";
 import {
   lineErrorsFromDetails,
@@ -18,9 +24,11 @@ import {
 } from "./lib/formErrors";
 import { mapApiProduct, type UiProduct } from "./lib/mapProduct";
 import { HomeView } from "./HomeView";
+import { ConfirmModal } from "./ConfirmModal";
 import { PromotionsPage } from "./pages/PromotionsPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { Sidebar, type Tab } from "./Sidebar";
+import { useConfirm } from "./useConfirm";
 
 // ═══════════════════════════════════════════════════════════════════
 // UTILITIES
@@ -127,7 +135,7 @@ function Toast({
         borderRadius: 8,
         fontSize: 13,
         background: status.type === "success" ? "#dcfce7" : "#fee2e2",
-        color: status.type === "success" ? "#16a34a" : "#dc2626",
+        color: status.type === "success" ? "var(--accent)" : "var(--danger)",
       }}
     >
       {status.msg}
@@ -172,7 +180,7 @@ function FieldWrap({
       </label>
       {children}
       {error ? (
-        <span id={errorId} style={{ fontSize: 12, color: "#dc2626" }}>
+        <span id={errorId} style={{ fontSize: 12, color: "var(--danger)" }}>
           {error}
         </span>
       ) : null}
@@ -183,11 +191,12 @@ function FieldWrap({
 const inputStyle: CSSProperties = {
   height: 38,
   padding: "0 12px",
-  border: "1px solid #e7e5e4",
-  borderRadius: 8,
+  border: "1px solid var(--border)",
+  borderRadius: 10,
   fontSize: 14,
   outline: "none",
-  background: "#fff",
+  background: "var(--surface)",
+  color: "var(--text)",
 };
 
 type CartLine = UiProduct & { qty: number };
@@ -199,11 +208,15 @@ function POSView({
   products,
   promotions,
   cashierUserId,
+  customers,
+  refreshCustomers,
   onSaleComplete,
 }: {
   products: UiProduct[];
   promotions: ApiPromotion[];
   cashierUserId: string;
+  customers: ApiCustomer[];
+  refreshCustomers: () => Promise<void>;
   onSaleComplete: () => Promise<void>;
 }) {
   const [search, setSearch] = useState("");
@@ -221,6 +234,16 @@ function POSView({
   const [lineErrors, setLineErrors] = useState<
     Map<number, Record<string, string>>
   >(() => new Map());
+
+  /** Empty = walk-in / typing; set when cashier picks typeahead or saves a new customer */
+  const [posCustomerId, setPosCustomerId] = useState("");
+  /** Single field: search existing or type walk-in name */
+  const [customerQuery, setCustomerQuery] = useState("");
+  /** Optional phone for walk-in; cleared when a registered customer is selected */
+  const [walkInPhone, setWalkInPhone] = useState("");
+  const [customerPhoneError, setCustomerPhoneError] = useState<string | null>(null);
+  const [customerSuggestOpen, setCustomerSuggestOpen] = useState(false);
+  const [savingCustomer, setSavingCustomer] = useState(false);
 
   useEffect(() => {
     setFieldErrors({});
@@ -260,6 +283,23 @@ function POSView({
     const start = (page - 1) * pageSize;
     return filtered.slice(start, start + pageSize);
   }, [filtered, page]);
+
+  const typeaheadMatches = useMemo(() => {
+    const q = customerQuery.trim().toLowerCase();
+    if (!q) return [];
+    const qDigits = q.replace(/\D/g, "");
+    return customers
+      .filter((c) => {
+        if (c.name.toLowerCase().includes(q)) return true;
+        if ((c.email ?? "").toLowerCase().includes(q)) return true;
+        const phone = (c.phone ?? "").replace(/\D/g, "");
+        if (qDigits.length >= 2 && phone.includes(qDigits)) return true;
+        if (q.length >= 2 && (c.phone ?? "").toLowerCase().includes(q))
+          return true;
+        return false;
+      })
+      .slice(0, 8);
+  }, [customers, customerQuery]);
 
   const activePromotions = useMemo(() => {
     const now = new Date();
@@ -363,6 +403,56 @@ function POSView({
   const cartPromoAmt = subtotalAfterLinePromos * (cartPromoPercent / 100);
   const total = subtotalAfterLinePromos - discountAmt - cartPromoAmt;
 
+  const pickRegisteredCustomer = (c: ApiCustomer) => {
+    setPosCustomerId(c.id);
+    setCustomerQuery("");
+    setWalkInPhone("");
+    setCustomerPhoneError(null);
+    setCustomerSuggestOpen(false);
+  };
+
+  const clearRegisteredCustomer = () => {
+    setPosCustomerId("");
+    setCustomerPhoneError(null);
+    setCustomerSuggestOpen(false);
+  };
+
+  /** Registers typed walk-in as a customer only when cashier clicks Save — not on checkout */
+  const saveCustomerFromWalkIn = async () => {
+    const name = customerQuery.trim();
+    const phone = walkInPhone.trim();
+    if (!name || posCustomerId || savingCustomer) return;
+    if (!phone) {
+      setCustomerPhoneError("Phone number is required to save a customer.");
+      return;
+    }
+    setCustomerPhoneError(null);
+    setSavingCustomer(true);
+    setStatus(null);
+    try {
+      const c = await api.createCustomer({
+        name,
+        phone,
+      });
+      await refreshCustomers();
+      setPosCustomerId(c.id);
+      setCustomerQuery("");
+      setWalkInPhone("");
+      setCustomerPhoneError(null);
+      setCustomerSuggestOpen(false);
+      setStatus({ type: "success", msg: `Customer saved — ${c.name}` });
+      setTimeout(() => setStatus(null), 3000);
+    } catch (e) {
+      setStatus({
+        type: "error",
+        msg: isApiError(e) ? e.message : "Could not save customer",
+      });
+      setTimeout(() => setStatus(null), 5000);
+    } finally {
+      setSavingCustomer(false);
+    }
+  };
+
   const handleCheckout = async () => {
     if (!cart.length || loading) return;
     setLoading(true);
@@ -387,7 +477,7 @@ function POSView({
         (v, i) => v + (orderLevelLineDiscounts[i] ?? 0)
       );
 
-      const sale = await api.createSale({
+      const saleBody: CreateSaleBody = {
         createdById: cashierUserId,
         note: [
           discount > 0 ? `POS discount ${discount}%` : "",
@@ -404,15 +494,36 @@ function POSView({
           lineDiscount: lineDiscounts[i] ?? 0,
           lineTax: 0,
         })),
-      });
+      };
+      if (posCustomerId) {
+        saleBody.customerId = posCustomerId;
+      } else {
+        if (customerQuery.trim()) {
+          saleBody.customerName = customerQuery.trim();
+        }
+        if (walkInPhone.trim()) {
+          saleBody.customerPhone = walkInPhone.trim();
+        }
+      }
 
+      const sale = await api.createSale(saleBody);
+
+      const snap =
+        (sale.customerNameSnapshot ?? sale.customerName)?.trim() ?? "";
       setStatus({
         type: "success",
-        msg: `Sale complete — ${sale.saleNumber}`,
+        msg: snap
+          ? `Sale complete — ${sale.saleNumber} · ${snap}`
+          : `Sale complete — ${sale.saleNumber}`,
       });
       setCart([]);
       setDiscount(0);
       setPromotionCode("");
+      setPosCustomerId("");
+      setCustomerQuery("");
+      setWalkInPhone("");
+      setCustomerPhoneError(null);
+      setCustomerSuggestOpen(false);
       await onSaleComplete();
       setTimeout(() => setStatus(null), 4000);
     } catch (e) {
@@ -447,8 +558,8 @@ function POSView({
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "1fr 340px",
-        gap: 16,
+        gridTemplateColumns: "1fr 308px",
+        gap: 12,
         flex: 1,
         minHeight: 0,
       }}
@@ -461,7 +572,7 @@ function POSView({
           minHeight: 0,
         }}
       >
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 8 }}>
           <input
             placeholder="Search by name or SKU..."
             value={search}
@@ -471,7 +582,7 @@ function POSView({
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            style={{ ...inputStyle, padding: "0 10px", cursor: "pointer" }}
+            style={{ ...inputStyle, minWidth: 140, padding: "0 10px", cursor: "pointer" }}
           >
             {categories.map((c) => (
               <option key={c} value={c}>
@@ -486,8 +597,8 @@ function POSView({
             flex: 1,
             overflowY: "auto",
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(156px, 1fr))",
-            gap: 10,
+            gridTemplateColumns: "repeat(auto-fill, minmax(148px, 1fr))",
+            gap: 8,
             alignContent: "start",
           }}
         >
@@ -501,23 +612,23 @@ function POSView({
                 onClick={() => addToCart(p)}
                 disabled={st === "out"}
                 style={{
-                  background: "#fff",
+                  background: "var(--surface)",
                   textAlign: "left",
-                  padding: "12px 10px",
+                  padding: "10px 10px 9px",
                   borderRadius: 10,
                   cursor: st === "out" ? "not-allowed" : "pointer",
                   opacity: st === "out" ? 0.5 : 1,
                   position: "relative",
                   border: inCart
-                    ? "2px solid #d97706"
-                    : "1px solid #e7e5e4",
+                    ? "2px solid var(--accent)"
+                    : "1px solid var(--border)",
                   transition: "border-color 0.1s",
                 }}
               >
                 <div
                   style={{
                     fontSize: 11,
-                    color: "#a8a29e",
+                    color: "var(--muted)",
                     marginBottom: 3,
                   }}
                 >
@@ -525,9 +636,9 @@ function POSView({
                 </div>
                 <div
                   style={{
-                    fontSize: 13,
+                    fontSize: 12.5,
                     fontWeight: 600,
-                    color: "#1c1917",
+                    color: "var(--text)",
                     lineHeight: 1.3,
                     marginBottom: 6,
                   }}
@@ -536,16 +647,16 @@ function POSView({
                 </div>
                 <div
                   style={{
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: 700,
                     fontFamily: "monospace",
-                    color: "#1c1917",
+                    color: "var(--text)",
                   }}
                 >
                   {fmt(p.price)}
                 </div>
                 <div
-                  style={{ fontSize: 11, color: "#a8a29e", marginBottom: 8 }}
+                  style={{ fontSize: 11, color: "var(--muted)", marginBottom: 8 }}
                 >
                   /{p.unit}
                 </div>
@@ -556,15 +667,15 @@ function POSView({
                       position: "absolute",
                       top: 8,
                       right: 8,
-                      background: "#d97706",
+                      background: "var(--accent)",
                       color: "#fff",
-                      width: 20,
-                      height: 20,
+                      width: 17,
+                      height: 17,
                       borderRadius: "50%",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: 700,
                     }}
                   >
@@ -583,10 +694,10 @@ function POSView({
             gap: 10,
           }}
         >
-          <div style={{ fontSize: 12, color: "#78716c" }}>
+          <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
             Showing{" "}
-            <strong style={{ color: "#1c1917" }}>{pagedProducts.length}</strong>{" "}
-            of <strong style={{ color: "#1c1917" }}>{filtered.length}</strong>{" "}
+            <strong style={{ color: "var(--text)" }}>{pagedProducts.length}</strong>{" "}
+            of <strong style={{ color: "var(--text)" }}>{filtered.length}</strong>{" "}
             products
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -599,10 +710,10 @@ function POSView({
                 minWidth: 64,
                 padding: "0 10px",
                 borderRadius: 8,
-                border: "1px solid #e7e5e4",
-                background: page <= 1 ? "#f5f5f4" : "#fff",
-                color: page <= 1 ? "#a8a29e" : "#44403c",
-                fontSize: 12,
+                border: "1px solid var(--border)",
+                background: page <= 1 ? "var(--surface-subtle)" : "var(--surface)",
+                color: page <= 1 ? "var(--muted)" : "var(--text)",
+                fontSize: 11.5,
                 cursor: page <= 1 ? "not-allowed" : "pointer",
               }}
             >
@@ -610,8 +721,8 @@ function POSView({
             </button>
             <span
               style={{
-                fontSize: 12,
-                color: "#78716c",
+                fontSize: 11.5,
+                color: "var(--muted)",
                 minWidth: 64,
                 textAlign: "center",
               }}
@@ -627,10 +738,10 @@ function POSView({
                 minWidth: 64,
                 padding: "0 10px",
                 borderRadius: 8,
-                border: "1px solid #e7e5e4",
-                background: page >= pageCount ? "#f5f5f4" : "#fff",
-                color: page >= pageCount ? "#a8a29e" : "#44403c",
-                fontSize: 12,
+                border: "1px solid var(--border)",
+                background: page >= pageCount ? "var(--surface-subtle)" : "var(--surface)",
+                color: page >= pageCount ? "var(--muted)" : "var(--text)",
+                fontSize: 11.5,
                 cursor: page >= pageCount ? "not-allowed" : "pointer",
               }}
             >
@@ -642,9 +753,9 @@ function POSView({
 
       <div
         style={{
-          background: "#fff",
-          borderRadius: 12,
-          border: "1px solid #e7e5e4",
+          background: "var(--surface)",
+          borderRadius: 10,
+          border: "1px solid var(--border)",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
@@ -652,21 +763,21 @@ function POSView({
       >
         <div
           style={{
-            padding: "13px 16px",
-            borderBottom: "1px solid #f0ece8",
+            padding: "10px 12px",
+            borderBottom: "1px solid var(--border)",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
           }}
         >
-          <span style={{ fontWeight: 600, fontSize: 15 }}>Current Sale</span>
+          <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>Current Sale</span>
           {cart.length > 0 && (
             <button
               type="button"
               onClick={() => setCart([])}
               style={{
                 fontSize: 12,
-                color: "#dc2626",
+                color: "var(--danger)",
                 background: "none",
                 border: "none",
                 cursor: "pointer",
@@ -681,10 +792,10 @@ function POSView({
           {cart.length === 0 ? (
             <div
               style={{
-                padding: "48px 16px",
+                padding: "34px 12px",
                 textAlign: "center",
-                color: "#a8a29e",
-                fontSize: 14,
+                color: "var(--muted)",
+                fontSize: 12,
               }}
             >
               No items — tap a product to add
@@ -701,11 +812,11 @@ function POSView({
               return (
                 <div
                   key={item.id}
-                  style={{ borderBottom: "1px solid #fafaf9" }}
+                  style={{ borderBottom: "1px solid var(--surface-subtle)" }}
                 >
                   <div
                     style={{
-                      padding: "10px 14px",
+                      padding: "8px 10px",
                       display: "flex",
                       gap: 8,
                       alignItems: "center",
@@ -714,9 +825,9 @@ function POSView({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div
                         style={{
-                          fontSize: 13,
+                          fontSize: 12.5,
                           fontWeight: 500,
-                          color: "#1c1917",
+                          color: "var(--text)",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -724,7 +835,7 @@ function POSView({
                       >
                         {item.name}
                       </div>
-                      <div style={{ fontSize: 12, color: "#78716c" }}>
+                      <div style={{ fontSize: 11, color: "var(--muted)" }}>
                         {fmt(item.price)}/{item.unit}
                       </div>
                     </div>
@@ -735,15 +846,15 @@ function POSView({
                         type="button"
                         onClick={() => updateQty(item.id, item.qty - 1)}
                         style={{
-                          width: 26,
-                          height: 26,
+                          width: 22,
+                          height: 22,
                           borderRadius: 6,
-                          border: "1px solid #e7e5e4",
-                          background: "#fafaf9",
+                          border: "1px solid var(--border)",
+                          background: "var(--surface-subtle)",
                           cursor: "pointer",
-                          fontSize: 15,
+                          fontSize: 13,
                           fontWeight: 700,
-                          color: "#44403c",
+                          color: "var(--text)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -760,14 +871,14 @@ function POSView({
                           updateQty(item.id, Number(e.target.value))
                         }
                         style={{
-                          width: 52,
-                          height: 26,
+                          width: 44,
+                          height: 22,
                           textAlign: "center",
                           border: lineErrDetail(lineIndex, "quantity")
                             ? "1px solid #fca5a5"
-                            : "1px solid #e7e5e4",
+                            : "1px solid var(--border)",
                           borderRadius: 6,
-                          fontSize: 13,
+                          fontSize: 12,
                           outline: "none",
                         }}
                       />
@@ -775,15 +886,15 @@ function POSView({
                         type="button"
                         onClick={() => updateQty(item.id, item.qty + 1)}
                         style={{
-                          width: 26,
-                          height: 26,
+                          width: 22,
+                          height: 22,
                           borderRadius: 6,
-                          border: "1px solid #e7e5e4",
-                          background: "#fafaf9",
+                          border: "1px solid var(--border)",
+                          background: "var(--surface-subtle)",
                           cursor: "pointer",
-                          fontSize: 15,
+                          fontSize: 13,
                           fontWeight: 700,
-                          color: "#44403c",
+                          color: "var(--text)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -794,7 +905,7 @@ function POSView({
                     </div>
                     <div
                       style={{
-                        fontSize: 13,
+                        fontSize: 12.5,
                         fontWeight: 600,
                         fontFamily: "monospace",
                         minWidth: 66,
@@ -809,7 +920,7 @@ function POSView({
                       style={{
                         padding: "0 14px 8px",
                         fontSize: 11,
-                        color: "#dc2626",
+                        color: "var(--danger)",
                       }}
                     >
                       {lineMsg}
@@ -823,13 +934,210 @@ function POSView({
 
         <div
           style={{
-            borderTop: "1px solid #e7e5e4",
-            padding: "14px 16px",
+            borderTop: "1px solid var(--border)",
+            padding: "10px 12px",
             display: "flex",
             flexDirection: "column",
             gap: 10,
           }}
         >
+          <div>
+            <div
+              style={{
+                fontSize: 11,
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                color: "var(--muted)",
+                marginBottom: 6,
+              }}
+            >
+              Customer
+            </div>
+            {posCustomerId ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  padding: "10px 12px",
+                  background: "var(--surface-subtle)",
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  marginBottom: 8,
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "#1c1917",
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {customers.find((x) => x.id === posCustomerId)?.name ??
+                      "Customer"}
+                  </div>
+                  {(() => {
+                    const ph = customers.find((x) => x.id === posCustomerId)
+                      ?.phone;
+                    return ph ? (
+                      <div style={{ fontSize: 12, color: "#78716c", marginTop: 2 }}>
+                        {ph}
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => clearRegisteredCustomer()}
+                  style={{
+                    flexShrink: 0,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--accent)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "4px 0",
+                  }}
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              <>
+                <div style={{ position: "relative", marginBottom: 8 }}>
+                  <input
+                    placeholder="Search by name or phone, or enter walk-in name"
+                    value={customerQuery}
+                    onChange={(e) => {
+                      setCustomerQuery(e.target.value);
+                      setCustomerSuggestOpen(true);
+                    }}
+                    onFocus={() => setCustomerSuggestOpen(true)}
+                    onBlur={() => {
+                      window.setTimeout(
+                        () => setCustomerSuggestOpen(false),
+                        200
+                      );
+                    }}
+                    autoComplete="off"
+                    style={{
+                      ...inputStyle,
+                      width: "100%",
+                      boxSizing: "border-box",
+                      fontSize: 12,
+                      height: 36,
+                    }}
+                  />
+                  {customerSuggestOpen &&
+                  customerQuery.trim() &&
+                  typeaheadMatches.length > 0 ? (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "100%",
+                        left: 0,
+                        right: 0,
+                        marginTop: 4,
+                        background: "#fff",
+                        border: "1px solid #e7e5e4",
+                        borderRadius: 8,
+                        boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                        maxHeight: 220,
+                        overflowY: "auto",
+                        zIndex: 30,
+                      }}
+                    >
+                      {typeaheadMatches.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => pickRegisteredCustomer(c)}
+                          style={{
+                            display: "block",
+                            width: "100%",
+                            textAlign: "left",
+                            padding: "10px 12px",
+                            border: "none",
+                            borderBottom: "1px solid #fafaf9",
+                            background: "#fff",
+                            cursor: "pointer",
+                            fontSize: 13,
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, color: "#1c1917" }}>
+                            {c.name}
+                          </div>
+                          {c.phone ? (
+                            <div style={{ fontSize: 11, color: "#78716c" }}>
+                              {c.phone}
+                            </div>
+                          ) : null}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <input
+                  placeholder="Phone (optional)"
+                  value={walkInPhone}
+                  onChange={(e) => {
+                    setWalkInPhone(e.target.value);
+                    if (customerPhoneError) setCustomerPhoneError(null);
+                  }}
+                  style={{
+                    ...inputStyle,
+                    width: "100%",
+                    boxSizing: "border-box",
+                    fontSize: 12,
+                    height: 32,
+                    marginBottom: 8,
+                  }}
+                />
+                {customerPhoneError ? (
+                  <div style={{ fontSize: 12, color: "var(--danger)", marginBottom: 8 }}>
+                    {customerPhoneError}
+                  </div>
+                ) : null}
+                {customerQuery.trim() ? (
+                  <button
+                    type="button"
+                    onClick={() => void saveCustomerFromWalkIn()}
+                    disabled={savingCustomer}
+                    style={{
+                      width: "100%",
+                      height: 36,
+                      borderRadius: 8,
+                      border: "1px solid #e7e5e4",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: savingCustomer ? "not-allowed" : "pointer",
+                      background: savingCustomer ? "#f5f5f4" : "#fafaf9",
+                      color: savingCustomer ? "#a8a29e" : "#44403c",
+                    }}
+                  >
+                    {savingCustomer ? "Saving…" : "Save customer"}
+                  </button>
+                ) : null}
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "#a8a29e",
+                    marginTop: 6,
+                    lineHeight: 1.35,
+                  }}
+                >
+                  Checkout without saving keeps this sale as walk-in only (not
+                  added to customers).
+                </div>
+              </>
+            )}
+          </div>
+
           <div
             style={{
               display: "flex",
@@ -868,7 +1176,7 @@ function POSView({
             <span
               style={{
                 fontSize: 13,
-                color: "#dc2626",
+                color: "var(--danger)",
                 fontFamily: "monospace",
                 minWidth: 64,
                 textAlign: "right",
@@ -898,7 +1206,7 @@ function POSView({
             <span
               style={{
                 fontSize: 13,
-                color: "#dc2626",
+                color: "var(--danger)",
                 fontFamily: "monospace",
                 minWidth: 64,
                 textAlign: "right",
@@ -916,7 +1224,7 @@ function POSView({
             }}
           >
             <span>Product/category promotions</span>
-            <span style={{ fontFamily: "monospace", color: "#dc2626" }}>
+            <span style={{ fontFamily: "monospace", color: "var(--danger)" }}>
               −{fmt(productCategoryPromoAmt)}
             </span>
           </div>
@@ -929,12 +1237,12 @@ function POSView({
             }}
           >
             <span>Total</span>
-            <span style={{ fontFamily: "monospace", color: "#d97706" }}>
+            <span style={{ fontFamily: "monospace", color: "var(--accent)" }}>
               {fmt(total)}
             </span>
           </div>
           {fieldErrors.paidAmount ? (
-            <div style={{ fontSize: 12, color: "#dc2626" }}>
+            <div style={{ fontSize: 12, color: "var(--danger)" }}>
               paidAmount: {fieldErrors.paidAmount}
             </div>
           ) : null}
@@ -953,7 +1261,7 @@ function POSView({
               fontSize: 15,
               fontWeight: 600,
               cursor: "pointer",
-              background: cart.length ? "#d97706" : "#e7e5e4",
+              background: cart.length ? "var(--accent)" : "var(--border)",
               color: cart.length ? "#fff" : "#a8a29e",
               transition: "background 0.15s",
             }}
@@ -1029,13 +1337,13 @@ function InventoryView({ products }: { products: UiProduct[] }) {
     {
       label: "Low Stock",
       value: String(lowCount),
-      color: "#d97706",
+      color: "var(--accent)",
       mono: false,
     },
     {
       label: "Out of Stock",
       value: String(outCount),
-      color: "#dc2626",
+      color: "var(--muted)",
       mono: false,
     },
   ];
@@ -1520,7 +1828,7 @@ function PurchaseView({
             style={{
               fontSize: 13,
               color:
-                supplierPanelMsg.type === "success" ? "#16a34a" : "#dc2626",
+                supplierPanelMsg.type === "success" ? "var(--accent)" : "var(--danger)",
             }}
           >
             {supplierPanelMsg.text}
@@ -1540,7 +1848,7 @@ function PurchaseView({
               padding: 0,
               fontSize: 13,
               fontWeight: 600,
-              color: "#b45309",
+              color: "var(--accent)",
               cursor: "pointer",
               textDecoration: "underline",
             }}
@@ -1858,7 +2166,7 @@ function PurchaseView({
           disabled={loading}
           style={{
             height: 44,
-            background: "#d97706",
+            background: "var(--accent)",
             color: "#fff",
             border: "none",
             borderRadius: 10,
@@ -2053,10 +2361,10 @@ function AdjustmentView({
                   textAlign: "center",
                   border:
                     form.type === t.value
-                      ? "2px solid #d97706"
+                      ? "2px solid var(--accent)"
                       : "1px solid #e7e5e4",
-                  background: form.type === t.value ? "#fef9ee" : "#fff",
-                  color: form.type === t.value ? "#b45309" : "#44403c",
+                  background: form.type === t.value ? "rgba(37,99,235,0.08)" : "#fff",
+                  color: form.type === t.value ? "var(--accent)" : "#44403c",
                   fontWeight: form.type === t.value ? 600 : 400,
                   transition: "all 0.1s",
                 }}
@@ -2065,7 +2373,7 @@ function AdjustmentView({
                 <div
                   style={{
                     fontSize: 11,
-                    color: form.type === t.value ? "#d97706" : "#a8a29e",
+                    color: form.type === t.value ? "var(--accent)" : "#a8a29e",
                     marginTop: 3,
                   }}
                 >
@@ -2173,11 +2481,13 @@ function AdjustmentView({
 // ═══════════════════════════════════════════════════════════════════
 
 export default function App() {
+  const { confirmProps, confirm } = useConfirm();
   const [tab, setTab] = useState<Tab>("home");
   const [rawProducts, setRawProducts] = useState<ApiProduct[]>([]);
   const [products, setProducts] = useState<UiProduct[]>([]);
   const [promotions, setPromotions] = useState<ApiPromotion[]>([]);
   const [suppliers, setSuppliers] = useState<ApiSupplier[]>([]);
+  const [customers, setCustomers] = useState<ApiCustomer[]>([]);
   const [adminUserId, setAdminUserId] = useState("");
   const [cashierUserId, setCashierUserId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -2192,6 +2502,15 @@ export default function App() {
   const refreshSuppliers = useCallback(async () => {
     const sups = await api.getSuppliers();
     setSuppliers(sups);
+  }, []);
+
+  const refreshCustomers = useCallback(async () => {
+    try {
+      const rows = await api.getCustomers();
+      setCustomers(rows);
+    } catch {
+      setCustomers([]);
+    }
   }, []);
 
   const refreshPromotions = useCallback(async () => {
@@ -2221,6 +2540,12 @@ export default function App() {
         setProducts(rawProducts.map(mapApiProduct));
         setSuppliers(sups);
         try {
+          const custs = await api.getCustomers();
+          if (!cancelled) setCustomers(custs);
+        } catch {
+          if (!cancelled) setCustomers([]);
+        }
+        try {
           const promoRows = await api.getPromotions();
           if (!cancelled) setPromotions(promoRows);
         } catch {
@@ -2240,11 +2565,13 @@ export default function App() {
   }, []);
 
   return (
-    <div
+    <>
+      <div
       style={{
         display: "flex",
         minHeight: "100vh",
-        fontFamily: "system-ui, -apple-system, sans-serif",
+        fontFamily: "Inter, system-ui, -apple-system, sans-serif",
+        background: "var(--bg)",
       }}
     >
       <Sidebar activeTab={tab} onTabChange={setTab} />
@@ -2259,17 +2586,21 @@ export default function App() {
       >
         <div
           style={{
-            background: "#1c1917",
-            height: 48,
+            background: "var(--surface)",
+            borderBottom: "1px solid var(--border)",
+            height: 56,
             display: "flex",
             alignItems: "center",
-            justifyContent: "flex-end",
-            padding: "0 20px",
+            justifyContent: "space-between",
+            padding: "0 24px",
             gap: 16,
             flexShrink: 0,
           }}
         >
-          <span style={{ color: "#a8a29e", fontSize: 13 }}>
+          <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 600 }}>
+            Hardware Inventory & POS
+          </span>
+          <span style={{ color: "var(--muted)", fontSize: 13 }}>
             {new Date().toLocaleDateString("en-IN", { dateStyle: "long" })}
           </span>
         </div>
@@ -2277,18 +2608,21 @@ export default function App() {
         <main
           style={{
             flex: 1,
-            background: "#f5f4f0",
+            background: "var(--bg)",
             overflowY: "auto",
             minHeight: 0,
           }}
         >
           <div
             style={{
-              padding: "20px 24px",
+              padding: "24px",
               display: "flex",
               flexDirection: "column",
               minHeight: 0,
               boxSizing: "border-box",
+              maxWidth: 1400,
+              margin: "0 auto",
+              width: "100%",
             }}
           >
             {loading && (
@@ -2306,8 +2640,8 @@ export default function App() {
             {error && (
               <div
                 style={{
-                  background: "#fee2e2",
-                  color: "#dc2626",
+                  background: "var(--surface)",
+                  color: "var(--danger)",
                   padding: "14px 18px",
                   borderRadius: 10,
                   fontSize: 14,
@@ -2327,6 +2661,7 @@ export default function App() {
                     products={rawProducts}
                     promotions={promotions}
                     onPromotionCreated={refreshPromotions}
+                    confirm={confirm}
                   />
                 )}
                 {tab === "pos" && (
@@ -2334,6 +2669,8 @@ export default function App() {
                     products={products}
                     promotions={promotions}
                     cashierUserId={cashierUserId}
+                    customers={customers}
+                    refreshCustomers={refreshCustomers}
                     onSaleComplete={refreshProducts}
                   />
                 )}
@@ -2366,6 +2703,8 @@ export default function App() {
           </div>
         </main>
       </div>
-    </div>
+      </div>
+      <ConfirmModal {...confirmProps} />
+    </>
   );
 }

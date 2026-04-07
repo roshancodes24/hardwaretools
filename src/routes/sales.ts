@@ -14,6 +14,7 @@ router.post(
     try {
       const sale = await createSale({
         createdById: body.createdById,
+        customerId: body.customerId,
         customerName: body.customerName,
         customerPhone: body.customerPhone,
         note: body.note,

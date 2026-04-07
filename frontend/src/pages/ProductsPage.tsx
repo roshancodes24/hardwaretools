@@ -192,7 +192,7 @@ const mInput: React.CSSProperties = {
   border: "1px solid #e7e5e4", borderRadius: 8,
   fontSize: 13, outline: "none", background: "#fff", boxSizing: "border-box",
 };
-const mInputErr: React.CSSProperties = { ...mInput, border: "1px solid #dc2626" };
+const mInputErr: React.CSSProperties = { ...mInput, border: "1px solid #2563eb" };
 
 function MField({
   label, required, error, children,
@@ -203,11 +203,11 @@ function MField({
     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
       <label style={{ fontSize: 12, fontWeight: 600, color: "#44403c" }}>
         {label}
-        {required && <span style={{ color: "#dc2626", marginLeft: 2 }}>*</span>}
+        {required && <span style={{ color: "#2563eb", marginLeft: 2 }}>*</span>}
       </label>
       {children}
       {error && (
-        <span style={{ fontSize: 11, color: "#dc2626", marginTop: -2 }}>{error}</span>
+        <span style={{ fontSize: 11, color: "#2563eb", marginTop: -2 }}>{error}</span>
       )}
     </div>
   );
@@ -364,7 +364,7 @@ function ProductModal({
                   height: "auto", padding: "8px 10px",
                   resize: "vertical", lineHeight: 1.5,
                   fontFamily: "system-ui, -apple-system, sans-serif",
-                  ...(errors.description ? { border: "1px solid #dc2626" } : {}),
+                  ...(errors.description ? { border: "1px solid #2563eb" } : {}),
                 }}
               />
             </MField>
@@ -472,7 +472,7 @@ function ProductModal({
             type="button" onClick={onSave} disabled={saving}
             style={{
               height: 38, padding: "0 22px",
-              background: saving ? "#e7e5e4" : "#d97706",
+              background: saving ? "#e7e5e4" : "#2563eb",
               color: saving ? "#a8a29e" : "#fff",
               border: "none", borderRadius: 8,
               fontSize: 13, fontWeight: 600,
@@ -502,7 +502,7 @@ function BatchCell({
   error?: string; type?: string; placeholder?: string;
 }) {
   const style = error
-    ? { ...cellInput, border: "1px solid #dc2626" }
+    ? { ...cellInput, border: "1px solid #2563eb" }
     : cellInput;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -511,7 +511,7 @@ function BatchCell({
         type={type} placeholder={placeholder} style={style}
       />
       {error && (
-        <span style={{ fontSize: 10, color: "#dc2626", lineHeight: 1.2 }}>{error}</span>
+        <span style={{ fontSize: 10, color: "#2563eb", lineHeight: 1.2 }}>{error}</span>
       )}
     </div>
   );
@@ -524,7 +524,7 @@ function BatchSelectCell({
   onChange: (v: string) => void; error?: string;
 }) {
   const style = error
-    ? { ...cellInput, border: "1px solid #dc2626" }
+    ? { ...cellInput, border: "1px solid #2563eb" }
     : cellInput;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -534,7 +534,7 @@ function BatchSelectCell({
         ))}
       </select>
       {error && (
-        <span style={{ fontSize: 10, color: "#dc2626", lineHeight: 1.2 }}>{error}</span>
+        <span style={{ fontSize: 10, color: "#2563eb", lineHeight: 1.2 }}>{error}</span>
       )}
     </div>
   );
@@ -776,9 +776,9 @@ export function ProductsPage({
               type="button" onClick={addBatchRow}
               style={{
                 height: 36, padding: "0 16px",
-                background: "#fff", border: "1px solid #d97706",
+                background: "#fff", border: "1px solid #2563eb",
                 borderRadius: 8, fontSize: 13, fontWeight: 500,
-                color: "#d97706", cursor: "pointer",
+                color: "#2563eb", cursor: "pointer",
               }}
             >
               Add Row
@@ -787,7 +787,7 @@ export function ProductsPage({
               type="button" onClick={openModal}
               style={{
                 height: 36, padding: "0 16px",
-                background: "#d97706", border: "none",
+                background: "#2563eb", border: "none",
                 borderRadius: 8, fontSize: 13, fontWeight: 600,
                 color: "#fff", cursor: "pointer",
               }}
@@ -800,7 +800,7 @@ export function ProductsPage({
         {/* Saved feedback */}
         {savedMsg && (
           <div style={{
-            background: "#dcfce7", color: "#15803d",
+            background: "rgba(37,99,235,0.10)", color: "#2563eb",
             padding: "10px 14px", borderRadius: 8, fontSize: 13,
           }}>
             {savedMsg}
@@ -829,7 +829,7 @@ export function ProductsPage({
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 {batchBannerError && (
-                  <span style={{ fontSize: 12, color: "#dc2626" }}>{batchBannerError}</span>
+                  <span style={{ fontSize: 12, color: "#2563eb" }}>{batchBannerError}</span>
                 )}
                 <button
                   type="button"
@@ -846,7 +846,7 @@ export function ProductsPage({
                   type="button" onClick={handleBatchSaveAll} disabled={batchSaving}
                   style={{
                     height: 30, padding: "0 16px",
-                    background: batchSaving ? "#e7e5e4" : "#d97706",
+                    background: batchSaving ? "#e7e5e4" : "#2563eb",
                     color: batchSaving ? "#a8a29e" : "#fff",
                     border: "none", borderRadius: 6,
                     fontSize: 12, fontWeight: 600,
@@ -898,13 +898,13 @@ export function ProductsPage({
                               value={row.baseUnitCode}
                               onChange={(e) => updateBatchRow(i, "baseUnitCode", e.target.value)}
                               placeholder="pc"
-                              style={errs.baseUnitCode ? { ...cellInput, border: "1px solid #dc2626" } : cellInput}
+                              style={errs.baseUnitCode ? { ...cellInput, border: "1px solid #2563eb" } : cellInput}
                             />
                             <datalist id={`units-${row._id}`}>
                               {COMMON_UNIT_CODES.map((u) => <option key={u} value={u} />)}
                             </datalist>
                             {errs.baseUnitCode && (
-                              <span style={{ fontSize: 10, color: "#dc2626" }}>{errs.baseUnitCode}</span>
+                              <span style={{ fontSize: 10, color: "#2563eb" }}>{errs.baseUnitCode}</span>
                             )}
                           </div>
                         </td>
@@ -932,9 +932,9 @@ export function ProductsPage({
                               type="button" onClick={() => removeBatchRow(i)}
                               title="Remove row"
                               style={{
-                                height: 28, padding: "0 9px", background: "#fee2e2",
-                                border: "1px solid #fecaca", borderRadius: 6,
-                                fontSize: 11, cursor: "pointer", color: "#dc2626",
+                                height: 28, padding: "0 9px", background: "#f3f4f6",
+                                border: "1px solid #d1d5db", borderRadius: 6,
+                                fontSize: 11, cursor: "pointer", color: "#111827",
                               }}
                             >✕</button>
                           </div>
@@ -966,7 +966,7 @@ export function ProductsPage({
             border: "1px solid #e7e5e4", overflow: "auto",
           }}>
             {loadError ? (
-              <div style={{ padding: "40px 24px", color: "#dc2626", fontSize: 13, textAlign: "center" }}>
+              <div style={{ padding: "40px 24px", color: "#111827", fontSize: 13, textAlign: "center" }}>
                 {loadError}
               </div>
             ) : loadingProducts ? (

@@ -8,6 +8,7 @@ import saleRoutes from "./routes/sales";
 import sessionRoutes from "./routes/session";
 import stockAdjustmentRoutes from "./routes/stock-adjustments";
 import supplierRoutes from "./routes/suppliers";
+import customerRoutes from "./routes/customers";
 import promotionRoutes from "./routes/promotions";
 
 const app = express();
@@ -28,6 +29,7 @@ app.use("/api/sales", saleRoutes);
 app.use("/api/session", sessionRoutes);
 app.use("/api/stock-adjustments", stockAdjustmentRoutes);
 app.use("/api/suppliers", supplierRoutes);
+app.use("/api/customers", customerRoutes);
 app.use("/api/promotions", promotionRoutes);
 
 app.listen(PORT, () => {
