@@ -6,7 +6,7 @@ export const FEATURE_FLAGS = {
   reporting: false,
   catalogBrands: false,
   catalogProductTypes: false,
-  catalogPromotions: false,
+  catalogPromotions: true,
   catalogPriceBooks: false,
   inventoryOrderStock: false,
   inventoryReceiveStock: false,

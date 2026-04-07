@@ -3,7 +3,7 @@ import { FEATURE_FLAGS } from './featureFlags';
 
 // ─── Tab type ────────────────────────────────────────────────────────────────
 // These must match the tab values already used in App.tsx
-export type Tab = 'home' | 'pos' | 'reporting' | 'products' | 'inventory' | 'purchase' | 'adjustment';
+export type Tab = 'home' | 'pos' | 'reporting' | 'products' | 'promotion' | 'inventory' | 'purchase' | 'adjustment';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 interface SidebarProps {
@@ -200,7 +200,7 @@ function Divider() {
 // ─── Main Sidebar ─────────────────────────────────────────────────────────────
 export function Sidebar({ activeTab, onTabChange, userRole }: SidebarProps) {
   const [catalogOpen, setCatalogOpen] = useState(
-    activeTab === 'products'
+    activeTab === 'products' || activeTab === 'promotion'
   );
   const [inventoryOpen, setInventoryOpen] = useState(
     activeTab === 'inventory' || activeTab === 'purchase' || activeTab === 'adjustment'
@@ -265,7 +265,11 @@ export function Sidebar({ activeTab, onTabChange, userRole }: SidebarProps) {
               <SubNavItem label="Product types" active={false} onClick={() => { /* TODO */ }} />
             )}
             {FEATURE_FLAGS.catalogPromotions && (
-              <SubNavItem label="Promotions" active={false} onClick={() => { /* TODO */ }} />
+              <SubNavItem
+                label="Promotions"
+                active={activeTab === 'promotion'}
+                onClick={() => onTabChange('promotion')}
+              />
             )}
             {FEATURE_FLAGS.catalogPriceBooks && (
               <SubNavItem label="Price books" active={false} onClick={() => { /* TODO */ }} />

@@ -1,9 +1,11 @@
 import { parseErrorResponse } from "./errors";
 import type {
   ApiProduct,
+  ApiPromotion,
   ApiSupplier,
   BatchCreateProductsBody,
   BatchCreateProductsResult,
+  CreatePromotionBody,
   CreatePurchaseBody,
   CreateSaleBody,
   CreateStockAdjustmentBody,
@@ -52,6 +54,17 @@ export const api = {
 
   createSupplier(payload: CreateSupplierBody): Promise<ApiSupplier> {
     return request<ApiSupplier>("/api/suppliers", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  getPromotions(): Promise<ApiPromotion[]> {
+    return request<ApiPromotion[]>("/api/promotions");
+  },
+
+  createPromotion(payload: CreatePromotionBody): Promise<ApiPromotion> {
+    return request<ApiPromotion>("/api/promotions", {
       method: "POST",
       body: JSON.stringify(payload),
     });

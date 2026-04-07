@@ -59,6 +59,35 @@ export type CreateSupplierBody = {
   note?: string;
 };
 
+export type PromotionScope = "CART" | "PRODUCT" | "CATEGORY";
+
+export type ApiPromotion = {
+  id: string;
+  name: string;
+  code?: string | null;
+  scope: PromotionScope;
+  category?: "Electrical" | "Hardware" | "Paint" | null;
+  percentage: string;
+  isActive: boolean;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  note?: string | null;
+  productIds: string[];
+};
+
+export type CreatePromotionBody = {
+  name: string;
+  code?: string;
+  scope: PromotionScope;
+  percentage: number | string;
+  category?: "Electrical" | "Hardware" | "Paint";
+  productIds?: string[];
+  isActive?: boolean;
+  startsAt?: string;
+  endsAt?: string;
+  note?: string;
+};
+
 export type SessionResponse = {
   adminUserId: string;
   cashierUserId: string;

@@ -108,6 +108,79 @@ export const createSupplierSchema = z.object({
 
 export type CreateSupplierValidated = z.infer<typeof createSupplierSchema>;
 
+const optionalDateField = z.preprocess(
+  (v) => (v === null || v === undefined || v === "" ? undefined : v),
+  z.coerce.date().optional()
+);
+
+export const createPromotionSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, "Name is required")
+      .max(200, "Name is too long"),
+    code: z.preprocess(
+      (v) => (v === null || v === undefined || v === "" ? undefined : v),
+      z
+        .string()
+        .trim()
+        .min(1, "Code is required")
+        .max(50, "Code is too long")
+        .optional()
+    ),
+    scope: z.enum(["CART", "PRODUCT", "CATEGORY"]),
+    percentage: z.coerce
+      .number()
+      .finite("Percentage must be finite")
+      .gt(0, "Percentage must be greater than 0")
+      .max(100, "Percentage must be less than or equal to 100"),
+    category: z.preprocess(
+      (v) => (v === null || v === undefined || v === "" ? undefined : v),
+      z.enum(["Electrical", "Hardware", "Paint"]).optional()
+    ),
+    productIds: z.array(z.string().trim().min(1)).optional(),
+    isActive: z.boolean().optional().default(true),
+    startsAt: optionalDateField,
+    endsAt: optionalDateField,
+    note: z.preprocess(
+      (v) => (v === null || v === undefined || v === "" ? undefined : v),
+      z.string().trim().max(2000, "Note is too long").optional()
+    ),
+  })
+  .superRefine((v, ctx) => {
+    if (v.scope === "CART" && !v.code) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["code"],
+        message: "Code is required for cart promotions",
+      });
+    }
+    if (v.scope === "CATEGORY" && !v.category) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["category"],
+        message: "Category is required for category promotions",
+      });
+    }
+    if (v.scope === "PRODUCT" && (!v.productIds || v.productIds.length === 0)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["productIds"],
+        message: "At least one product is required for product promotions",
+      });
+    }
+    if (v.startsAt && v.endsAt && v.startsAt > v.endsAt) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["endsAt"],
+        message: "End date must be after start date",
+      });
+    }
+  });
+
+export type CreatePromotionValidated = z.infer<typeof createPromotionSchema>;
+
 // ── Product batch creation ──────────────────────────────────────────────────
 
 const optionalNonNegative = z.preprocess(

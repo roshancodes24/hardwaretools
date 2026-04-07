@@ -49,10 +49,17 @@ function normalizeDetails(raw: unknown): FieldDetail[] | undefined {
   return out.length ? out : undefined;
 }
 
-function toPlainMessage(raw: string, fallbackText: string): string {
+function friendlyHttpFallback(status: number): string {
+  if (status === 404) {
+    return "API endpoint not found. Restart the backend (npm run dev in the project root) so it includes the latest routes.";
+  }
+  return `Request failed (${status}). Check that the API server is running.`;
+}
+
+function toPlainMessage(raw: string, status: number): string {
   const trimmed = raw.trim();
-  if (!trimmed) return fallbackText;
-  if (/<!doctype html>|<html/i.test(trimmed)) return fallbackText;
+  if (!trimmed) return friendlyHttpFallback(status);
+  if (/<!doctype html>|<html/i.test(trimmed)) return friendlyHttpFallback(status);
   return trimmed;
 }
 
@@ -68,12 +75,14 @@ export function parseErrorResponse(
     let field: string | undefined;
 
     if (typeof rawError === "string" && rawError.length > 0) {
-      message = toPlainMessage(rawError, fallbackText);
+      message = toPlainMessage(rawError, status);
     } else if (typeof rawError === "object" && rawError !== null) {
       const msg = (rawError as { message?: unknown }).message;
       const c = (rawError as { code?: unknown }).code;
       const f = (rawError as { field?: unknown }).field;
-      if (typeof msg === "string" && msg.length > 0) message = msg;
+      if (typeof msg === "string" && msg.length > 0) {
+        message = toPlainMessage(msg, status);
+      }
       if (typeof c === "string") code = c;
       if (typeof f === "string") field = f;
     }
@@ -83,5 +92,10 @@ export function parseErrorResponse(
     );
     return new ApiError(message, status, details, { code, field });
   }
-  return new ApiError(fallbackText, status, undefined);
+  const plain =
+    typeof fallbackText === "string" &&
+    (/<!doctype html>|<html/i.test(fallbackText) || fallbackText.includes("Cannot GET"))
+      ? friendlyHttpFallback(status)
+      : fallbackText;
+  return new ApiError(plain, status, undefined);
 }

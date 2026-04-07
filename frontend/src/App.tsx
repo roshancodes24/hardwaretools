@@ -8,7 +8,7 @@ import {
 } from "react";
 import { api } from "./api/client";
 import { isApiError } from "./api/errors";
-import type { ApiSupplier } from "./api/types";
+import type { ApiProduct, ApiPromotion, ApiSupplier } from "./api/types";
 import { allocateLineDiscounts } from "./lib/allocateLineDiscounts";
 import {
   lineErrorsFromDetails,
@@ -17,6 +17,8 @@ import {
   recordFieldErrors,
 } from "./lib/formErrors";
 import { mapApiProduct, type UiProduct } from "./lib/mapProduct";
+import { HomeView } from "./HomeView";
+import { PromotionsPage } from "./pages/PromotionsPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { Sidebar, type Tab } from "./Sidebar";
 
@@ -195,17 +197,21 @@ type CartLine = UiProduct & { qty: number };
 // ═══════════════════════════════════════════════════════════════════
 function POSView({
   products,
+  promotions,
   cashierUserId,
   onSaleComplete,
 }: {
   products: UiProduct[];
+  promotions: ApiPromotion[];
   cashierUserId: string;
   onSaleComplete: () => Promise<void>;
 }) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
+  const [page, setPage] = useState(1);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [discount, setDiscount] = useState(0);
+  const [promotionCode, setPromotionCode] = useState("");
   const [status, setStatus] = useState<{
     type: "success" | "error";
     msg: string;
@@ -238,6 +244,64 @@ function POSView({
       }),
     [products, search, category]
   );
+
+  const pageSize = 9;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, category, products]);
+
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
+
+  const pagedProducts = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page]);
+
+  const activePromotions = useMemo(() => {
+    const now = new Date();
+    return promotions.filter((p) => {
+      if (!p.isActive) return false;
+      const startsAt = p.startsAt ? new Date(p.startsAt) : null;
+      const endsAt = p.endsAt ? new Date(p.endsAt) : null;
+      if (startsAt && startsAt > now) return false;
+      if (endsAt && endsAt < now) return false;
+      return true;
+    });
+  }, [promotions]);
+
+  const cartPromotion = useMemo(() => {
+    const code = promotionCode.trim().toUpperCase();
+    if (!code) return undefined;
+    return activePromotions.find(
+      (p) => p.scope === "CART" && (p.code ?? "").toUpperCase() === code
+    );
+  }, [activePromotions, promotionCode]);
+
+  const productPromotionPctById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of activePromotions) {
+      if (p.scope !== "PRODUCT") continue;
+      const pct = Number(p.percentage);
+      for (const productId of p.productIds) {
+        map.set(productId, Math.max(map.get(productId) ?? 0, pct));
+      }
+    }
+    return map;
+  }, [activePromotions]);
+
+  const categoryPromotionPctByName = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of activePromotions) {
+      if (p.scope !== "CATEGORY" || !p.category) continue;
+      const pct = Number(p.percentage);
+      map.set(p.category, Math.max(map.get(p.category) ?? 0, pct));
+    }
+    return map;
+  }, [activePromotions]);
 
   const addToCart = (p: UiProduct) => {
     if (p.stock === 0) return;
@@ -277,9 +341,27 @@ function POSView({
     );
   };
 
-  const subtotal = cart.reduce((s, x) => s + x.price * x.qty, 0);
+  const lineSubtotals = useMemo(
+    () => cart.map((x) => x.price * x.qty),
+    [cart]
+  );
+  const linePromotionDiscounts = useMemo(
+    () =>
+      cart.map((line) => {
+        const productPct = productPromotionPctById.get(line.id) ?? 0;
+        const categoryPct = categoryPromotionPctByName.get(line.category) ?? 0;
+        const pct = Math.max(productPct, categoryPct);
+        return (line.price * line.qty * pct) / 100;
+      }),
+    [cart, productPromotionPctById, categoryPromotionPctByName]
+  );
+  const subtotal = lineSubtotals.reduce((s, x) => s + x, 0);
+  const productCategoryPromoAmt = linePromotionDiscounts.reduce((s, x) => s + x, 0);
+  const subtotalAfterLinePromos = subtotal - productCategoryPromoAmt;
   const discountAmt = subtotal * (discount / 100);
-  const total = subtotal - discountAmt;
+  const cartPromoPercent = cartPromotion ? Number(cartPromotion.percentage) : 0;
+  const cartPromoAmt = subtotalAfterLinePromos * (cartPromoPercent / 100);
+  const total = subtotalAfterLinePromos - discountAmt - cartPromoAmt;
 
   const handleCheckout = async () => {
     if (!cart.length || loading) return;
@@ -288,12 +370,31 @@ function POSView({
     setFieldErrors({});
     setLineErrors(new Map());
     try {
-      const lineSubtotals = cart.map((x) => x.price * x.qty);
-      const lineDiscounts = allocateLineDiscounts(lineSubtotals, discount);
+      if (promotionCode.trim() && !cartPromotion) {
+        setStatus({ type: "error", msg: "Promotion code is not valid or inactive." });
+        return;
+      }
+      const orderLevelDiscountAmt = discountAmt + cartPromoAmt;
+      const orderLevelDiscountPercent =
+        subtotalAfterLinePromos > 0
+          ? (orderLevelDiscountAmt / subtotalAfterLinePromos) * 100
+          : 0;
+      const orderLevelLineDiscounts = allocateLineDiscounts(
+        lineSubtotals.map((v, i) => Math.max(0, v - linePromotionDiscounts[i])),
+        orderLevelDiscountPercent
+      );
+      const lineDiscounts = linePromotionDiscounts.map(
+        (v, i) => v + (orderLevelLineDiscounts[i] ?? 0)
+      );
 
       const sale = await api.createSale({
         createdById: cashierUserId,
-        note: discount > 0 ? `POS discount ${discount}%` : undefined,
+        note: [
+          discount > 0 ? `POS discount ${discount}%` : "",
+          cartPromotion ? `Cart promo ${cartPromotion.code}` : "",
+        ]
+          .filter(Boolean)
+          .join(" | ") || undefined,
         paidAmount: total,
         lines: cart.map((x, i) => ({
           productId: x.id,
@@ -311,6 +412,7 @@ function POSView({
       });
       setCart([]);
       setDiscount(0);
+      setPromotionCode("");
       await onSaleComplete();
       setTimeout(() => setStatus(null), 4000);
     } catch (e) {
@@ -389,7 +491,7 @@ function POSView({
             alignContent: "start",
           }}
         >
-          {filtered.map((p) => {
+          {pagedProducts.map((p) => {
             const st = stockStatus(p);
             const inCart = cart.find((x) => x.id === p.id);
             return (
@@ -472,6 +574,69 @@ function POSView({
               </button>
             );
           })}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
+          <div style={{ fontSize: 12, color: "#78716c" }}>
+            Showing{" "}
+            <strong style={{ color: "#1c1917" }}>{pagedProducts.length}</strong>{" "}
+            of <strong style={{ color: "#1c1917" }}>{filtered.length}</strong>{" "}
+            products
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              style={{
+                height: 30,
+                minWidth: 64,
+                padding: "0 10px",
+                borderRadius: 8,
+                border: "1px solid #e7e5e4",
+                background: page <= 1 ? "#f5f5f4" : "#fff",
+                color: page <= 1 ? "#a8a29e" : "#44403c",
+                fontSize: 12,
+                cursor: page <= 1 ? "not-allowed" : "pointer",
+              }}
+            >
+              Prev
+            </button>
+            <span
+              style={{
+                fontSize: 12,
+                color: "#78716c",
+                minWidth: 64,
+                textAlign: "center",
+              }}
+            >
+              Page {page}/{pageCount}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              disabled={page >= pageCount}
+              style={{
+                height: 30,
+                minWidth: 64,
+                padding: "0 10px",
+                borderRadius: 8,
+                border: "1px solid #e7e5e4",
+                background: page >= pageCount ? "#f5f5f4" : "#fff",
+                color: page >= pageCount ? "#a8a29e" : "#44403c",
+                fontSize: 12,
+                cursor: page >= pageCount ? "not-allowed" : "pointer",
+              }}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
 
@@ -710,6 +875,49 @@ function POSView({
               }}
             >
               −{fmt(discountAmt)}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <label style={{ fontSize: 13, color: "#78716c", flex: 1 }}>
+              Promotion code
+            </label>
+            <input
+              placeholder="e.g. NEW10"
+              value={promotionCode}
+              onChange={(e) => setPromotionCode(e.target.value.toUpperCase())}
+              style={{
+                width: 120,
+                height: 30,
+                textAlign: "center",
+                border: "1px solid #e7e5e4",
+                borderRadius: 6,
+                fontSize: 12,
+                outline: "none",
+              }}
+            />
+            <span
+              style={{
+                fontSize: 13,
+                color: "#dc2626",
+                fontFamily: "monospace",
+                minWidth: 64,
+                textAlign: "right",
+              }}
+            >
+              −{fmt(cartPromoAmt)}
+            </span>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: 12,
+              color: "#78716c",
+            }}
+          >
+            <span>Product/category promotions</span>
+            <span style={{ fontFamily: "monospace", color: "#dc2626" }}>
+              −{fmt(productCategoryPromoAmt)}
             </span>
           </div>
           <div
@@ -1961,33 +2169,14 @@ function AdjustmentView({
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// HOME VIEW
-// ═══════════════════════════════════════════════════════════════════
-function HomeView() {
-  return (
-    <div style={{ padding: 24 }}>
-      <h2
-        style={{
-          fontSize: 18,
-          fontWeight: 500,
-          color: "#1c1917",
-          margin: "0 0 16px",
-        }}
-      >
-        Dashboard
-      </h2>
-      <p style={{ color: "#78716c", margin: 0 }}>Summary view coming soon.</p>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════
 // APP ROOT
 // ═══════════════════════════════════════════════════════════════════
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("home");
+  const [rawProducts, setRawProducts] = useState<ApiProduct[]>([]);
   const [products, setProducts] = useState<UiProduct[]>([]);
+  const [promotions, setPromotions] = useState<ApiPromotion[]>([]);
   const [suppliers, setSuppliers] = useState<ApiSupplier[]>([]);
   const [adminUserId, setAdminUserId] = useState("");
   const [cashierUserId, setCashierUserId] = useState("");
@@ -1996,12 +2185,22 @@ export default function App() {
 
   const refreshProducts = useCallback(async () => {
     const raw = await api.getProducts();
+    setRawProducts(raw);
     setProducts(raw.map(mapApiProduct));
   }, []);
 
   const refreshSuppliers = useCallback(async () => {
     const sups = await api.getSuppliers();
     setSuppliers(sups);
+  }, []);
+
+  const refreshPromotions = useCallback(async () => {
+    try {
+      const rows = await api.getPromotions();
+      setPromotions(rows);
+    } catch {
+      setPromotions([]);
+    }
   }, []);
 
   useEffect(() => {
@@ -2018,8 +2217,15 @@ export default function App() {
         if (cancelled) return;
         setAdminUserId(session.adminUserId);
         setCashierUserId(session.cashierUserId);
+        setRawProducts(rawProducts);
         setProducts(rawProducts.map(mapApiProduct));
         setSuppliers(sups);
+        try {
+          const promoRows = await api.getPromotions();
+          if (!cancelled) setPromotions(promoRows);
+        } catch {
+          if (!cancelled) setPromotions([]);
+        }
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "Failed to load data");
@@ -2112,13 +2318,21 @@ export default function App() {
             )}
             {!loading && !error && (
               <>
-                {tab === "home" && <HomeView />}
+                {tab === "home" && <HomeView onTabChange={setTab} />}
                 {tab === "products" && (
                   <ProductsPage onProductsCreated={refreshProducts} />
+                )}
+                {tab === "promotion" && (
+                  <PromotionsPage
+                    products={rawProducts}
+                    promotions={promotions}
+                    onPromotionCreated={refreshPromotions}
+                  />
                 )}
                 {tab === "pos" && (
                   <POSView
                     products={products}
+                    promotions={promotions}
                     cashierUserId={cashierUserId}
                     onSaleComplete={refreshProducts}
                   />

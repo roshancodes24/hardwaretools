@@ -51,6 +51,12 @@ enum SaleStatus {
   RETURNED
 }
 
+enum PromotionScope {
+  CART
+  PRODUCT
+  CATEGORY
+}
+
 enum StockMovementType {
   OPENING
   PURCHASE_IN
@@ -129,6 +135,7 @@ model Product {
   saleLines        SaleLine[]
   stockMovements   StockMovement[]
   stockAdjustments StockAdjustment[]
+  promotionLinks   PromotionProduct[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -137,6 +144,39 @@ model Product {
   @@index([category])
   @@index([brand])
   @@index([status])
+}
+
+model Promotion {
+  id         String         @id @default(cuid())
+  name       String
+  code       String?        @unique
+  scope      PromotionScope
+  category   String?
+  percentage Decimal        @db.Decimal(5, 2)
+  isActive   Boolean        @default(true)
+  startsAt   DateTime?
+  endsAt     DateTime?
+  note       String?
+
+  products  PromotionProduct[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([scope, isActive])
+  @@index([category])
+}
+
+model PromotionProduct {
+  id          String    @id @default(cuid())
+  promotionId String
+  productId   String
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([promotionId, productId])
+  @@index([productId])
 }
 
 model ProductUnit {

@@ -2,6 +2,7 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
   BarcodeType,
+  PromotionScope,
   PrismaClient,
   ProductStatus,
   PurchaseStatus,
@@ -24,6 +25,8 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   await prisma.$transaction(async (tx) => {
     // Optional cleanup for repeatable local seeding
+      await tx.promotionProduct.deleteMany();
+      await tx.promotion.deleteMany();
     await tx.stockMovement.deleteMany();
     await tx.stockAdjustment.deleteMany();
     await tx.saleLine.deleteMany();
@@ -417,6 +420,144 @@ async function main() {
       },
     });
 
+    // Additional dummy catalog records (100 products)
+    const dummyCatalog: Array<{
+      sku: string;
+      name: string;
+      slug: string;
+      description: string;
+      category: string;
+      brand: string;
+      baseUnitCode: string;
+      unitKind: UnitKind;
+      allowsFractional: boolean;
+      costPrice: string;
+      sellingPrice: string;
+      reorderLevel: string;
+      currentStock: string;
+      taxRate: string;
+    }> = [];
+
+    const dummyCategories = ["Electrical", "Hardware", "Paint"] as const;
+    const skuPrefixByCategory: Record<(typeof dummyCategories)[number], string> = {
+      Electrical: "EL",
+      Hardware: "HW",
+      Paint: "PT",
+    };
+    const skuCounters: Record<(typeof dummyCategories)[number], number> = {
+      Electrical: 0,
+      Hardware: 0,
+      Paint: 0,
+    };
+    const dummyBrands = ["DemoLine", "PrimeStock", "ValueBuild", "NeoMart"];
+
+    for (let i = 1; i <= 100; i++) {
+      const category = dummyCategories[(i - 1) % dummyCategories.length];
+      const code = String(i).padStart(3, "0");
+      skuCounters[category] += 1;
+      const sku = `${skuPrefixByCategory[category]}-${String(
+        skuCounters[category]
+      ).padStart(5, "0")}`;
+
+      let baseUnitCode = "pc";
+      let unitKind = UnitKind.PIECE;
+      let allowsFractional = false;
+
+      if (category === "Electrical") {
+        baseUnitCode = "m";
+        unitKind = UnitKind.LENGTH;
+        allowsFractional = true;
+      } else if (category === "Paint") {
+        baseUnitCode = "L";
+        unitKind = UnitKind.VOLUME;
+        allowsFractional = true;
+      }
+
+      const cost = (25 + i * 2).toFixed(4);
+      const sell = (35 + i * 2.6).toFixed(4);
+      const reorder = (5 + (i % 18)).toFixed(4);
+      const stock = (10 + (i % 45)).toFixed(4);
+
+      dummyCatalog.push({
+        sku,
+        name: `${category} Product ${code}`,
+        slug: `${category.toLowerCase()}-product-${code}`,
+        description: `Seeded ${category.toLowerCase()} item ${code}`,
+        category,
+        brand: dummyBrands[(i - 1) % dummyBrands.length],
+        baseUnitCode,
+        unitKind,
+        allowsFractional,
+        costPrice: cost,
+        sellingPrice: sell,
+        reorderLevel: reorder,
+        currentStock: stock,
+        taxRate: "18.00",
+      });
+    }
+
+    const createdDummyProducts = [];
+    for (const item of dummyCatalog) {
+      const created = await tx.product.create({
+        data: {
+          sku: item.sku,
+          name: item.name,
+          slug: item.slug,
+          description: item.description,
+          category: item.category,
+          brand: item.brand,
+          status: ProductStatus.ACTIVE,
+          baseUnitCode: item.baseUnitCode,
+          unitKind: item.unitKind,
+          allowsFractional: item.allowsFractional,
+          costPrice: item.costPrice,
+          sellingPrice: item.sellingPrice,
+          taxRate: item.taxRate,
+          reorderLevel: item.reorderLevel,
+          currentStock: item.currentStock,
+        },
+      });
+      createdDummyProducts.push(created);
+    }
+
+    // 3.1) Promotions
+    await tx.promotion.create({
+      data: {
+        name: "Welcome Cart Discount",
+        code: "NEW10",
+        scope: PromotionScope.CART,
+        percentage: "10.00",
+        isActive: true,
+        note: "Cart-wide promotional discount",
+      },
+    });
+
+    await tx.promotion.create({
+      data: {
+        name: "Electrical Category Offer",
+        scope: PromotionScope.CATEGORY,
+        category: "Electrical",
+        percentage: "8.00",
+        isActive: true,
+      },
+    });
+
+    const productPromo = await tx.promotion.create({
+      data: {
+        name: "Hammer Deal",
+        scope: PromotionScope.PRODUCT,
+        percentage: "12.00",
+        isActive: true,
+      },
+    });
+
+    await tx.promotionProduct.create({
+      data: {
+        promotionId: productPromo.id,
+        productId: hammer.id,
+      },
+    });
+
     // 4) Product units
     const nailsGram = await tx.productUnit.create({
       data: {
@@ -580,6 +721,22 @@ async function main() {
           allowsFractionalSale: false,
         },
       ],
+    });
+
+    await tx.productUnit.createMany({
+      data: createdDummyProducts.map((p) => ({
+        productId: p.id,
+        code: p.baseUnitCode,
+        displayName:
+          p.baseUnitCode === "m"
+            ? "Meter"
+            : p.baseUnitCode === "L"
+              ? "Litre"
+              : "Piece",
+        isBaseUnit: true,
+        conversionToBase: "1.0000",
+        allowsFractionalSale: p.allowsFractional,
+      })),
     });
 
     // 5) Barcodes
