@@ -304,8 +304,6 @@ export async function createSale(input: CreateSaleInput) {
     }
 
     const totalAmount = money(subtotal.minus(discountAmount).plus(taxAmount));
-    const paidAmount = money(dec(input.paidAmount ?? totalAmount));
-    const balanceAmount = money(totalAmount.minus(paidAmount));
 
     let resolvedCustomerId: string | null = null;
     let customerNameSnapshot: string | null = null;
@@ -336,6 +334,31 @@ export async function createSale(input: CreateSaleInput) {
       const n = String(input.customerName).trim();
       customerNameSnapshot = n;
       customerName = n;
+    }
+
+    const paidAmount = money(dec(input.paidAmount ?? totalAmount));
+    if (paidAmount.greaterThan(totalAmount)) {
+      throw new Error("Amount paid cannot exceed sale total.");
+    }
+    const balanceAmount = money(totalAmount.minus(paidAmount));
+    if (balanceAmount.greaterThan(0)) {
+      const hasRegistered = resolvedCustomerId != null;
+      const walkInOk =
+        Boolean(customerName && String(customerName).trim()) &&
+        Boolean(customerPhone && String(customerPhone).trim());
+      if (!hasRegistered && !walkInOk) {
+        throw new Error(
+          "Balance due requires a registered customer, or walk-in name and phone number."
+        );
+      }
+    } else {
+      const hasRegistered = resolvedCustomerId != null;
+      const walkInNameOk = Boolean(customerName && String(customerName).trim());
+      if (!hasRegistered && !walkInNameOk) {
+        throw new Error(
+          "Walk-in name is required when paying in full (phone optional)."
+        );
+      }
     }
 
     const sale = await tx.sale.create({
@@ -402,6 +425,17 @@ export async function createSale(input: CreateSaleInput) {
       });
     }
 
+    if (paidAmount.greaterThan(0)) {
+      await tx.salePayment.create({
+        data: {
+          saleId: sale.id,
+          amount: paidAmount,
+          note: "Initial payment",
+          createdById: input.createdById,
+        },
+      });
+    }
+
     return tx.sale.findUnique({
       where: { id: sale.id },
       include: {
@@ -411,6 +445,69 @@ export async function createSale(input: CreateSaleInput) {
             productUnit: true,
           },
         },
+        payments: { orderBy: { createdAt: "asc" } },
+      },
+    });
+  });
+}
+
+export type RecordSalePaymentInput = {
+  saleId: string;
+  amount: string | number;
+  createdById: string;
+  note?: string;
+};
+
+export async function recordSalePayment(input: RecordSalePaymentInput) {
+  return prisma.$transaction(async (tx) => {
+    const sale = await tx.sale.findUnique({
+      where: { id: input.saleId },
+    });
+    if (!sale) {
+      throw new Error("Sale not found.");
+    }
+    if (sale.status !== SaleStatus.COMPLETED) {
+      throw new Error("Only completed sales can receive payments.");
+    }
+    const balance = dec(sale.balanceAmount);
+    const pay = money(dec(input.amount));
+    if (!pay.gt(0)) {
+      throw new Error("Payment amount must be greater than zero.");
+    }
+    if (pay.greaterThan(balance)) {
+      throw new Error("Payment exceeds outstanding balance.");
+    }
+
+    const newPaid = money(dec(sale.paidAmount).plus(pay));
+    const newBal = money(balance.minus(pay));
+
+    await tx.sale.update({
+      where: { id: sale.id },
+      data: {
+        paidAmount: newPaid,
+        balanceAmount: newBal,
+      },
+    });
+
+    await tx.salePayment.create({
+      data: {
+        saleId: sale.id,
+        amount: pay,
+        note: input.note?.trim() || null,
+        createdById: input.createdById,
+      },
+    });
+
+    return tx.sale.findUnique({
+      where: { id: sale.id },
+      include: {
+        lines: {
+          include: {
+            product: true,
+            productUnit: true,
+          },
+        },
+        payments: { orderBy: { createdAt: "asc" } },
       },
     });
   });

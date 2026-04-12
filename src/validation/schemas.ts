@@ -1,3 +1,4 @@
+import { ProductStatus } from "@prisma/client";
 import { z } from "zod";
 
 const nonNegativeMoney = z.coerce
@@ -6,6 +7,11 @@ const nonNegativeMoney = z.coerce
   .min(0, "Must be greater than or equal to 0");
 
 const positiveQty = z.coerce
+  .number({ error: "Must be a number" })
+  .finite("Must be a finite number")
+  .gt(0, "Must be greater than 0");
+
+const positiveMoney = z.coerce
   .number({ error: "Must be a number" })
   .finite("Must be a finite number")
   .gt(0, "Must be greater than 0");
@@ -47,6 +53,12 @@ export const createSaleSchema = z.object({
     .min(1, "At least one line item is required"),
 });
 
+export const recordSalePaymentSchema = z.object({
+  amount: positiveMoney,
+  createdById: z.string().trim().min(1, "createdById is required"),
+  note: z.string().max(500).optional(),
+});
+
 export const purchaseLineSchema = z.object({
   productId: z.string().trim().min(1, "productId is required"),
   productUnitId: z.string().trim().min(1, "productUnitId is required"),
@@ -85,6 +97,9 @@ export const createStockAdjustmentSchema = z.object({
 });
 
 export type CreateSaleValidated = z.infer<typeof createSaleSchema>;
+export type RecordSalePaymentValidated = z.infer<
+  typeof recordSalePaymentSchema
+>;
 
 export const createCustomerSchema = z.object({
   name: z
@@ -266,3 +281,65 @@ export const batchCreateProductsSchema = z.object({
 export type BatchCreateProductsValidated = z.infer<
   typeof batchCreateProductsSchema
 >;
+
+/** Partial update — at least one field required (validated by refine). */
+export const updateProductBodySchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required").max(500, "Name is too long").optional(),
+    description: z.preprocess(
+      (v) => (v === null || v === undefined ? undefined : v === "" ? null : v),
+      z.union([z.string().trim().max(2000), z.null()]).optional()
+    ),
+    category: z.enum(["Electrical", "Hardware", "Paint"]).optional(),
+    brand: z.preprocess(
+      (v) => {
+        if (v === undefined || v === "") return undefined;
+        if (v === null) return null;
+        return v;
+      },
+      z.union([z.string().trim().max(200), z.null()]).optional()
+    ),
+    sellingPrice: optionalNonNegative,
+    costPrice: optionalNonNegative,
+    taxRate: z.preprocess(
+      (v) => (v === null || v === undefined || v === "" ? undefined : v),
+      z.coerce.number().finite().min(0).max(100).optional()
+    ),
+    reorderLevel: optionalNonNegative,
+    allowsFractional: z.boolean().optional(),
+    status: z.nativeEnum(ProductStatus).optional(),
+  })
+  .strict()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field is required",
+    path: ["_root"],
+  });
+
+export type UpdateProductBodyValidated = z.infer<typeof updateProductBodySchema>;
+
+/** Strip domain if user pasted an email (e.g. admin@shop.com → admin). */
+function loginUsernameFromInput(raw: unknown): unknown {
+  if (typeof raw !== "string") return raw;
+  const s = raw.trim();
+  const at = s.indexOf("@");
+  if (at > 0) return s.slice(0, at).trim();
+  return s;
+}
+
+export const loginBodySchema = z.object({
+  username: z.preprocess(
+    loginUsernameFromInput,
+    z
+      .string()
+      .min(1, "Username is required")
+      .max(64, "Username is too long")
+      .regex(
+        /^[a-zA-Z0-9._-]+$/,
+        "Username may only contain letters, numbers, dot, underscore, hyphen"
+      )
+      .transform((s) => s.toLowerCase())
+  ),
+  password: z.string().min(1, "Password is required"),
+});
+
+export type LoginBodyValidated = z.infer<typeof loginBodySchema>;

@@ -1,11 +1,14 @@
 import { Router } from "express";
 import { Prisma } from "@prisma/client";
+import { requireAdmin } from "../middleware/requireRole";
 import { prisma } from "../lib/prisma";
 import { validateBody } from "../middleware/validateBody";
 import type { CreateSupplierValidated } from "../validation/schemas";
 import { createSupplierSchema } from "../validation/schemas";
 
 const router = Router();
+
+router.use(requireAdmin);
 
 router.get("/", async (_req, res) => {
   try {

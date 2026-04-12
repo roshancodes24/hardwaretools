@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { validateBody } from "../middleware/validateBody";
+import { requireAdmin } from "../middleware/requireRole";
 import type {
   CreatePromotionValidated,
   UpdatePromotionValidated,
@@ -9,6 +10,11 @@ import type {
 import { createPromotionSchema, updatePromotionSchema } from "../validation/schemas";
 
 const router = Router();
+
+function paramStr(v: string | string[] | undefined): string {
+  if (v == null) return "";
+  return Array.isArray(v) ? (v[0] ?? "") : v;
+}
 
 function serializePromotion(p: {
   products: Array<{ productId: string }>;
@@ -43,6 +49,7 @@ router.get("/", async (_req, res) => {
 
 router.post(
   "/",
+  requireAdmin,
   validateBody(createPromotionSchema),
   async (req, res) => {
     const body = req.validatedBody as CreatePromotionValidated;
@@ -93,13 +100,15 @@ router.post(
 
 router.put(
   "/:id",
+  requireAdmin,
   validateBody(updatePromotionSchema),
   async (req, res) => {
     const body = req.validatedBody as UpdatePromotionValidated;
+    const promoId = paramStr(req.params.id);
     try {
       const updated = await prisma.$transaction(async (tx) => {
         const promotion = await tx.promotion.update({
-          where: { id: req.params.id },
+          where: { id: promoId },
           data: {
             name: body.name,
             code: body.scope === "CART" ? (body.code?.toUpperCase() ?? null) : null,
@@ -159,10 +168,11 @@ router.put(
   }
 );
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAdmin, async (req, res) => {
+  const promoId = paramStr(req.params.id);
   try {
     await prisma.promotion.delete({
-      where: { id: req.params.id },
+      where: { id: promoId },
     });
     res.status(204).send();
   } catch (error) {

@@ -1,4 +1,8 @@
 import { Router } from "express";
+import {
+  assertBodyUserMatchesActing,
+  requireAdmin,
+} from "../middleware/requireRole";
 import { validateBody } from "../middleware/validateBody";
 import { adjustStock } from "../services/inventory";
 import type { CreateStockAdjustmentValidated } from "../validation/schemas";
@@ -8,8 +12,14 @@ const router = Router();
 
 router.post(
   "/",
+  requireAdmin,
   validateBody(createStockAdjustmentSchema),
   async (req, res) => {
+    const check = assertBodyUserMatchesActing(req, "adjustedById");
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message });
+      return;
+    }
     const body = req.validatedBody as CreateStockAdjustmentValidated;
     try {
       const result = await adjustStock({

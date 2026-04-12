@@ -6,7 +6,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { api } from "./api/client";
+import { api, getAuthToken, logoutAuth, setActingUserId } from "./api/client";
 import { isApiError } from "./api/errors";
 import type {
   ApiCustomer,
@@ -14,7 +14,11 @@ import type {
   ApiPromotion,
   ApiSupplier,
   CreateSaleBody,
+  OutstandingSaleSummary,
+  SaleDetail,
+  SessionUserRow,
 } from "./api/types";
+import { TaxInvoiceModal } from "./invoice/TaxInvoiceModal";
 import { allocateLineDiscounts } from "./lib/allocateLineDiscounts";
 import {
   lineErrorsFromDetails,
@@ -22,11 +26,20 @@ import {
   mapPurchaseDetailField,
   recordFieldErrors,
 } from "./lib/formErrors";
+import {
+  formatIndiaDateLong,
+  formatIndiaDateTime,
+  ymdInIndia,
+} from "./lib/indiaTime";
 import { mapApiProduct, type UiProduct } from "./lib/mapProduct";
 import { HomeView } from "./HomeView";
 import { ConfirmModal } from "./ConfirmModal";
 import { PromotionsPage } from "./pages/PromotionsPage";
+import { LoginPage } from "./pages/LoginPage";
 import { ProductsPage } from "./pages/ProductsPage";
+import { ReportingPage } from "./pages/ReportingPage";
+import { ReprintInvoicePage } from "./pages/ReprintInvoicePage";
+import { FEATURE_FLAGS } from "./featureFlags";
 import { Sidebar, type Tab } from "./Sidebar";
 import { useConfirm } from "./useConfirm";
 
@@ -201,24 +214,401 @@ const inputStyle: CSSProperties = {
 
 type CartLine = UiProduct & { qty: number };
 
+function OutstandingView({ actingUserId }: { actingUserId: string }) {
+  const recordedById = actingUserId;
+  const [rows, setRows] = useState<OutstandingSaleSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [payFor, setPayFor] = useState<OutstandingSaleSummary | null>(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payNote, setPayNote] = useState("");
+  const [payLoading, setPayLoading] = useState(false);
+  const [payMsg, setPayMsg] = useState<{
+    type: "ok" | "err";
+    text: string;
+  } | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api.getOutstandingSales();
+      setRows(data);
+    } catch (e) {
+      setError(isApiError(e) ? e.message : "Failed to load outstanding sales");
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    if (payFor) {
+      setPayAmount(Number(payFor.balanceAmount).toFixed(2));
+      setPayNote("");
+      setPayMsg(null);
+    }
+  }, [payFor]);
+
+  const submitPayment = async () => {
+    if (!payFor || !recordedById) return;
+    const amt = Number.parseFloat(payAmount.replace(/,/g, ""));
+    if (!Number.isFinite(amt) || amt <= 0) {
+      setPayMsg({ type: "err", text: "Enter a valid payment amount." });
+      return;
+    }
+    const maxBal = Number(payFor.balanceAmount);
+    if (amt > maxBal + 1e-6) {
+      setPayMsg({ type: "err", text: "Amount cannot exceed balance due." });
+      return;
+    }
+    setPayLoading(true);
+    setPayMsg(null);
+    try {
+      await api.recordSalePayment(payFor.id, {
+        amount: amt,
+        createdById: recordedById,
+        note: payNote.trim() || undefined,
+      });
+      setPayFor(null);
+      await load();
+    } catch (e) {
+      setPayMsg({
+        type: "err",
+        text: isApiError(e) ? e.message : "Payment failed",
+      });
+    } finally {
+      setPayLoading(false);
+    }
+  };
+
+  if (!recordedById) {
+    return (
+      <div style={{ padding: 24, color: "var(--muted)", fontSize: 14 }}>
+        Session user IDs are missing, so payments cannot be recorded. Reload the
+        app after the API is running.
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+        maxWidth: 960,
+        width: "100%",
+      }}
+    >
+      <div>
+        <h2 style={{ margin: 0, fontSize: 20, color: "var(--text)" }}>
+          Outstanding balances
+        </h2>
+        <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--muted)" }}>
+          Completed sales with an unpaid balance. Goods already left inventory;
+          record payments here when the customer settles up.
+        </p>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <button
+          type="button"
+          onClick={() => void load()}
+          disabled={loading}
+          style={{
+            height: 36,
+            padding: "0 14px",
+            borderRadius: 8,
+            border: "1px solid var(--border)",
+            background: "var(--surface)",
+            color: "var(--text)",
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: loading ? "not-allowed" : "pointer",
+          }}
+        >
+          Refresh
+        </button>
+        {loading ? (
+          <span style={{ fontSize: 13, color: "var(--muted)" }}>Loading…</span>
+        ) : null}
+      </div>
+
+      {error ? (
+        <div
+          style={{
+            padding: "12px 14px",
+            borderRadius: 10,
+            background: "var(--surface)",
+            color: "var(--danger)",
+            fontSize: 14,
+          }}
+        >
+          {error}
+        </div>
+      ) : null}
+
+      {!loading && !error && rows.length === 0 ? (
+        <div style={{ fontSize: 14, color: "var(--muted)" }}>
+          No outstanding balances.
+        </div>
+      ) : null}
+
+      {!loading && rows.length > 0 ? (
+        <div
+          style={{
+            border: "1px solid var(--border)",
+            borderRadius: 10,
+            overflow: "hidden",
+            background: "var(--surface)",
+          }}
+        >
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: 13,
+            }}
+          >
+            <thead>
+              <tr style={{ background: "var(--surface-subtle)", color: "var(--muted)" }}>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>Sale</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>Date</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>Customer</th>
+                <th style={{ textAlign: "right", padding: "10px 12px" }}>Total</th>
+                <th style={{ textAlign: "right", padding: "10px 12px" }}>Paid</th>
+                <th style={{ textAlign: "right", padding: "10px 12px" }}>Balance</th>
+                <th style={{ textAlign: "right", padding: "10px 12px" }} />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const cust =
+                  r.customerName?.trim() ||
+                  (r.customerPhone ? `Phone ${r.customerPhone}` : "—");
+                const dt = new Date(r.createdAt);
+                return (
+                  <tr
+                    key={r.id}
+                    style={{ borderTop: "1px solid var(--border)" }}
+                  >
+                    <td style={{ padding: "10px 12px", fontWeight: 600 }}>
+                      {r.saleNumber}
+                    </td>
+                    <td style={{ padding: "10px 12px", color: "var(--muted)" }}>
+                      {Number.isNaN(dt.getTime())
+                        ? r.createdAt
+                        : formatIndiaDateTime(dt)}
+                    </td>
+                    <td style={{ padding: "10px 12px" }}>{cust}</td>
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "right",
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      {fmt(Number(r.totalAmount))}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "right",
+                        fontFamily: "monospace",
+                        color: "var(--muted)",
+                      }}
+                    >
+                      {fmt(Number(r.paidAmount))}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "right",
+                        fontFamily: "monospace",
+                        fontWeight: 600,
+                        color: "var(--accent)",
+                      }}
+                    >
+                      {fmt(Number(r.balanceAmount))}
+                    </td>
+                    <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                      <button
+                        type="button"
+                        onClick={() => setPayFor(r)}
+                        style={{
+                          height: 32,
+                          padding: "0 12px",
+                          borderRadius: 8,
+                          border: "none",
+                          background: "var(--accent)",
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Pay
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {payFor ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pay-modal-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 16,
+          }}
+          onClick={() => !payLoading && setPayFor(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && !payLoading) setPayFor(null);
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 400,
+              background: "var(--surface)",
+              borderRadius: 12,
+              border: "1px solid var(--border)",
+              padding: 20,
+              boxShadow: "0 20px 50px rgba(0,0,0,0.15)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <h3
+              id="pay-modal-title"
+              style={{ margin: "0 0 4px", fontSize: 17, color: "var(--text)" }}
+            >
+              Record payment
+            </h3>
+            <p style={{ margin: "0 0 16px", fontSize: 12, color: "var(--muted)" }}>
+              {payFor.saleNumber} · Balance {fmt(Number(payFor.balanceAmount))}
+            </p>
+            <label
+              style={{
+                display: "block",
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--muted)",
+                marginBottom: 6,
+              }}
+            >
+              Amount
+            </label>
+            <input
+              type="number"
+              min={0.01}
+              step={0.01}
+              value={payAmount}
+              onChange={(e) => setPayAmount(e.target.value)}
+              style={{ ...inputStyle, width: "100%", boxSizing: "border-box", marginBottom: 12 }}
+            />
+            <label
+              style={{
+                display: "block",
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--muted)",
+                marginBottom: 6,
+              }}
+            >
+              Note (optional)
+            </label>
+            <input
+              value={payNote}
+              onChange={(e) => setPayNote(e.target.value)}
+              placeholder="e.g. UPI ref"
+              style={{ ...inputStyle, width: "100%", boxSizing: "border-box", marginBottom: 12 }}
+            />
+            {payMsg?.type === "err" ? (
+              <div style={{ fontSize: 13, color: "var(--danger)", marginBottom: 12 }}>
+                {payMsg.text}
+              </div>
+            ) : null}
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                disabled={payLoading}
+                onClick={() => setPayFor(null)}
+                style={{
+                  height: 40,
+                  padding: "0 16px",
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: "var(--surface-subtle)",
+                  color: "var(--text)",
+                  fontSize: 14,
+                  cursor: payLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={payLoading}
+                onClick={() => void submitPayment()}
+                style={{
+                  height: 40,
+                  padding: "0 16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: "var(--accent)",
+                  color: "#fff",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: payLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                {payLoading ? "Saving…" : "Apply payment"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // POS VIEW
 // ═══════════════════════════════════════════════════════════════════
 function POSView({
   products,
   promotions,
-  cashierUserId,
+  actingUserId,
   customers,
   refreshCustomers,
   onSaleComplete,
 }: {
   products: UiProduct[];
   promotions: ApiPromotion[];
-  cashierUserId: string;
+  actingUserId: string;
   customers: ApiCustomer[];
   refreshCustomers: () => Promise<void>;
   onSaleComplete: () => Promise<void>;
 }) {
+  const promotionsUi = FEATURE_FLAGS.catalogPromotions;
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [page, setPage] = useState(1);
@@ -244,6 +634,8 @@ function POSView({
   const [customerPhoneError, setCustomerPhoneError] = useState<string | null>(null);
   const [customerSuggestOpen, setCustomerSuggestOpen] = useState(false);
   const [savingCustomer, setSavingCustomer] = useState(false);
+  const [amountPaidStr, setAmountPaidStr] = useState("");
+  const [taxInvoiceSale, setTaxInvoiceSale] = useState<SaleDetail | null>(null);
 
   useEffect(() => {
     setFieldErrors({});
@@ -403,6 +795,10 @@ function POSView({
   const cartPromoAmt = subtotalAfterLinePromos * (cartPromoPercent / 100);
   const total = subtotalAfterLinePromos - discountAmt - cartPromoAmt;
 
+  useEffect(() => {
+    setAmountPaidStr(total > 0 ? total.toFixed(2) : "0.00");
+  }, [total]);
+
   const pickRegisteredCustomer = (c: ApiCustomer) => {
     setPosCustomerId(c.id);
     setCustomerQuery("");
@@ -460,7 +856,11 @@ function POSView({
     setFieldErrors({});
     setLineErrors(new Map());
     try {
-      if (promotionCode.trim() && !cartPromotion) {
+      if (
+        promotionsUi &&
+        promotionCode.trim() &&
+        !cartPromotion
+      ) {
         setStatus({ type: "error", msg: "Promotion code is not valid or inactive." });
         return;
       }
@@ -477,15 +877,48 @@ function POSView({
         (v, i) => v + (orderLevelLineDiscounts[i] ?? 0)
       );
 
+      const parsedPaid = Number.parseFloat(
+        String(amountPaidStr).replace(/,/g, "").trim()
+      );
+      if (!Number.isFinite(parsedPaid) || parsedPaid < 0) {
+        setStatus({
+          type: "error",
+          msg: "Enter a valid amount received.",
+        });
+        return;
+      }
+      const clampedPaid =
+        Math.round(Math.min(total, Math.max(0, parsedPaid)) * 100) / 100;
+      const hasBalance = total - clampedPaid > 0.005;
+      if (hasBalance) {
+        if (!posCustomerId) {
+          const nameOk = customerQuery.trim().length > 0;
+          const phoneOk = walkInPhone.trim().length > 0;
+          if (!nameOk || !phoneOk) {
+            setStatus({
+              type: "error",
+              msg: "Balance due requires a registered customer, or walk-in name and phone number.",
+            });
+            return;
+          }
+        }
+      } else if (!posCustomerId && !customerQuery.trim()) {
+        setStatus({
+          type: "error",
+          msg: "Walk-in name is required when paying in full (phone optional).",
+        });
+        return;
+      }
+
       const saleBody: CreateSaleBody = {
-        createdById: cashierUserId,
+        createdById: actingUserId,
         note: [
           discount > 0 ? `POS discount ${discount}%` : "",
           cartPromotion ? `Cart promo ${cartPromotion.code}` : "",
         ]
           .filter(Boolean)
           .join(" | ") || undefined,
-        paidAmount: total,
+        paidAmount: clampedPaid,
         lines: cart.map((x, i) => ({
           productId: x.id,
           productUnitId: x.baseUnitId,
@@ -508,14 +941,22 @@ function POSView({
 
       const sale = await api.createSale(saleBody);
 
+      const bal = Number(sale.balanceAmount ?? 0);
       const snap =
         (sale.customerNameSnapshot ?? sale.customerName)?.trim() ?? "";
+      const msg =
+        bal > 0.005
+          ? snap
+            ? `Sale recorded — ${sale.saleNumber} · ${snap} · balance ${fmt(bal)}`
+            : `Sale recorded — ${sale.saleNumber} · balance ${fmt(bal)}`
+          : snap
+            ? `Sale complete — ${sale.saleNumber} · ${snap}`
+            : `Sale complete — ${sale.saleNumber}`;
       setStatus({
         type: "success",
-        msg: snap
-          ? `Sale complete — ${sale.saleNumber} · ${snap}`
-          : `Sale complete — ${sale.saleNumber}`,
+        msg,
       });
+      setTaxInvoiceSale(sale);
       setCart([]);
       setDiscount(0);
       setPromotionCode("");
@@ -555,24 +996,31 @@ function POSView({
   }, [fieldErrors]);
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 308px",
-        gap: 12,
-        flex: 1,
-        minHeight: 0,
-      }}
-    >
+    <>
+      {taxInvoiceSale ? (
+        <TaxInvoiceModal
+          sale={taxInvoiceSale}
+          onClose={() => setTaxInvoiceSale(null)}
+        />
+      ) : null}
       <div
         style={{
-          display: "flex",
-          flexDirection: "column",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
           gap: 12,
+          flex: 1,
           minHeight: 0,
         }}
       >
-        <div style={{ display: "flex", gap: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+            minHeight: 0,
+          }}
+        >
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <input
             placeholder="Search by name or SKU..."
             value={search}
@@ -1083,7 +1531,7 @@ function POSView({
                   ) : null}
                 </div>
                 <input
-                  placeholder="Phone (optional)"
+                  placeholder="Phone (optional if paying in full; required if balance due)"
                   value={walkInPhone}
                   onChange={(e) => {
                     setWalkInPhone(e.target.value);
@@ -1174,49 +1622,53 @@ function POSView({
               −{fmt(discountAmt)}
             </span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <label style={{ fontSize: 13, color: "#78716c", flex: 1 }}>
-              Promotion code
-            </label>
-            <input
-              placeholder="e.g. NEW10"
-              value={promotionCode}
-              onChange={(e) => setPromotionCode(e.target.value.toUpperCase())}
-              style={{
-                width: 120,
-                height: 30,
-                textAlign: "center",
-                border: "1px solid #e7e5e4",
-                borderRadius: 6,
-                fontSize: 12,
-                outline: "none",
-              }}
-            />
-            <span
-              style={{
-                fontSize: 13,
-                color: "var(--danger)",
-                fontFamily: "monospace",
-                minWidth: 64,
-                textAlign: "right",
-              }}
-            >
-              −{fmt(cartPromoAmt)}
-            </span>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: 12,
-              color: "#78716c",
-            }}
-          >
-            <span>Product/category promotions</span>
-            <span style={{ fontFamily: "monospace", color: "var(--danger)" }}>
-              −{fmt(productCategoryPromoAmt)}
-            </span>
-          </div>
+          {promotionsUi ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label style={{ fontSize: 13, color: "#78716c", flex: 1 }}>
+                  Promotion code
+                </label>
+                <input
+                  placeholder="e.g. NEW10"
+                  value={promotionCode}
+                  onChange={(e) => setPromotionCode(e.target.value.toUpperCase())}
+                  style={{
+                    width: 120,
+                    height: 30,
+                    textAlign: "center",
+                    border: "1px solid #e7e5e4",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    outline: "none",
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: 13,
+                    color: "var(--danger)",
+                    fontFamily: "monospace",
+                    minWidth: 64,
+                    textAlign: "right",
+                  }}
+                >
+                  −{fmt(cartPromoAmt)}
+                </span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 12,
+                  color: "#78716c",
+                }}
+              >
+                <span>Product/category promotions</span>
+                <span style={{ fontFamily: "monospace", color: "var(--danger)" }}>
+                  −{fmt(productCategoryPromoAmt)}
+                </span>
+              </div>
+            </>
+          ) : null}
           <div
             style={{
               display: "flex",
@@ -1229,6 +1681,46 @@ function POSView({
             <span style={{ fontFamily: "monospace", color: "var(--accent)" }}>
               {fmt(total)}
             </span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label
+              style={{ fontSize: 12, color: "#78716c", fontWeight: 600 }}
+            >
+              Amount received
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={amountPaidStr}
+              onChange={(e) => setAmountPaidStr(e.target.value)}
+              style={{
+                ...inputStyle,
+                width: "100%",
+                boxSizing: "border-box",
+                fontSize: 14,
+                height: 40,
+              }}
+            />
+            {(() => {
+              const p = Number.parseFloat(
+                String(amountPaidStr).replace(/,/g, "").trim()
+              );
+              if (!Number.isFinite(p) || p < 0) return null;
+              const due = Math.max(0, total - Math.min(total, p));
+              if (due < 0.005) return null;
+              return (
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "var(--accent)",
+                    fontWeight: 600,
+                  }}
+                >
+                  Balance due: {fmt(due)}
+                </div>
+              );
+            })()}
           </div>
           {fieldErrors.paidAmount ? (
             <div style={{ fontSize: 12, color: "var(--danger)" }}>
@@ -1260,6 +1752,7 @@ function POSView({
         </div>
       </div>
     </div>
+    </>
   );
 }
 
@@ -1364,7 +1857,7 @@ function InventoryView({ products }: { products: UiProduct[] }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
           gap: 12,
         }}
       >
@@ -1397,7 +1890,7 @@ function InventoryView({ products }: { products: UiProduct[] }) {
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center", width: "100%" }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", width: "100%", flexWrap: "wrap" }}>
         <input
           placeholder="Search by name, SKU or category..."
           value={search}
@@ -1407,7 +1900,7 @@ function InventoryView({ products }: { products: UiProduct[] }) {
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          style={{ ...inputStyle, width: 220, marginLeft: 12 }}
+          style={{ ...inputStyle, width: 220 }}
         >
           {categoryOptions.map((c) => (
             <option key={c} value={c}>
@@ -1564,13 +2057,13 @@ const ADJUSTMENT_INLINE_ERROR_KEYS = new Set([
 function PurchaseView({
   products,
   suppliers,
-  adminUserId,
+  actingUserId,
   onPurchaseComplete,
   refreshSuppliers,
 }: {
   products: UiProduct[];
   suppliers: ApiSupplier[];
-  adminUserId: string;
+  actingUserId: string;
   onPurchaseComplete: () => Promise<void>;
   refreshSuppliers: () => Promise<void>;
 }) {
@@ -1579,7 +2072,7 @@ function PurchaseView({
     supplierId: "",
     quantity: "",
     unitCost: "",
-    purchaseDate: new Date().toISOString().slice(0, 10),
+    purchaseDate: ymdInIndia(),
     notes: "",
   };
   const [form, setForm] = useState(empty);
@@ -1745,7 +2238,7 @@ function PurchaseView({
     try {
       const purchase = await api.createPurchase({
         supplierId: form.supplierId,
-        createdById: adminUserId,
+        createdById: actingUserId,
         invoiceDate: form.purchaseDate || undefined,
         note: form.notes || undefined,
         lines: [
@@ -1763,7 +2256,7 @@ function PurchaseView({
       });
       setForm({
         ...empty,
-        purchaseDate: new Date().toISOString().slice(0, 10),
+        purchaseDate: ymdInIndia(),
       });
       await onPurchaseComplete();
       setTimeout(() => setStatus(null), 4000);
@@ -2203,11 +2696,11 @@ function PurchaseView({
 // ═══════════════════════════════════════════════════════════════════
 function AdjustmentView({
   products,
-  adminUserId,
+  actingUserId,
   onAdjustmentComplete,
 }: {
   products: UiProduct[];
-  adminUserId: string;
+  actingUserId: string;
   onAdjustmentComplete: () => Promise<void>;
 }) {
   const empty = { productId: "", type: "add" as const, quantity: "", reason: "" };
@@ -2282,7 +2775,7 @@ function AdjustmentView({
     try {
       await api.createStockAdjustment({
         productId: form.productId,
-        adjustedById: adminUserId,
+        adjustedById: actingUserId,
         quantityAfter,
         reason: form.reason.trim() || "Stock adjustment",
         note: form.type !== "set" ? `Mode: ${form.type}` : undefined,
@@ -2498,27 +2991,122 @@ function AdjustmentView({
 
 export default function App() {
   const { confirmProps, confirm } = useConfirm();
+  const [authPhase, setAuthPhase] = useState<"anon" | "validating" | "ready">(
+    () =>
+      typeof window !== "undefined" && getAuthToken() ? "validating" : "anon"
+  );
+  const [viewportWidth, setViewportWidth] = useState(
+    typeof window === "undefined" ? 1280 : window.innerWidth
+  );
   const [tab, setTab] = useState<Tab>("home");
   const [rawProducts, setRawProducts] = useState<ApiProduct[]>([]);
   const [products, setProducts] = useState<UiProduct[]>([]);
   const [promotions, setPromotions] = useState<ApiPromotion[]>([]);
   const [suppliers, setSuppliers] = useState<ApiSupplier[]>([]);
   const [customers, setCustomers] = useState<ApiCustomer[]>([]);
-  const [adminUserId, setAdminUserId] = useState("");
-  const [cashierUserId, setCashierUserId] = useState("");
+  const [sessionUsers, setSessionUsers] = useState<SessionUserRow[]>([]);
+  const [actingUserId, setActingUserIdState] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sidebarExpanded, setSidebarExpanded] = useState(
+    typeof window === "undefined" ? true : window.innerWidth >= 1024
+  );
 
   const refreshProducts = useCallback(async () => {
     const raw = await api.getProducts();
     setRawProducts(raw);
-    setProducts(raw.map(mapApiProduct));
+    setProducts(
+      raw.filter((p) => p.status === "ACTIVE").map(mapApiProduct)
+    );
   }, []);
 
-  const refreshSuppliers = useCallback(async () => {
-    const sups = await api.getSuppliers();
-    setSuppliers(sups);
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  const isSmallScreen = viewportWidth < 1024;
+  const isNarrow = viewportWidth < 1200;
+
+  useEffect(() => {
+    setSidebarExpanded(!isSmallScreen);
+  }, [isSmallScreen]);
+
+  useEffect(() => {
+    if (authPhase !== "validating") return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        await api.getSession();
+        if (!cancelled) setAuthPhase("ready");
+      } catch {
+        if (!cancelled) {
+          logoutAuth();
+          setAuthPhase("anon");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authPhase]);
+
+  const refreshSuppliers = useCallback(async () => {
+    try {
+      const sups = await api.getSuppliers();
+      setSuppliers(sups);
+    } catch {
+      setSuppliers([]);
+    }
+  }, []);
+
+  const actingUser = useMemo(
+    () => sessionUsers.find((u) => u.id === actingUserId),
+    [sessionUsers, actingUserId]
+  );
+  const isAdminUser =
+    actingUser?.role === "ADMIN" || actingUser?.role === "MANAGER";
+
+  const handleActingUserChange = useCallback(
+    (id: string) => {
+      setActingUserIdState(id);
+      setActingUserId(id);
+      const u = sessionUsers.find((x) => x.id === id);
+      const admin = u?.role === "ADMIN" || u?.role === "MANAGER";
+      if (
+        !admin &&
+        ["reporting", "promotion", "purchase", "adjustment"].includes(tab)
+      ) {
+        setTab("home");
+      }
+      void (async () => {
+        try {
+          const [raw, sups] = await Promise.all([
+            api.getProducts(),
+            api.getSuppliers().catch(() => [] as ApiSupplier[]),
+          ]);
+          setRawProducts(raw);
+          setProducts(
+            raw.filter((p) => p.status === "ACTIVE").map(mapApiProduct)
+          );
+          setSuppliers(Array.isArray(sups) ? sups : []);
+          if (FEATURE_FLAGS.catalogPromotions) {
+            try {
+              setPromotions(await api.getPromotions());
+            } catch {
+              setPromotions([]);
+            }
+          } else {
+            setPromotions([]);
+          }
+        } catch {
+          /* ignore */
+        }
+      })();
+    },
+    [sessionUsers, tab]
+  );
 
   const refreshCustomers = useCallback(async () => {
     try {
@@ -2530,6 +3118,10 @@ export default function App() {
   }, []);
 
   const refreshPromotions = useCallback(async () => {
+    if (!FEATURE_FLAGS.catalogPromotions) {
+      setPromotions([]);
+      return;
+    }
     try {
       const rows = await api.getPromotions();
       setPromotions(rows);
@@ -2539,33 +3131,50 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (authPhase !== "ready") return;
     let cancelled = false;
     (async () => {
       setLoading(true);
       setError(null);
       try {
-        const [session, rawProducts, sups] = await Promise.all([
-          api.getSession(),
+        const session = await api.getSession();
+        if (cancelled) return;
+        setSessionUsers(session.users ?? []);
+        const stored =
+          typeof localStorage !== "undefined"
+            ? localStorage.getItem("inventoryActingUserId")
+            : null;
+        const ok =
+          stored && session.users?.some((u: SessionUserRow) => u.id === stored);
+        const pick = ok ? stored! : session.user.id;
+        setActingUserIdState(pick);
+        setActingUserId(pick);
+
+        const [rawProducts, sups] = await Promise.all([
           api.getProducts(),
-          api.getSuppliers(),
+          api.getSuppliers().catch(() => [] as ApiSupplier[]),
         ]);
         if (cancelled) return;
-        setAdminUserId(session.adminUserId);
-        setCashierUserId(session.cashierUserId);
         setRawProducts(rawProducts);
-        setProducts(rawProducts.map(mapApiProduct));
-        setSuppliers(sups);
+        setProducts(
+          rawProducts.filter((p) => p.status === "ACTIVE").map(mapApiProduct)
+        );
+        setSuppliers(Array.isArray(sups) ? sups : []);
         try {
           const custs = await api.getCustomers();
           if (!cancelled) setCustomers(custs);
         } catch {
           if (!cancelled) setCustomers([]);
         }
-        try {
-          const promoRows = await api.getPromotions();
-          if (!cancelled) setPromotions(promoRows);
-        } catch {
-          if (!cancelled) setPromotions([]);
+        if (FEATURE_FLAGS.catalogPromotions) {
+          try {
+            const promoRows = await api.getPromotions();
+            if (!cancelled) setPromotions(promoRows);
+          } catch {
+            if (!cancelled) setPromotions([]);
+          }
+        } else if (!cancelled) {
+          setPromotions([]);
         }
       } catch (e) {
         if (!cancelled) {
@@ -2578,19 +3187,86 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authPhase]);
+
+  useEffect(() => {
+    if (!FEATURE_FLAGS.catalogPromotions && tab === "promotion") {
+      setTab("home");
+      return;
+    }
+    if (
+      !isAdminUser &&
+      ["reporting", "promotion", "purchase", "adjustment"].includes(tab)
+    ) {
+      setTab("home");
+    }
+  }, [isAdminUser, tab]);
+
+  if (authPhase === "anon") {
+    return (
+      <LoginPage
+        onLoggedIn={() => {
+          setAuthPhase("ready");
+          setTab("pos");
+        }}
+      />
+    );
+  }
+
+  if (authPhase === "validating") {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--bg)",
+          color: "var(--muted)",
+          fontFamily: "Inter, system-ui, sans-serif",
+          fontSize: 14,
+          gap: 12,
+        }}
+      >
+        <span
+          style={{
+            width: 22,
+            height: 22,
+            border: "2px solid var(--border)",
+            borderTopColor: "var(--accent)",
+            borderRadius: "50%",
+            display: "inline-block",
+            animation: "app-auth-spin 0.75s linear infinite",
+          }}
+        />
+        Signing in…
+        <style>{`@keyframes app-auth-spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   return (
     <>
       <div
       style={{
         display: "flex",
-        minHeight: "100vh",
+        flexDirection: "row",
+        height: "100vh",
         fontFamily: "Inter, system-ui, -apple-system, sans-serif",
         background: "var(--bg)",
+        overflow: "hidden",
       }}
     >
-      <Sidebar activeTab={tab} onTabChange={setTab} />
+      <Sidebar
+        activeTab={tab}
+        onTabChange={setTab}
+        isAdmin={isAdminUser}
+        mobile={isSmallScreen}
+        iconOnly={isSmallScreen && !sidebarExpanded}
+        onToggleExpand={
+          isSmallScreen ? () => setSidebarExpanded((v) => !v) : undefined
+        }
+      />
 
       <div
         style={{
@@ -2608,17 +3284,86 @@ export default function App() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "0 24px",
+            padding: isSmallScreen ? "0 14px" : "0 24px",
             gap: 16,
             flexShrink: 0,
           }}
         >
           <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 600 }}>
-            Hardware Inventory & POS
+            Raj Hardware, Electrical and Paint
           </span>
-          <span style={{ color: "var(--muted)", fontSize: 13 }}>
-            {new Date().toLocaleDateString("en-IN", { dateStyle: "long" })}
-          </span>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              flexWrap: "wrap",
+              justifyContent: "flex-end",
+            }}
+          >
+            {!loading && sessionUsers.length > 1 && isAdminUser ? (
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 12,
+                  color: "var(--muted)",
+                }}
+              >
+                <span style={{ whiteSpace: "nowrap" }}>Acting as</span>
+                <select
+                  value={actingUserId}
+                  onChange={(e) => handleActingUserChange(e.target.value)}
+                  style={{
+                    height: 32,
+                    padding: "0 10px",
+                    borderRadius: 8,
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    color: "var(--text)",
+                    fontSize: 12,
+                    maxWidth: isSmallScreen ? 160 : 260,
+                  }}
+                >
+                  {sessionUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.fullName}
+                      {u.role === "CASHIER"
+                        ? " (Cashier)"
+                        : u.role === "MANAGER"
+                          ? " (Manager)"
+                          : " (Admin)"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            <span style={{ color: "var(--muted)", fontSize: 13, whiteSpace: "nowrap" }}>
+              {formatIndiaDateLong()}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                logoutAuth();
+                setAuthPhase("anon");
+                setTab("home");
+              }}
+              style={{
+                height: 32,
+                padding: "0 12px",
+                borderRadius: 8,
+                border: "1px solid var(--border)",
+                background: "var(--surface-subtle)",
+                color: "var(--text)",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Log out
+            </button>
+          </div>
         </div>
 
         <main
@@ -2631,7 +3376,7 @@ export default function App() {
         >
           <div
             style={{
-              padding: "24px",
+              padding: isSmallScreen ? "12px" : isNarrow ? "16px" : "24px",
               display: "flex",
               flexDirection: "column",
               minHeight: 0,
@@ -2668,11 +3413,16 @@ export default function App() {
             )}
             {!loading && !error && (
               <>
-                {tab === "home" && <HomeView onTabChange={setTab} />}
-                {tab === "products" && (
-                  <ProductsPage onProductsCreated={refreshProducts} />
+                {tab === "home" && (
+                  <HomeView onTabChange={setTab} isAdmin={isAdminUser} />
                 )}
-                {tab === "promotion" && (
+                {tab === "products" && (
+                  <ProductsPage
+                    onProductsCreated={refreshProducts}
+                    allowMutations={isAdminUser}
+                  />
+                )}
+                {FEATURE_FLAGS.catalogPromotions && tab === "promotion" && (
                   <PromotionsPage
                     products={rawProducts}
                     promotions={promotions}
@@ -2684,12 +3434,16 @@ export default function App() {
                   <POSView
                     products={products}
                     promotions={promotions}
-                    cashierUserId={cashierUserId}
+                    actingUserId={actingUserId}
                     customers={customers}
                     refreshCustomers={refreshCustomers}
                     onSaleComplete={refreshProducts}
                   />
                 )}
+                {tab === "outstanding" && (
+                  <OutstandingView actingUserId={actingUserId} />
+                )}
+                {tab === "invoices" && <ReprintInvoicePage />}
                 {tab === "inventory" && (
                   <InventoryView products={products} />
                 )}
@@ -2697,7 +3451,7 @@ export default function App() {
                   <PurchaseView
                     products={products}
                     suppliers={suppliers}
-                    adminUserId={adminUserId}
+                    actingUserId={actingUserId}
                     onPurchaseComplete={refreshProducts}
                     refreshSuppliers={refreshSuppliers}
                   />
@@ -2705,15 +3459,11 @@ export default function App() {
                 {tab === "adjustment" && (
                   <AdjustmentView
                     products={products}
-                    adminUserId={adminUserId}
+                    actingUserId={actingUserId}
                     onAdjustmentComplete={refreshProducts}
                   />
                 )}
-                {tab === "reporting" && (
-                  <div style={{ padding: 24, color: "#78716c" }}>
-                    Reporting is not enabled.
-                  </div>
-                )}
+                {tab === "reporting" && <ReportingPage />}
               </>
             )}
           </div>

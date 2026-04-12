@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import { isApiError } from "../api/errors";
-import type { ApiProduct } from "../api/types";
+import type { ApiProduct, UpdateProductBody } from "../api/types";
 import {
   PRODUCT_CATEGORIES,
   type ProductCategory,
@@ -26,6 +26,9 @@ const COMMON_UNIT_CODES = [
   "box", "roll", "bag", "pair", "set", "sheet", "tin", "drum",
 ];
 
+/** Rows per page in the main product catalog table */
+const PRODUCTS_TABLE_PAGE_SIZE = 50;
+
 function suggestUnitKind(code: string): UnitKindValue {
   const c = code.toLowerCase();
   if (["kg", "g", "mg"].includes(c)) return "WEIGHT";
@@ -33,6 +36,16 @@ function suggestUnitKind(code: string): UnitKindValue {
   if (["l", "ml", "litre", "liter"].includes(c)) return "VOLUME";
   if (["box", "pack", "roll", "bundle", "bag"].includes(c)) return "PACK";
   return "PIECE";
+}
+
+/** Dropdown options; if the product uses a code not in the standard list, keep it selectable. */
+function unitCodeSelectOptions(currentCode: string): { value: string; label: string }[] {
+  const cur = currentCode.trim();
+  const standard = COMMON_UNIT_CODES.map((code) => ({ value: code, label: code }));
+  if (cur && !COMMON_UNIT_CODES.includes(cur)) {
+    return [{ value: cur, label: `${cur} (current)` }, ...standard];
+  }
+  return standard;
 }
 
 const fmtPrice = (n: number | string | null | undefined) => {
@@ -44,6 +57,8 @@ const fmtPrice = (n: number | string | null | undefined) => {
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+type ProductStatusUi = "ACTIVE" | "INACTIVE";
 
 type ProductDraft = {
   _id: string;
@@ -59,6 +74,7 @@ type ProductDraft = {
   taxRate: string;
   currentStock: string;
   reorderLevel: string;
+  status: ProductStatusUi;
 };
 
 type RowErrors = Record<string, string>;
@@ -80,8 +96,62 @@ function newDraft(overrides: Partial<ProductDraft> = {}): ProductDraft {
     taxRate: "18",
     currentStock: "0",
     reorderLevel: "",
+    status: "ACTIVE",
     ...overrides,
   };
+}
+
+function productToDraft(p: ApiProduct): ProductDraft {
+  const cat = PRODUCT_CATEGORIES.includes(p.category as ProductCategory)
+    ? (p.category as ProductCategory)
+    : "Electrical";
+  const uk = UNIT_KINDS.includes(p.unitKind as UnitKindValue)
+    ? (p.unitKind as UnitKindValue)
+    : "PIECE";
+  return {
+    _id: p.id,
+    name: p.name,
+    description: p.description ?? "",
+    category: cat,
+    brand: p.brand ?? "",
+    baseUnitCode: p.baseUnitCode,
+    unitKind: uk,
+    allowsFractional: p.allowsFractional,
+    sellingPrice: p.sellingPrice != null ? String(p.sellingPrice) : "",
+    costPrice: p.costPrice != null ? String(p.costPrice) : "",
+    taxRate: p.taxRate != null ? String(p.taxRate) : "",
+    currentStock: String(p.currentStock),
+    reorderLevel: p.reorderLevel != null ? String(p.reorderLevel) : "",
+    status: p.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
+  };
+}
+
+function draftToUpdateBody(d: ProductDraft): UpdateProductBody {
+  const o: UpdateProductBody = {
+    name: d.name.trim(),
+    category: d.category as ProductCategory,
+    allowsFractional: d.allowsFractional,
+    status: d.status,
+    description: d.description.trim() ? d.description.trim() : null,
+    brand: d.brand.trim() || null,
+  };
+  if (d.sellingPrice !== "") o.sellingPrice = Number(d.sellingPrice);
+  if (d.costPrice !== "") o.costPrice = Number(d.costPrice);
+  if (d.taxRate !== "") o.taxRate = Number(d.taxRate);
+  if (d.reorderLevel !== "") o.reorderLevel = Number(d.reorderLevel);
+  return o;
+}
+
+function apiDetailsToRowErrors(
+  details: { field: string; message: string }[] | undefined
+): RowErrors {
+  const e: RowErrors = {};
+  for (const d of details ?? []) {
+    const m = /^products\.0\.(\w+)$/.exec(d.field);
+    const field = m ? m[1] : d.field.replace(/^.*\./, "").replace(/^\[|\]$/g, "") || d.field;
+    if (!e[field]) e[field] = d.message;
+  }
+  return e;
 }
 
 function validateDraft(d: ProductDraft): RowErrors {
@@ -108,6 +178,9 @@ function validateDraft(d: ProductDraft): RowErrors {
   ) {
     e.taxRate = "Must be 0–100";
   }
+  if (d.status !== "ACTIVE" && d.status !== "INACTIVE") {
+    e.status = "Invalid status";
+  }
   return e;
 }
 
@@ -125,18 +198,6 @@ function rowErrorsFromApiDetails(
     }
   }
   return result;
-}
-
-function singleProductErrorsFromApiDetails(
-  details: { field: string; message: string }[] | undefined
-): RowErrors {
-  const e: RowErrors = {};
-  for (const d of details ?? []) {
-    const m = /^products\.0\.(\w+)$/.exec(d.field);
-    const field = m ? m[1] : d.field;
-    if (!e[field]) e[field] = d.message;
-  }
-  return e;
 }
 
 function statusOf(p: ApiProduct): "ok" | "low" | "out" {
@@ -228,10 +289,21 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 }
 
 function ProductModal({
-  open, draft, errors, saving,
-  onClose, onChange, onSave,
+  open,
+  mode,
+  skuDisplay,
+  readOnlyUnits,
+  draft,
+  errors,
+  saving,
+  onClose,
+  onChange,
+  onSave,
 }: {
   open: boolean;
+  mode: "add" | "edit";
+  skuDisplay?: string;
+  readOnlyUnits?: boolean;
   draft: ProductDraft;
   errors: RowErrors;
   saving: boolean;
@@ -240,6 +312,11 @@ function ProductModal({
   onSave: () => void;
 }) {
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  const unitCodeOptions = useMemo(
+    () => unitCodeSelectOptions(draft.baseUnitCode),
+    [draft.baseUnitCode]
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -268,7 +345,7 @@ function ProductModal({
 
   const two: React.CSSProperties = {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
     gap: 14,
   };
 
@@ -302,10 +379,12 @@ function ProductModal({
         >
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#1c1917" }}>
-              Add Product
+              {mode === "edit" ? "Edit product" : "Add Product"}
             </div>
             <div style={{ fontSize: 12, color: "#78716c", marginTop: 2 }}>
-              SKU is assigned automatically when you save (e.g. EL-00001, HW-00001, PT-00001 by category).
+              {mode === "edit" && skuDisplay
+                ? `SKU ${skuDisplay} cannot be changed.`
+                : "SKU is assigned automatically when you save (e.g. EL-00001, HW-00001, PT-00001 by category)."}
             </div>
           </div>
           <button
@@ -329,6 +408,20 @@ function ProductModal({
             flex: 1, overflowY: "auto",
           }}
         >
+          {errors._form ? (
+            <div
+              style={{
+                padding: "10px 12px",
+                borderRadius: 8,
+                background: "rgba(37,99,235,0.08)",
+                border: "1px solid rgba(37,99,235,0.25)",
+                color: "#1d4ed8",
+                fontSize: 13,
+              }}
+            >
+              {errors._form}
+            </div>
+          ) : null}
           {/* Basic information */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <SectionHeading>Basic Information</SectionHeading>
@@ -368,6 +461,20 @@ function ProductModal({
                 }}
               />
             </MField>
+            <div style={two}>
+              <MField label="Status" error={errors.status}>
+                <select
+                  value={draft.status}
+                  onChange={(e) =>
+                    onChange("status", e.target.value === "INACTIVE" ? "INACTIVE" : "ACTIVE")
+                  }
+                  style={errors.status ? mInputErr : mInput}
+                >
+                  <option value="ACTIVE">Active (sellable)</option>
+                  <option value="INACTIVE">Inactive (hidden from POS)</option>
+                </select>
+              </MField>
+            </div>
           </div>
 
           {/* Unit configuration */}
@@ -375,29 +482,31 @@ function ProductModal({
             <SectionHeading>Unit Configuration</SectionHeading>
             <div style={two}>
               <MField label="Unit Code" required error={errors.baseUnitCode}>
-                <div>
-                  <input
-                    list="modal-unit-codes"
-                    value={draft.baseUnitCode}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      onChange("baseUnitCode", v);
-                    }}
-                    placeholder="pc"
-                    style={errors.baseUnitCode ? mInputErr : mInput}
-                  />
-                  <datalist id="modal-unit-codes">
-                    {COMMON_UNIT_CODES.map((u) => (
-                      <option key={u} value={u} />
-                    ))}
-                  </datalist>
-                </div>
+                <select
+                  value={draft.baseUnitCode}
+                  onChange={(e) => onChange("baseUnitCode", e.target.value)}
+                  disabled={readOnlyUnits}
+                  style={{
+                    ...(errors.baseUnitCode ? mInputErr : mInput),
+                    ...(readOnlyUnits ? { opacity: 0.75, cursor: "not-allowed" } : {}),
+                  }}
+                >
+                  {unitCodeOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
               </MField>
               <MField label="Unit Kind" required error={errors.unitKind}>
                 <select
                   value={draft.unitKind}
                   onChange={(e) => onChange("unitKind", e.target.value as UnitKindValue)}
-                  style={errors.unitKind ? mInputErr : mInput}
+                  disabled={readOnlyUnits}
+                  style={{
+                    ...(errors.unitKind ? mInputErr : mInput),
+                    ...(readOnlyUnits ? { opacity: 0.75, cursor: "not-allowed" } : {}),
+                  }}
                 >
                   {UNIT_KINDS.map((k) => (
                     <option key={k} value={k}>{UNIT_KIND_LABELS[k]}</option>
@@ -424,7 +533,7 @@ function ProductModal({
           {/* Pricing & tax */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <SectionHeading>Pricing & Tax</SectionHeading>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14 }}>
               <MField label="Selling Price (₹)" error={errors.sellingPrice}>
                 {inp("sellingPrice", "number", "0.00")}
               </MField>
@@ -441,8 +550,26 @@ function ProductModal({
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <SectionHeading>Inventory</SectionHeading>
             <div style={two}>
-              <MField label="Opening Stock" error={errors.currentStock}>
-                {inp("currentStock", "number", "0")}
+              <MField
+                label={readOnlyUnits ? "Current stock" : "Opening Stock"}
+                error={errors.currentStock}
+              >
+                <input
+                  value={draft.currentStock as string}
+                  onChange={(e) => onChange("currentStock", e.target.value)}
+                  type="number"
+                  placeholder="0"
+                  disabled={readOnlyUnits}
+                  style={{
+                    ...(errors.currentStock ? mInputErr : mInput),
+                    ...(readOnlyUnits ? { opacity: 0.75, cursor: "not-allowed" } : {}),
+                  }}
+                />
+                {readOnlyUnits ? (
+                  <span style={{ fontSize: 11, color: "#78716c", marginTop: 4, display: "block" }}>
+                    Use Stock Adjustments to change on-hand quantity.
+                  </span>
+                ) : null}
               </MField>
               <MField label="Reorder Level" error={errors.reorderLevel}>
                 {inp("reorderLevel", "number", "—")}
@@ -479,7 +606,7 @@ function ProductModal({
               cursor: saving ? "not-allowed" : "pointer",
             }}
           >
-            {saving ? "Saving…" : "Save Product"}
+            {saving ? "Saving…" : mode === "edit" ? "Save changes" : "Save Product"}
           </button>
         </div>
       </div>
@@ -544,8 +671,11 @@ function BatchSelectCell({
 
 export function ProductsPage({
   onProductsCreated,
+  allowMutations = true,
 }: {
   onProductsCreated: () => Promise<void>;
+  /** ADMIN: add/edit/delete/batch. CASHIER: view-only catalog + stock. */
+  allowMutations?: boolean;
 }) {
   // Existing products
   const [rawProducts, setRawProducts] = useState<ApiProduct[]>([]);
@@ -555,6 +685,7 @@ export function ProductsPage({
 
   // Modal (single product)
   const [modalOpen, setModalOpen] = useState(false);
+  const [editProductId, setEditProductId] = useState<string | null>(null);
   const [modalDraft, setModalDraft] = useState<ProductDraft>(() => newDraft());
   const [modalErrors, setModalErrors] = useState<RowErrors>({});
   const [modalSaving, setModalSaving] = useState(false);
@@ -594,6 +725,22 @@ export function ProductsPage({
     );
   }, [rawProducts, search]);
 
+  const [listPage, setListPage] = useState(1);
+  const listPageCount = Math.max(1, Math.ceil(filtered.length / PRODUCTS_TABLE_PAGE_SIZE));
+
+  useEffect(() => {
+    setListPage(1);
+  }, [search]);
+
+  useEffect(() => {
+    if (listPage > listPageCount) setListPage(listPageCount);
+  }, [listPage, listPageCount]);
+
+  const pagedProducts = useMemo(() => {
+    const start = (listPage - 1) * PRODUCTS_TABLE_PAGE_SIZE;
+    return filtered.slice(start, start + PRODUCTS_TABLE_PAGE_SIZE);
+  }, [filtered, listPage]);
+
   const categoryOptions = useMemo(
     () =>
       PRODUCT_CATEGORIES.map((c) => ({
@@ -604,8 +751,23 @@ export function ProductsPage({
   );
 
   // Modal handlers
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditProductId(null);
+    setModalErrors({});
+  };
+
   const openModal = () => {
+    setEditProductId(null);
     setModalDraft(newDraft());
+    setModalErrors({});
+    setSavedMsg(null);
+    setModalOpen(true);
+  };
+
+  const openEditProduct = (p: ApiProduct) => {
+    setEditProductId(p.id);
+    setModalDraft(productToDraft(p));
     setModalErrors({});
     setSavedMsg(null);
     setModalOpen(true);
@@ -614,33 +776,67 @@ export function ProductsPage({
   const handleModalChange = (field: keyof ProductDraft, value: string | boolean) => {
     setModalDraft((d) => {
       const updated = { ...d, [field]: value };
-      if (field === "baseUnitCode" && typeof value === "string")
+      if (field === "baseUnitCode" && typeof value === "string" && !editProductId)
         updated.unitKind = suggestUnitKind(value);
       return updated;
     });
-    setModalErrors((e) => { const c = { ...e }; delete c[field as string]; return c; });
+    setModalErrors((e) => {
+      const c = { ...e };
+      delete c[field as string];
+      return c;
+    });
+  };
+
+  const handleDeleteProduct = async (p: ApiProduct) => {
+    if (
+      !window.confirm(
+        `Delete product ${p.sku} — ${p.name}?\n\nThis cannot be undone. You can set status to Inactive instead if the product has sales history.`
+      )
+    ) {
+      return;
+    }
+    setSavedMsg(null);
+    try {
+      await api.deleteProduct(p.id);
+      setSavedMsg(`Deleted ${p.sku}.`);
+      await loadProducts();
+      await onProductsCreated();
+    } catch (e) {
+      window.alert(isApiError(e) ? e.message : "Could not delete product");
+    }
   };
 
   const handleModalSave = async () => {
     const errs = validateDraft(modalDraft);
-    if (Object.keys(errs).length > 0) { setModalErrors(errs); return; }
+    if (Object.keys(errs).length > 0) {
+      setModalErrors(errs);
+      return;
+    }
     setModalSaving(true);
     try {
-      const result = await api.batchCreateProducts({
-        products: [draftToPayloadItem(modalDraft)],
-      });
-      setModalOpen(false);
-      const sku = result.products[0]?.sku;
-      setSavedMsg(
-        sku
-          ? `Product created — assigned SKU ${sku}.`
-          : "Product created successfully."
-      );
-      await loadProducts();
-      await onProductsCreated();
+      if (editProductId) {
+        await api.updateProduct(editProductId, draftToUpdateBody(modalDraft));
+        closeModal();
+        setSavedMsg("Product updated.");
+        await loadProducts();
+        await onProductsCreated();
+      } else {
+        const result = await api.batchCreateProducts({
+          products: [draftToPayloadItem(modalDraft)],
+        });
+        closeModal();
+        const sku = result.products[0]?.sku;
+        setSavedMsg(
+          sku
+            ? `Product created — assigned SKU ${sku}.`
+            : "Product created successfully."
+        );
+        await loadProducts();
+        await onProductsCreated();
+      }
     } catch (e) {
       if (isApiError(e) && e.details?.length) {
-        setModalErrors(singleProductErrorsFromApiDetails(e.details));
+        setModalErrors(apiDetailsToRowErrors(e.details));
       } else {
         setModalErrors({ _form: e instanceof Error ? e.message : "Failed to save" });
       }
@@ -650,13 +846,6 @@ export function ProductsPage({
   };
 
   // Batch handlers
-  const addBatchRow = () => {
-    setPendingRows((r) => [...r, newDraft()]);
-    setRowErrors((e) => [...e, {}]);
-    setBatchBannerError(null);
-    setSavedMsg(null);
-  };
-
   const duplicateBatchRow = (i: number) => {
     const clone = { ...pendingRows[i], _id: Math.random().toString(36).slice(2) };
     const rows = [...pendingRows]; rows.splice(i + 1, 0, clone);
@@ -746,10 +935,17 @@ export function ProductsPage({
       {/* ── Modal ── */}
       <ProductModal
         open={modalOpen}
+        mode={editProductId ? "edit" : "add"}
+        skuDisplay={
+          editProductId
+            ? rawProducts.find((p) => p.id === editProductId)?.sku
+            : undefined
+        }
+        readOnlyUnits={!!editProductId}
         draft={modalDraft}
         errors={modalErrors}
         saving={modalSaving}
-        onClose={() => setModalOpen(false)}
+        onClose={closeModal}
         onChange={handleModalChange}
         onSave={handleModalSave}
       />
@@ -771,30 +967,21 @@ export function ProductsPage({
               </span>
             )}
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="button" onClick={addBatchRow}
-              style={{
-                height: 36, padding: "0 16px",
-                background: "#fff", border: "1px solid #2563eb",
-                borderRadius: 8, fontSize: 13, fontWeight: 500,
-                color: "#2563eb", cursor: "pointer",
-              }}
-            >
-              Add Row
-            </button>
-            <button
-              type="button" onClick={openModal}
-              style={{
-                height: 36, padding: "0 16px",
-                background: "#2563eb", border: "none",
-                borderRadius: 8, fontSize: 13, fontWeight: 600,
-                color: "#fff", cursor: "pointer",
-              }}
-            >
-              + Add Product
-            </button>
-          </div>
+          {allowMutations ? (
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button" onClick={openModal}
+                style={{
+                  height: 36, padding: "0 16px",
+                  background: "#2563eb", border: "none",
+                  borderRadius: 8, fontSize: 13, fontWeight: 600,
+                  color: "#fff", cursor: "pointer",
+                }}
+              >
+                + Add Product
+              </button>
+            </div>
+          ) : null}
         </div>
 
         {/* Saved feedback */}
@@ -808,7 +995,7 @@ export function ProductsPage({
         )}
 
         {/* ── Batch rows ─────────────────────────────────────────────────── */}
-        {pendingRows.length > 0 && (
+        {allowMutations && pendingRows.length > 0 && (
           <div style={{
             background: "#fff", border: "1px solid #e7e5e4",
             borderRadius: 12, overflow: "hidden",
@@ -868,9 +1055,9 @@ export function ProductsPage({
                   <tr>
                     {([
                       ["Name *", 200], ["Category", 110], ["Brand", 110],
-                      ["Unit *", 88], ["Kind *", 100], ["Frac.", 54],
-                      ["Price ₹", 88], ["Cost ₹", 88], ["Tax %", 70],
-                      ["Stock", 88], ["Reorder", 84], ["", 112],
+                      ["Unit *", 104], ["Kind *", 100], ["Frac.", 54],
+                      ["Price ₹", 88], ["Cost ₹", 88],
+                      ["Stock", 88], ["", 112],
                     ] as [string, number][]).map(([label, w]) => (
                       <th key={label} style={{ ...thStyle, minWidth: w }}>{label}</th>
                     ))}
@@ -892,21 +1079,12 @@ export function ProductsPage({
                         </td>
                         <td style={tdStyle}><BatchCell value={row.brand} onChange={(v) => updateBatchRow(i, "brand", v)} placeholder="Brand" /></td>
                         <td style={tdStyle}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                            <input
-                              list={`units-${row._id}`}
-                              value={row.baseUnitCode}
-                              onChange={(e) => updateBatchRow(i, "baseUnitCode", e.target.value)}
-                              placeholder="pc"
-                              style={errs.baseUnitCode ? { ...cellInput, border: "1px solid #2563eb" } : cellInput}
-                            />
-                            <datalist id={`units-${row._id}`}>
-                              {COMMON_UNIT_CODES.map((u) => <option key={u} value={u} />)}
-                            </datalist>
-                            {errs.baseUnitCode && (
-                              <span style={{ fontSize: 10, color: "#2563eb" }}>{errs.baseUnitCode}</span>
-                            )}
-                          </div>
+                          <BatchSelectCell
+                            value={row.baseUnitCode}
+                            options={unitCodeSelectOptions(row.baseUnitCode)}
+                            onChange={(v) => updateBatchRow(i, "baseUnitCode", v)}
+                            error={errs.baseUnitCode}
+                          />
                         </td>
                         <td style={tdStyle}><BatchSelectCell value={row.unitKind} options={unitKindOptions} onChange={(v) => updateBatchRow(i, "unitKind", v as UnitKindValue)} error={errs.unitKind} /></td>
                         <td style={{ ...tdStyle, textAlign: "center" }}>
@@ -914,9 +1092,7 @@ export function ProductsPage({
                         </td>
                         <td style={tdStyle}><BatchCell value={row.sellingPrice} onChange={(v) => updateBatchRow(i, "sellingPrice", v)} error={errs.sellingPrice} type="number" placeholder="0.00" /></td>
                         <td style={tdStyle}><BatchCell value={row.costPrice} onChange={(v) => updateBatchRow(i, "costPrice", v)} error={errs.costPrice} type="number" placeholder="0.00" /></td>
-                        <td style={tdStyle}><BatchCell value={row.taxRate} onChange={(v) => updateBatchRow(i, "taxRate", v)} error={errs.taxRate} type="number" placeholder="18" /></td>
                         <td style={tdStyle}><BatchCell value={row.currentStock} onChange={(v) => updateBatchRow(i, "currentStock", v)} error={errs.currentStock} type="number" placeholder="0" /></td>
-                        <td style={tdStyle}><BatchCell value={row.reorderLevel} onChange={(v) => updateBatchRow(i, "reorderLevel", v)} error={errs.reorderLevel} type="number" placeholder="—" /></td>
                         <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                           <div style={{ display: "flex", gap: 5 }}>
                             <button
@@ -963,8 +1139,9 @@ export function ProductsPage({
 
           <div style={{
             flex: 1, background: "#fff", borderRadius: 12,
-            border: "1px solid #e7e5e4", overflow: "auto",
+            border: "1px solid #e7e5e4", display: "flex", flexDirection: "column", minHeight: 0,
           }}>
+            <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
             {loadError ? (
               <div style={{ padding: "40px 24px", color: "#111827", fontSize: 13, textAlign: "center" }}>
                 {loadError}
@@ -977,13 +1154,18 @@ export function ProductsPage({
               <div style={{ padding: 60, color: "#a8a29e", fontSize: 13, textAlign: "center" }}>
                 {search
                   ? "No products match your search."
-                  : "No products yet — click + Add Product to begin."}
+                  : allowMutations
+                    ? "No products yet — click + Add Product to begin."
+                    : "No products yet."}
               </div>
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e7e5e4" }}>
-                    {["SKU", "Name", "Category", "Brand", "Unit", "Price", "Cost", "Tax %", "Stock", "Reorder", "Status"].map((h) => (
+                    {(allowMutations
+                      ? ["SKU", "Name", "Category", "Brand", "Unit", "Price", "Cost", "Stock", "Status", "Actions"]
+                      : ["SKU", "Name", "Category", "Brand", "Unit", "Price", "Cost", "Stock", "Status"]
+                    ).map((h) => (
                       <th key={h} style={{
                         padding: "10px 14px", textAlign: "left", fontWeight: 600,
                         color: "#78716c", fontSize: 12, background: "#fafaf9",
@@ -995,12 +1177,13 @@ export function ProductsPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((p, i) => {
+                  {pagedProducts.map((p, i) => {
                     const st = statusOf(p);
+                    const globalIdx = (listPage - 1) * PRODUCTS_TABLE_PAGE_SIZE + i;
                     return (
                       <tr key={p.id} style={{
                         borderBottom: "1px solid #f5f4f0",
-                        background: i % 2 === 0 ? "#fff" : "#fafaf9",
+                        background: globalIdx % 2 === 0 ? "#fff" : "#fafaf9",
                       }}>
                         <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "#78716c", fontSize: 12, whiteSpace: "nowrap" }}>{p.sku}</td>
                         <td style={{ padding: "10px 14px", fontWeight: 500, color: "#1c1917", maxWidth: 240 }}>{p.name}</td>
@@ -1009,7 +1192,6 @@ export function ProductsPage({
                         <td style={{ padding: "10px 14px", color: "#78716c", whiteSpace: "nowrap" }}>{p.baseUnitCode}</td>
                         <td style={{ padding: "10px 14px", fontFamily: "monospace", whiteSpace: "nowrap" }}>{fmtPrice(p.sellingPrice)}</td>
                         <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "#78716c", whiteSpace: "nowrap" }}>{fmtPrice(p.costPrice)}</td>
-                        <td style={{ padding: "10px 14px", color: "#78716c", whiteSpace: "nowrap" }}>{p.taxRate ? `${p.taxRate}%` : "—"}</td>
                         <td style={{
                           padding: "10px 14px", fontFamily: "monospace", fontWeight: 700,
                           whiteSpace: "nowrap",
@@ -1018,18 +1200,126 @@ export function ProductsPage({
                           {Number(p.currentStock).toLocaleString("en-IN")}
                           <span style={{ fontWeight: 400, color: "#a8a29e", fontSize: 11, marginLeft: 3 }}>{p.baseUnitCode}</span>
                         </td>
-                        <td style={{ padding: "10px 14px", color: "#78716c", fontFamily: "monospace", whiteSpace: "nowrap" }}>
-                          {p.reorderLevel ? `${Number(p.reorderLevel).toLocaleString("en-IN")} ${p.baseUnitCode}` : "—"}
-                        </td>
                         <td style={{ padding: "10px 14px" }}>
                           <StatusBadge status={st} />
+                          {p.status === "INACTIVE" ? (
+                            <div style={{ fontSize: 10, color: "#a8a29e", marginTop: 4 }}>
+                              Inactive listing
+                            </div>
+                          ) : null}
                         </td>
+                        {allowMutations ? (
+                          <td style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>
+                            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+                              <button
+                                type="button"
+                                onClick={() => openEditProduct(p)}
+                                style={{
+                                  padding: "6px 12px",
+                                  borderRadius: 8,
+                                  border: "1px solid #e7e5e4",
+                                  background: "#fff",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  color: "#2563eb",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleDeleteProduct(p)}
+                                style={{
+                                  padding: "6px 12px",
+                                  borderRadius: 8,
+                                  border: "1px solid #fecaca",
+                                  background: "#fff",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  color: "#b91c1c",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        ) : null}
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
             )}
+            </div>
+            {!loadError && !loadingProducts && filtered.length > 0 ? (
+              <div style={{
+                flexShrink: 0,
+                borderTop: "1px solid #e7e5e4",
+                padding: "10px 14px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                flexWrap: "wrap",
+                background: "#fafaf9",
+              }}>
+                <div style={{ fontSize: 12, color: "#78716c" }}>
+                  Showing{" "}
+                  <strong style={{ color: "#44403c" }}>
+                    {(listPage - 1) * PRODUCTS_TABLE_PAGE_SIZE + 1}
+                    –
+                    {Math.min(listPage * PRODUCTS_TABLE_PAGE_SIZE, filtered.length)}
+                  </strong>
+                  {" "}of{" "}
+                  <strong style={{ color: "#44403c" }}>{filtered.length}</strong>
+                  {" "}product{filtered.length !== 1 ? "s" : ""}
+                  {" "}· {PRODUCTS_TABLE_PAGE_SIZE} per page
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setListPage((p) => Math.max(1, p - 1))}
+                    disabled={listPage <= 1}
+                    style={{
+                      height: 30,
+                      minWidth: 64,
+                      padding: "0 10px",
+                      borderRadius: 8,
+                      border: "1px solid #e7e5e4",
+                      background: listPage <= 1 ? "#f5f4f0" : "#fff",
+                      color: listPage <= 1 ? "#a8a29e" : "#44403c",
+                      fontSize: 12,
+                      cursor: listPage <= 1 ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    Prev
+                  </button>
+                  <span style={{ fontSize: 12, color: "#78716c", minWidth: 72, textAlign: "center" }}>
+                    Page {listPage}/{listPageCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setListPage((p) => Math.min(listPageCount, p + 1))}
+                    disabled={listPage >= listPageCount}
+                    style={{
+                      height: 30,
+                      minWidth: 64,
+                      padding: "0 10px",
+                      borderRadius: 8,
+                      border: "1px solid #e7e5e4",
+                      background: listPage >= listPageCount ? "#f5f4f0" : "#fff",
+                      color: listPage >= listPageCount ? "#a8a29e" : "#44403c",
+                      fontSize: 12,
+                      cursor: listPage >= listPageCount ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

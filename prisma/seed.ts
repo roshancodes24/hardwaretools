@@ -1,4 +1,5 @@
 import "dotenv/config";
+import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
   BarcodeType,
@@ -39,13 +40,16 @@ async function main() {
     await tx.supplier.deleteMany();
     await tx.user.deleteMany();
 
-    // 1) Users
+    // 1) Users — sign in with usernames admin / cashier (passwords admin123 / cashier123)
+    const adminHash = await bcrypt.hash("admin123", 10);
+    const cashierHash = await bcrypt.hash("cashier123", 10);
     const admin = await tx.user.create({
       data: {
         fullName: "Admin User",
-        email: "admin@shop.local",
+        username: "admin",
+        email: "admin@shop.com",
         phone: "9999999999",
-        passwordHash: "change-this-later",
+        passwordHash: adminHash,
         role: UserRole.ADMIN,
         isActive: true,
       },
@@ -54,9 +58,10 @@ async function main() {
     const cashier = await tx.user.create({
       data: {
         fullName: "Cashier User",
-        email: "cashier@shop.local",
+        username: "cashier",
+        email: "cashier@shop.com",
         phone: "8888888888",
-        passwordHash: "change-this-later",
+        passwordHash: cashierHash,
         role: UserRole.CASHIER,
         isActive: true,
       },

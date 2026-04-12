@@ -51,7 +51,13 @@ function normalizeDetails(raw: unknown): FieldDetail[] | undefined {
 
 function friendlyHttpFallback(status: number): string {
   if (status === 404) {
-    return "API endpoint not found. Restart the backend (npm run dev in the project root) so it includes the latest routes.";
+    return [
+      "The API did not handle this request (404).",
+      "If the response was HTML, the browser likely reached Vite without proxying /api to Express.",
+      "From the project root run `npm run dev:all`, or run `npm run dev` (API :4000) and `npm run dev:web` separately.",
+      "For preview builds, keep the API running; Vite preview proxies /api to 127.0.0.1:4000.",
+      "Or set VITE_API_URL (no trailing slash, e.g. http://127.0.0.1:4000) and rebuild.",
+    ].join(" ");
   }
   return `Request failed (${status}). Check that the API server is running.`;
 }
@@ -94,7 +100,8 @@ export function parseErrorResponse(
   }
   const plain =
     typeof fallbackText === "string" &&
-    (/<!doctype html>|<html/i.test(fallbackText) || fallbackText.includes("Cannot GET"))
+    (/<!doctype html>|<html/i.test(fallbackText) ||
+      /Cannot GET|Cannot POST/i.test(fallbackText))
       ? friendlyHttpFallback(status)
       : fallbackText;
   return new ApiError(plain, status, undefined);

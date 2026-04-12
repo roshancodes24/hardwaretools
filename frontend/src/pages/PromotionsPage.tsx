@@ -161,7 +161,7 @@ export function PromotionsPage({
   };
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "390px 1fr", gap: 18 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 18 }}>
       <div
         style={{
           background: "var(--surface)",
@@ -312,7 +312,7 @@ export function PromotionsPage({
             </div>
           </>
         )}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8 }}>
           <input
             type="date"
             value={form.startsAt}

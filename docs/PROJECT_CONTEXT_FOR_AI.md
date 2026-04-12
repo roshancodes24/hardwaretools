@@ -90,6 +90,8 @@ Base path for routers is under **`/api`** (see `src/server.ts`):
 | `/api/sales` | Sales / POS workflow (draft/complete, lines, payments, stock). |
 | `/api/stock-adjustments` | Manual stock adjustments. |
 | `/api/promotions` | `GET /`, `POST /` — list and create promotions (`PromotionScope`: CART, PRODUCT, CATEGORY). |
+| `/api/reports` | `GET /sales-summary`, `/sales-by-product`, `/purchases`, `/gross-margin` — query `from` & `to` as `YYYY-MM-DD` (UTC day bounds). Completed sales + received purchases; margin uses `costPrice × qty` (approx.). `GET /dashboard-timeseries?days=14` — daily sales + purchases (UTC). `GET /sales-revenue-series?granularity=day|week|month&buckets=` — completed sales only; home chart (day=14, week/month default 12). |
+| `/api/sales` | Also `GET /outstanding`, `GET /:id`, `POST /:id/payments` for balances / pay-later. |
 
 Exact paths and bodies: read the corresponding file in `src/routes/` and `src/validation/schemas.ts`.
 
@@ -112,7 +114,8 @@ Full field list: `prisma/schema.prisma`.
 ## 8. Frontend behavior
 
 - **Entry**: `frontend/src/main.tsx` → `App.tsx`.
-- **Navigation**: `Sidebar.tsx` + tab state in `App.tsx` (e.g. `home`, `products`, `promotion`, `pos`, `inventory`, `purchase`, `adjustment`, `reporting`).
+- **Navigation**: `Sidebar.tsx` + tab state in `App.tsx` (e.g. `home`, `products`, `promotion`, `pos`, `outstanding`, `inventory`, `purchase`, `adjustment`, `reporting`).
+- **Reporting**: `pages/ReportingPage.tsx` — reports 1, 2, 3, 7 with optional CSV export per section.
 - **Home**: `HomeView.tsx` — dashboard-style entry with shortcuts.
 - **Promotions**: `pages/PromotionsPage.tsx` when promotions feature flag is on.
 - **Initial load**: Fetches session, products, and suppliers together; **promotions** are loaded in a **separate** try/catch so a missing `/api/promotions` route does not block the entire app (empty list on failure).

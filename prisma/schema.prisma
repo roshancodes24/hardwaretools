@@ -74,6 +74,7 @@ enum StockMovementType {
 model User {
   id           String   @id @default(cuid())
   fullName     String
+  username     String   @unique
   email        String?  @unique
   phone        String?  @unique
   passwordHash String
@@ -84,6 +85,7 @@ model User {
   createdSales     Sale[]            @relation("SaleCreatedBy")
   stockMovements   StockMovement[]
   stockAdjustments StockAdjustment[]
+  salePayments     SalePayment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -317,6 +319,7 @@ model Sale {
 
   lines          SaleLine[]
   stockMovements StockMovement[]
+  payments       SalePayment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -324,6 +327,19 @@ model Sale {
   @@index([status, createdAt])
   @@index([customerPhone])
   @@index([customerId])
+}
+
+model SalePayment {
+  id          String   @id @default(cuid())
+  saleId      String
+  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  amount      Decimal  @db.Decimal(14, 2)
+  note        String?
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([saleId, createdAt])
 }
 
 model SaleLine {
