@@ -132,7 +132,7 @@ export function LoginPage({ onLoggedIn }: LoginPageProps) {
               onChange={(e) => setUsername(e.target.value)}
               disabled={loading}
               style={inputStyle}
-              placeholder="e.g. admin (or admin@shop.com)"
+              placeholder="e.g. admin"
             />
           </div>
           <div>

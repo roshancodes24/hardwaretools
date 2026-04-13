@@ -1,4 +1,6 @@
 import "dotenv/config";
+import fs from "fs";
+import path from "path";
 import express from "express";
 import cors from "cors";
 
@@ -22,13 +24,10 @@ export function buildApp(): express.Express {
   app.use(express.json());
 
   app.use("/api/login", authLoginRoutes);
-  app.use("/api", actingUserMiddleware);
-
-  app.get("/", (_req, res) => {
-    res.json({
-      message: "Inventory API is running",
-    });
+  app.get("/api/health", (_req, res) => {
+    res.json({ ok: true, message: "Inventory API is running" });
   });
+  app.use("/api", actingUserMiddleware);
 
   app.use("/api/products", productRoutes);
   app.use("/api/purchases", purchaseRoutes);
@@ -43,6 +42,29 @@ export function buildApp(): express.Express {
   app.use("/api", (_req, res) => {
     res.status(404).json({ error: "Not found" });
   });
+
+  const staticRoot = path.resolve(
+    process.env.FRONTEND_DIST ?? path.join(__dirname, "..", "frontend", "dist")
+  );
+  const distIndex = path.join(staticRoot, "index.html");
+  const serveFrontend =
+    process.env.SERVE_FRONTEND === "1" ||
+    (process.env.NODE_ENV === "production" && fs.existsSync(distIndex));
+
+  if (serveFrontend) {
+    app.use(express.static(staticRoot));
+    app.use((req, res, next) => {
+      if (req.path.startsWith("/api")) return next();
+      if (req.method !== "GET" && req.method !== "HEAD") return next();
+      res.sendFile(distIndex);
+    });
+  } else {
+    app.get("/", (_req, res) => {
+      res.json({
+        message: "Inventory API is running",
+      });
+    });
+  }
 
   return app;
 }

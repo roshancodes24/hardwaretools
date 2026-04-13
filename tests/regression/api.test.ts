@@ -75,9 +75,10 @@ describe("R0 — Login & JWT", () => {
 });
 
 describe("R1 — Smoke / health", () => {
-  it("GET / returns API message", async () => {
-    const res = await request(app).get("/");
+  it("GET /api/health returns API message", async () => {
+    const res = await request(app).get("/api/health");
     expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
     expect(res.body.message).toMatch(/Inventory API/i);
   });
 });
