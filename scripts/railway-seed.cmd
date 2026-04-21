@@ -1,5 +1,5 @@
 @echo off
-REM Run Prisma seed with Railway env (after: railway login, railway link from repo root).
+REM Seed using Railway env. From your PC we need DATABASE_PUBLIC_URL (see railway-seed-inner.ps1).
 cd /d "%~dp0.."
-railway run npm run seed
+railway run powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0railway-seed-inner.ps1"
 exit /b %ERRORLEVEL%

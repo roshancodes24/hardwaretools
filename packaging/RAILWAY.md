@@ -36,6 +36,15 @@ Repo root includes **`railway.toml`**: build (frontend install + release build),
 
 If Railway only exposes `DATABASE_PUBLIC_URL` for external tools, the **internal** connection string reference is still usually exposed as **`DATABASE_URL`** to linked services—use whatever Railway shows for **linked** access.
 
+**Seeding / CLI from your laptop:** `DATABASE_URL` often resolves to **`postgres.railway.internal`**, which **does not work** from your home PC (private Railway DNS). For `railway run npm run seed` from your machine you must also expose the **public** URL to that command:
+
+1. **Postgres** service → enable **TCP Proxy** / public networking (Railway’s Postgres panel; required for `DATABASE_PUBLIC_URL`).
+2. **Web** service → **Variables** → **Add** **`DATABASE_PUBLIC_URL`** → **Reference** → Postgres → **`DATABASE_PUBLIC_URL`** (exact name may match your template).
+3. Run **`scripts\railway-seed.cmd`** (recommended on Windows) or  
+   `railway run powershell -NoProfile -ExecutionPolicy Bypass -File scripts\railway-seed-inner.ps1`  
+   The helper sets **`DATABASE_URL`** from **`DATABASE_PUBLIC_URL`** for that run only.  
+   Your **deployed** app still uses the internal **`DATABASE_URL`** reference for normal traffic.
+
 ### 4. Set `JWT_SECRET` (required for production login)
 
 Production mode **requires** a non-empty secret (`src/lib/jwt.ts`).
@@ -66,17 +75,16 @@ Creates **`admin` / `admin123`** and **`cashier` / `cashier123`** (see `prisma/s
 
 **From your PC** (after `npm install -g @railway/cli`, `railway login`, and `railway link` in the repo root):
 
-```bash
-railway run npm run seed
-```
+- Prefer **`scripts\railway-seed.cmd`** — it uses **`DATABASE_PUBLIC_URL`** when set (see **§3** above). Plain `railway run npm run seed` often fails with **P1001 / postgres.railway.internal** from a laptop.
+- Or: `railway run powershell -NoProfile -ExecutionPolicy Bypass -File scripts\railway-seed-inner.ps1`
 
 **Windows helpers** (same prerequisites):
 
-- **CMD (no script policy issues):** double‑click or run `scripts\railway-seed.cmd`.
-- **PowerShell:** `.\scripts\railway-seed.ps1` — if you see *running scripts is disabled*, either run **`scripts\railway-seed.cmd`** instead, or allow scripts for your user once:  
+- **CMD:** `scripts\railway-seed.cmd` (handles public DB URL for local seed).
+- **PowerShell:** `.\scripts\railway-seed.ps1` — if execution policy blocks `.ps1`, use **`.cmd`** or:  
   `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`
 
-Requires **`DATABASE_URL`** on the linked Railway service. **`JWT_SECRET`** is not required for the seed itself, but you still need it on the web service to **log in** in the browser afterward.
+Requires **`DATABASE_URL`** on the web service for **deploys**; for **local seed**, also **`DATABASE_PUBLIC_URL`** on the web service (reference to Postgres) after TCP proxy is on. **`JWT_SECRET`** is not required for the seed itself, but you still need it on the web service to **log in** in the browser afterward.
 
 ---
 
@@ -119,7 +127,8 @@ Easier at most DNS hosts: a normal **CNAME** for `app` (no flattening needed) pl
 | 404 on `/` but `/api/health` works | Build did not produce `frontend/dist`; check build logs. |
 | CORS / wrong API host | Production UI calls **`/api/...`** on the **same** origin when `VITE_API_URL` is empty—correct for this setup. |
 | Apex domain stuck “Waiting for DNS” / 404 on custom host | **TXT** verification record added? DNS provider supports **apex CNAME flattening** or **ALIAS**? See **Custom domain → Apex** above. |
-| `railway run npm run seed` exits **1** / `tsx prisma/seed.ts` failed | Scroll **above** the last line for `❌ Seed failed` and the real Postgres/Prisma message. Common fixes: **`DATABASE_URL` missing** on the linked service; **migrations not applied** (deploy once, or `railway run npx prisma migrate deploy`); **SSL** — for some public Postgres URLs append **`?sslmode=require`** (or use Railway’s **private** / linked URL). From repo root run **`npm install`** so `npx tsx` can run the seed. |
+| `railway run npm run seed` exits **1** / **P1001** / `postgres.railway.internal` | **`DATABASE_URL` is internal-only** — your PC cannot reach it. Enable Postgres **TCP proxy**, add **`DATABASE_PUBLIC_URL`** to the web service (reference Postgres), then run **`scripts\railway-seed.cmd`**. |
+| Other seed failures | Scroll for `❌ Seed failed`. Check **migrations applied**, **`npm install`** at repo root, **SSL** (`?sslmode=require` on public URL if required). |
 
 ---
 

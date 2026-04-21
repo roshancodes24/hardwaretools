@@ -1,22 +1,18 @@
-# Run Prisma seed against Railway Postgres (uses service env from `railway link`).
-# Prerequisite: `npm install -g @railway/cli`, then `railway login` and `railway link` from repo root.
-
+# Same as railway-seed.cmd; uses -ExecutionPolicy Bypass for the inner seed only.
 $ErrorActionPreference = "Stop"
-# Repo root (parent of `scripts/`)
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 
 if (-not (Get-Command railway -ErrorAction SilentlyContinue)) {
-  Write-Host "Railway CLI not found. Install with: npm install -g @railway/cli" -ForegroundColor Red
+  Write-Host "Railway CLI not found. Install: npm install -g @railway/cli" -ForegroundColor Red
   exit 1
 }
-
 railway whoami 2>$null
 if ($LASTEXITCODE -ne 0) {
-  Write-Host "Not logged in. Run: railway login" -ForegroundColor Yellow
+  Write-Host "Run: railway login" -ForegroundColor Yellow
   exit 1
 }
 
-Write-Host "Running seed with Railway environment..." -ForegroundColor Cyan
-railway run npm run seed
+Write-Host "Running seed (public DB URL when available)..." -ForegroundColor Cyan
+& railway run powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "railway-seed-inner.ps1")
 exit $LASTEXITCODE
