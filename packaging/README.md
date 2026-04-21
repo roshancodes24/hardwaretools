@@ -20,11 +20,15 @@ This project is a **Node.js server** (Express + Prisma) plus a **React** front e
    - **Windows:** double‑click `scripts\start-production.bat`, or run `npm run start:prod`
    - Open a browser at **http://localhost:4000** (API + static UI on the same port).
 
-### B. Docker (good for identical installs)
+### B. Railway (managed hosting + Git)
+
+See **`packaging/RAILWAY.md`**: PostgreSQL on Railway, env vars, and optional custom domain. The repo includes **`railway.toml`** for build, migrations, and start.
+
+### C. Docker (good for identical installs)
 
 Use Docker Compose to run PostgreSQL + this app (you would add a `Dockerfile` / compose file—out of scope here unless you want it added to the repo).
 
-### C. “Looks like an .exe”
+### D. “Looks like an .exe”
 
 You can turn **`scripts\start-production.bat`** into a **shortcut** or use a third‑party **BAT-to-EXE** tool so staff double‑clicks an icon. That still requires **Node** and **PostgreSQL** installed on the machine (or a shared database URL).
 

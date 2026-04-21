@@ -1,0 +1,11 @@
+# Railway config-as-code: https://docs.railway.com/reference/config-as-code
+# One web service: Express API + static React build on the same port (PORT).
+
+[build]
+buildCommand = "npm install --prefix frontend && npm run build:release"
+
+[deploy]
+startCommand = "npm run start:prod"
+preDeployCommand = ["npm run migrate:deploy"]
+healthcheckPath = "/api/health"
+restartPolicyType = "on_failure"
