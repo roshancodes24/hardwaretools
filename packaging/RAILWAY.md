@@ -70,7 +70,11 @@ Creates **`admin` / `admin123`** and **`cashier` / `cashier123`** (see `prisma/s
 railway run npm run seed
 ```
 
-**Windows helper** (same prerequisites): run `scripts\railway-seed.ps1` from PowerShell in the repo (it `cd`s to root and runs `railway run npm run seed`).
+**Windows helpers** (same prerequisites):
+
+- **CMD (no script policy issues):** double‑click or run `scripts\railway-seed.cmd`.
+- **PowerShell:** `.\scripts\railway-seed.ps1` — if you see *running scripts is disabled*, either run **`scripts\railway-seed.cmd`** instead, or allow scripts for your user once:  
+  `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`
 
 Requires **`DATABASE_URL`** on the linked Railway service. **`JWT_SECRET`** is not required for the seed itself, but you still need it on the web service to **log in** in the browser afterward.
 
