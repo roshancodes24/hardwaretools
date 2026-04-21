@@ -38,6 +38,10 @@ type CreateSaleInput = {
   customerId?: string;
   customerName?: string;
   customerPhone?: string;
+  customerPartyGstNo?: string;
+  customerPartyState?: string;
+  /** Added to total after line taxes (non-negative). */
+  transportAmount?: string | number;
   note?: string;
   paidAmount?: string | number;
   lines: SaleLineInput[];
@@ -158,6 +162,8 @@ export async function createPurchase(input: CreatePurchaseInput) {
         discountAmount,
         taxAmount,
         totalAmount,
+        paidAmount: money(dec(0)),
+        balanceAmount: totalAmount,
         createdById: input.createdById,
       },
     });
@@ -211,11 +217,87 @@ export async function createPurchase(input: CreatePurchaseInput) {
       where: { id: purchase.id },
       include: {
         supplier: true,
+        createdBy: { select: { fullName: true } },
         lines: {
           include: {
             product: true,
             productUnit: true,
           },
+        },
+        payments: {
+          orderBy: { paidAt: "asc" },
+          include: { createdBy: { select: { fullName: true } } },
+        },
+      },
+    });
+  });
+}
+
+export type RecordPurchasePaymentInput = {
+  purchaseId: string;
+  amount: string | number;
+  createdById: string;
+  note?: string;
+  /** Business date of payment (defaults to now). */
+  paidAt?: Date;
+};
+
+export async function recordPurchasePayment(input: RecordPurchasePaymentInput) {
+  return prisma.$transaction(async (tx) => {
+    const purchase = await tx.purchase.findUnique({
+      where: { id: input.purchaseId },
+    });
+    if (!purchase) {
+      throw new Error("Purchase not found.");
+    }
+    if (purchase.status !== PurchaseStatus.RECEIVED) {
+      throw new Error("Only received purchases can receive supplier payments.");
+    }
+    const balance = dec(purchase.balanceAmount);
+    const pay = money(dec(input.amount));
+    if (!pay.gt(0)) {
+      throw new Error("Payment amount must be greater than zero.");
+    }
+    if (pay.greaterThan(balance)) {
+      throw new Error("Payment exceeds outstanding balance owed to supplier.");
+    }
+
+    const newPaid = money(dec(purchase.paidAmount).plus(pay));
+    const newBal = money(balance.minus(pay));
+    const paidAt = input.paidAt ?? new Date();
+
+    await tx.purchase.update({
+      where: { id: purchase.id },
+      data: {
+        paidAmount: newPaid,
+        balanceAmount: newBal,
+      },
+    });
+
+    await tx.purchasePayment.create({
+      data: {
+        purchaseId: purchase.id,
+        amount: pay,
+        paidAt,
+        note: input.note?.trim() || null,
+        createdById: input.createdById,
+      },
+    });
+
+    return tx.purchase.findUnique({
+      where: { id: purchase.id },
+      include: {
+        supplier: true,
+        createdBy: { select: { fullName: true } },
+        lines: {
+          include: {
+            product: true,
+            productUnit: true,
+          },
+        },
+        payments: {
+          orderBy: { paidAt: "asc" },
+          include: { createdBy: { select: { fullName: true } } },
         },
       },
     });
@@ -303,7 +385,15 @@ export async function createSale(input: CreateSaleInput) {
       });
     }
 
-    const totalAmount = money(subtotal.minus(discountAmount).plus(taxAmount));
+    const transportRaw = dec(input.transportAmount ?? 0);
+    if (transportRaw.lessThan(0)) {
+      throw new Error("Transport amount cannot be negative.");
+    }
+    const transportAmount = money(transportRaw);
+
+    const totalAmount = money(
+      subtotal.minus(discountAmount).plus(taxAmount).plus(transportAmount)
+    );
 
     let resolvedCustomerId: string | null = null;
     let customerNameSnapshot: string | null = null;
@@ -313,6 +403,21 @@ export async function createSale(input: CreateSaleInput) {
       String(input.customerPhone).trim() !== ""
         ? String(input.customerPhone).trim()
         : null;
+
+    const gstFromInput =
+      input.customerPartyGstNo != null &&
+      String(input.customerPartyGstNo).trim() !== ""
+        ? String(input.customerPartyGstNo).trim()
+        : null;
+
+    const stateFromInput =
+      input.customerPartyState != null &&
+      String(input.customerPartyState).trim() !== ""
+        ? String(input.customerPartyState).trim()
+        : null;
+
+    let resolvedPartyGstNo: string | null = null;
+    let resolvedPartyState: string | null = null;
 
     if (input.customerId) {
       const cust = await tx.customer.findUnique({
@@ -327,6 +432,11 @@ export async function createSale(input: CreateSaleInput) {
       if (!customerPhone && cust.phone) {
         customerPhone = cust.phone;
       }
+      resolvedPartyGstNo =
+        gstFromInput ?? (cust.partyGstNo?.trim() ? cust.partyGstNo.trim() : null);
+      resolvedPartyState =
+        stateFromInput ??
+        (cust.partyState?.trim() ? cust.partyState.trim() : null);
     } else if (
       input.customerName != null &&
       String(input.customerName).trim() !== ""
@@ -334,11 +444,19 @@ export async function createSale(input: CreateSaleInput) {
       const n = String(input.customerName).trim();
       customerNameSnapshot = n;
       customerName = n;
+      resolvedPartyGstNo = gstFromInput;
+      resolvedPartyState = stateFromInput;
     }
 
-    const paidAmount = money(dec(input.paidAmount ?? totalAmount));
+    let paidAmount = money(dec(input.paidAmount ?? totalAmount));
     if (paidAmount.greaterThan(totalAmount)) {
-      throw new Error("Amount paid cannot exceed sale total.");
+      const over = paidAmount.minus(totalAmount);
+      // Tiny overpay from float vs Decimal rounding (POS total vs line sums).
+      if (over.lessThanOrEqualTo(dec("0.05"))) {
+        paidAmount = totalAmount;
+      } else {
+        throw new Error("Amount paid cannot exceed sale total.");
+      }
     }
     const balanceAmount = money(totalAmount.minus(paidAmount));
     if (balanceAmount.greaterThan(0)) {
@@ -369,10 +487,13 @@ export async function createSale(input: CreateSaleInput) {
         customerNameSnapshot,
         customerName,
         customerPhone,
+        customerPartyGstNo: resolvedPartyGstNo,
+        customerPartyState: resolvedPartyState,
         note: input.note,
         subtotal: money(subtotal),
         discountAmount,
         taxAmount,
+        transportAmount,
         totalAmount,
         paidAmount,
         balanceAmount,
@@ -439,6 +560,7 @@ export async function createSale(input: CreateSaleInput) {
     return tx.sale.findUnique({
       where: { id: sale.id },
       include: {
+        customer: { select: { partyGstNo: true, partyState: true } },
         lines: {
           include: {
             product: true,
@@ -501,6 +623,7 @@ export async function recordSalePayment(input: RecordSalePaymentInput) {
     return tx.sale.findUnique({
       where: { id: sale.id },
       include: {
+        customer: { select: { partyGstNo: true, partyState: true } },
         lines: {
           include: {
             product: true,

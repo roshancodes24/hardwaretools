@@ -47,6 +47,8 @@ router.post(
           phone: body.phone,
           email: body.email ?? null,
           address: body.address ?? null,
+          partyGstNo: body.partyGstNo ?? null,
+          partyState: body.partyState ?? null,
         },
       });
       res.status(201).json(customer);

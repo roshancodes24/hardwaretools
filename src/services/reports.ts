@@ -50,6 +50,159 @@ export function parseReportRange(fromStr: string, toStr: string): ReportDateRang
   return { start: start.toJSDate(), end: end.toJSDate() };
 }
 
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function gstRateFromDecimal(v: Prisma.Decimal | null | undefined): number {
+  if (v == null) return 0;
+  const n = Number.parseFloat(v.toFixed(5));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * GST register for completed sales (same taxable × rate math as printed tax invoices).
+ * Grand total per row is the stored charged total (includes transport when recorded).
+ */
+export async function getTaxInvoiceSalesReport(range: ReportDateRange) {
+  const sales = await prisma.sale.findMany({
+    where: {
+      status: SaleStatus.COMPLETED,
+      createdAt: { gte: range.start, lte: range.end },
+    },
+    orderBy: { createdAt: "asc" },
+    take: 3000,
+    include: {
+      lines: {
+        include: {
+          product: {
+            select: {
+              cgstPercent: true,
+              sgstPercent: true,
+              igstPercent: true,
+            },
+          },
+        },
+      },
+      payments: { orderBy: { createdAt: "asc" } },
+    },
+  });
+
+  let sumTaxable = 0;
+  let sumCgst = 0;
+  let sumSgst = 0;
+  let sumIgst = 0;
+  let sumGrand = new D(0);
+
+  const rows = sales.map((sale) => {
+    let taxable = 0;
+    let cgst = 0;
+    let sgst = 0;
+    let igst = 0;
+
+    for (const line of sale.lines) {
+      const qty = Number.parseFloat(line.quantity.toFixed(4));
+      const unit = Number.parseFloat(line.unitPrice.toFixed(4));
+      const disc = Number.parseFloat(line.lineDiscount.toFixed(2));
+      const base =
+        Number.isFinite(qty) && Number.isFinite(unit) && Number.isFinite(disc)
+          ? Math.max(0, qty * unit - disc)
+          : 0;
+
+      const cgstR = gstRateFromDecimal(line.product.cgstPercent);
+      const sgstR = gstRateFromDecimal(line.product.sgstPercent);
+      const igstR = gstRateFromDecimal(line.product.igstPercent);
+
+      taxable += base;
+      cgst += round2((base * cgstR) / 100);
+      sgst += round2((base * sgstR) / 100);
+      igst += round2((base * igstR) / 100);
+    }
+
+    cgst = round2(cgst);
+    sgst = round2(sgst);
+    igst = round2(igst);
+    taxable = round2(taxable);
+
+    const snap = sale.customerNameSnapshot?.trim();
+    const nm = sale.customerName?.trim();
+    const phone = sale.customerPhone?.trim();
+    const namePart =
+      snap || nm || (phone ? `Phone ${phone}` : "Walk-in / not set");
+    const gstNo = sale.customerPartyGstNo?.trim();
+    const partyLabel = gstNo ? `${namePart}, GST-${gstNo}` : namePart;
+
+    const invoiceDate = dtIndia(sale.createdAt).toISODate()!;
+
+    sumTaxable += taxable;
+    sumCgst += cgst;
+    sumSgst += sgst;
+    sumIgst += igst;
+    sumGrand = sumGrand.plus(sale.totalAmount);
+
+    return {
+      id: sale.id,
+      saleNumber: sale.saleNumber,
+      invoiceDate,
+      createdAt: sale.createdAt.toISOString(),
+      partyLabel,
+      amountBeforeTax: taxable.toFixed(2),
+      sgstAmount: sgst.toFixed(2),
+      cgstAmount: cgst.toFixed(2),
+      igstAmount: igst.toFixed(2),
+      grandTotal: decStr(sale.totalAmount),
+    };
+  });
+
+  const paymentRows: Array<{
+    id: string;
+    saleNumber: string;
+    paymentDate: string;
+    amount: string;
+    note: string | null;
+  }> = [];
+
+  let sumPayments = new D(0);
+
+  for (const sale of sales) {
+    for (const p of sale.payments) {
+      sumPayments = sumPayments.plus(p.amount);
+      paymentRows.push({
+        id: p.id,
+        saleNumber: sale.saleNumber,
+        paymentDate: dtIndia(p.createdAt).toISODate()!,
+        amount: decStr(p.amount),
+        note: p.note,
+      });
+    }
+  }
+
+  paymentRows.sort((a, b) => {
+    const d = a.paymentDate.localeCompare(b.paymentDate);
+    if (d !== 0) return d;
+    return a.saleNumber.localeCompare(b.saleNumber);
+  });
+
+  return {
+    disclaimer:
+      "Taxable value and GST columns use the same formula as printed tax invoices (line taxable × product CGST/SGST/IGST %). Grand total is each sale’s charged total, including freight when recorded. Payments lists each recorded receipt for those invoices (date is when the payment was saved, IST).",
+    summary: {
+      saleCount: rows.length,
+      amountBeforeTax: round2(sumTaxable).toFixed(2),
+      sgstAmount: round2(sumSgst).toFixed(2),
+      cgstAmount: round2(sumCgst).toFixed(2),
+      igstAmount: round2(sumIgst).toFixed(2),
+      grandTotal: decStr(sumGrand),
+    },
+    rows,
+    paymentSummary: {
+      paymentCount: paymentRows.length,
+      totalPaid: decStr(sumPayments),
+    },
+    paymentRows,
+  };
+}
+
 /** Report 1: sales register + period aggregates (completed sales only). */
 export async function getSalesSummaryReport(range: ReportDateRange) {
   const where = {
@@ -165,6 +318,191 @@ export async function getSalesByProductReport(range: ReportDateRange) {
     );
 
   return { products: rows };
+}
+
+/** Sales totals grouped by customer (registered or walk-in) for the period. */
+export async function getSalesByCustomerReport(range: ReportDateRange) {
+  const sales = await prisma.sale.findMany({
+    where: {
+      status: SaleStatus.COMPLETED,
+      createdAt: { gte: range.start, lte: range.end },
+    },
+    include: {
+      customer: { select: { id: true, name: true, phone: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 5000,
+  });
+
+  const map = new Map<
+    string,
+    {
+      customerId: string | null;
+      customerLabel: string;
+      saleCount: number;
+      totalAmount: InstanceType<typeof D>;
+      paidAmount: InstanceType<typeof D>;
+      balanceAmount: InstanceType<typeof D>;
+    }
+  >();
+
+  for (const s of sales) {
+    let key: string;
+    let label: string;
+
+    if (s.customerId && s.customer) {
+      key = `id:${s.customerId}`;
+      const nm = s.customer.name.trim();
+      const ph = s.customer.phone?.trim();
+      label = ph ? `${nm} (${ph})` : nm;
+    } else {
+      const snap =
+        s.customerNameSnapshot?.trim() || s.customerName?.trim() || "";
+      const ph = s.customerPhone?.trim() || "";
+      label = snap || (ph ? `Phone ${ph}` : "Walk-in / not set");
+      key = `walkin:${snap.toLowerCase()}|${ph}`;
+    }
+
+    const ta = s.totalAmount;
+    const pa = s.paidAmount;
+    const ba = s.balanceAmount;
+    const existing = map.get(key);
+    if (existing) {
+      existing.saleCount += 1;
+      existing.totalAmount = existing.totalAmount.plus(ta);
+      existing.paidAmount = existing.paidAmount.plus(pa);
+      existing.balanceAmount = existing.balanceAmount.plus(ba);
+    } else {
+      map.set(key, {
+        customerId: s.customerId,
+        customerLabel: label,
+        saleCount: 1,
+        totalAmount: new D(ta),
+        paidAmount: new D(pa),
+        balanceAmount: new D(ba),
+      });
+    }
+  }
+
+  let sumTotal = new D(0);
+  let sumPaid = new D(0);
+  let sumBal = new D(0);
+  for (const b of map.values()) {
+    sumTotal = sumTotal.plus(b.totalAmount);
+    sumPaid = sumPaid.plus(b.paidAmount);
+    sumBal = sumBal.plus(b.balanceAmount);
+  }
+
+  const customers = [...map.values()]
+    .map((c) => ({
+      customerId: c.customerId,
+      customerLabel: c.customerLabel,
+      saleCount: c.saleCount,
+      totalAmount: decStr(c.totalAmount),
+      paidAmount: decStr(c.paidAmount),
+      balanceAmount: decStr(c.balanceAmount),
+    }))
+    .sort(
+      (a, b) =>
+        Number.parseFloat(b.totalAmount) - Number.parseFloat(a.totalAmount)
+    );
+
+  return {
+    summary: {
+      customerCount: map.size,
+      saleCount: sales.length,
+      totalAmount: decStr(sumTotal),
+      paidAmount: decStr(sumPaid),
+      balanceAmount: decStr(sumBal),
+    },
+    customers,
+  };
+}
+
+/** Money paid to suppliers (purchase payment rows) by payment date in range. */
+export async function getSupplierPaymentsReport(range: ReportDateRange) {
+  const where = {
+    paidAt: { gte: range.start, lte: range.end },
+  };
+
+  const [agg, payments] = await Promise.all([
+    prisma.purchasePayment.aggregate({
+      where,
+      _count: { id: true },
+      _sum: { amount: true },
+    }),
+    prisma.purchasePayment.findMany({
+      where,
+      orderBy: { paidAt: "desc" },
+      take: 3000,
+      include: {
+        purchase: {
+          select: {
+            purchaseNumber: true,
+            supplier: { select: { id: true, name: true } },
+          },
+        },
+        createdBy: { select: { fullName: true } },
+      },
+    }),
+  ]);
+
+  const bySupplierMap = new Map<
+    string,
+    {
+      supplierId: string;
+      supplierName: string;
+      paymentCount: number;
+      totalPaid: InstanceType<typeof D>;
+    }
+  >();
+
+  for (const p of payments) {
+    const sid = p.purchase.supplier.id;
+    const name = p.purchase.supplier.name;
+    const amt = p.amount;
+    const cur = bySupplierMap.get(sid);
+    if (cur) {
+      cur.paymentCount += 1;
+      cur.totalPaid = cur.totalPaid.plus(amt);
+    } else {
+      bySupplierMap.set(sid, {
+        supplierId: sid,
+        supplierName: name,
+        paymentCount: 1,
+        totalPaid: new D(amt),
+      });
+    }
+  }
+
+  const bySupplier = [...bySupplierMap.values()]
+    .map((s) => ({
+      supplierId: s.supplierId,
+      supplierName: s.supplierName,
+      paymentCount: s.paymentCount,
+      totalPaid: decStr(s.totalPaid),
+    }))
+    .sort(
+      (a, b) =>
+        Number.parseFloat(b.totalPaid) - Number.parseFloat(a.totalPaid)
+    );
+
+  return {
+    summary: {
+      paymentCount: agg._count.id,
+      totalPaid: decStr(agg._sum.amount ?? new D(0)),
+    },
+    bySupplier,
+    payments: payments.map((p) => ({
+      id: p.id,
+      paidAt: p.paidAt.toISOString(),
+      amount: decStr(p.amount),
+      note: p.note,
+      purchaseNumber: p.purchase.purchaseNumber,
+      supplierName: p.purchase.supplier.name,
+      recordedByName: p.createdBy.fullName,
+    })),
+  };
 }
 
 /** Report 3: purchases (received only) in range. */

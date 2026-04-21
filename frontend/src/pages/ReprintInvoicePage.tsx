@@ -71,7 +71,13 @@ export function ReprintInvoicePage() {
   return (
     <>
       {invoiceSale ? (
-        <TaxInvoiceModal sale={invoiceSale} onClose={() => setInvoiceSale(null)} />
+        <TaxInvoiceModal
+          sale={invoiceSale}
+          variant={
+            invoiceSale.note?.includes("Tax invoice") ? "tax" : "normal"
+          }
+          onClose={() => setInvoiceSale(null)}
+        />
       ) : null}
       <div
         style={{
@@ -87,8 +93,9 @@ export function ReprintInvoicePage() {
             Invoices
           </h2>
           <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--muted)" }}>
-            Search by customer name, phone, or part of the invoice (sale) number. Open
-            the tax invoice from a row to review or print.
+            Search by customer name, phone, or part of the sale number. Open a row to review
+            or print. Tax invoice layout is used when the sale was recorded as a tax invoice;
+            otherwise the standard bill without tax detail lines is shown.
           </p>
         </div>
 

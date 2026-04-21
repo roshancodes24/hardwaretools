@@ -273,7 +273,7 @@ export function Sidebar({
       >
         <div style={{ minWidth: 0 }}>
           <div style={{ color: "#f5f4f0", fontWeight: 700, fontSize: 13 }}>
-            {iconOnly ? "RH" : "Raj Hardware, Electrical and Paint"}
+            {iconOnly ? "SEW" : "Santosh Electricals Works"}
           </div>
           {!mobile && !iconOnly && (
             <div style={{ color: "var(--sidebar-muted)", marginTop: 2, fontSize: 10.5 }}>

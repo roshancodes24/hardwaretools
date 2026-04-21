@@ -1,33 +1,40 @@
-import { useEffect } from "react";
+import { useId } from "react";
+import { createPortal } from "react-dom";
 import type { SaleDetail } from "../api/types";
+import { NormalInvoiceDocument } from "./NormalInvoiceDocument";
+import { printElementInBlankFrame } from "./printInvoiceIframe";
 import { TaxInvoiceDocument } from "./TaxInvoiceDocument";
 import "./taxInvoicePrint.css";
+
+export type InvoiceModalVariant = "tax" | "normal";
 
 type Props = {
   sale: SaleDetail;
   onClose: () => void;
+  /** Locked at POS before Confirm Sale, or inferred when reprinting. Not changeable here. */
+  variant: InvoiceModalVariant;
 };
 
-export function TaxInvoiceModal({ sale, onClose }: Props) {
-  useEffect(() => {
-    const clear = () => document.documentElement.classList.remove("print-tax-invoice");
-    window.addEventListener("afterprint", clear);
-    return () => window.removeEventListener("afterprint", clear);
-  }, []);
+export function TaxInvoiceModal({
+  sale,
+  onClose,
+  variant,
+}: Props) {
+  const headingId = useId();
+  const isTax = variant === "tax";
 
   const handlePrint = () => {
-    document.documentElement.classList.add("print-tax-invoice");
-    requestAnimationFrame(() => {
-      window.print();
-    });
+    printElementInBlankFrame("tax-invoice-print-area");
   };
 
-  return (
+  const docTitle = isTax ? `Tax invoice ${sale.saleNumber}` : `Bill ${sale.saleNumber}`;
+
+  const modal = (
     <div
       className="tax-invoice-backdrop"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="tax-invoice-title"
+      aria-labelledby={headingId}
       onClick={() => onClose()}
       onKeyDown={(e) => {
         if (e.key === "Escape") onClose();
@@ -42,47 +49,50 @@ export function TaxInvoiceModal({ sale, onClose }: Props) {
           className="tax-invoice-modal-toolbar"
           style={{
             display: "flex",
-            gap: 10,
-            justifyContent: "flex-end",
+            gap: 12,
+            justifyContent: "space-between",
+            alignItems: "center",
             marginBottom: 10,
             flexWrap: "wrap",
           }}
         >
-          <button
-            type="button"
-            className="tax-invoice-btn-primary"
-            onClick={handlePrint}
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--muted)",
+              userSelect: "none",
+            }}
           >
-            Print
-          </button>
-          <button type="button" className="tax-invoice-btn-secondary" onClick={onClose}>
-            Close
-          </button>
+            {isTax ? "Tax invoice (CGST / SGST / IGST)" : "Bill"}
+          </span>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="tax-invoice-btn-primary"
+              onClick={handlePrint}
+            >
+              Print
+            </button>
+            <button type="button" className="tax-invoice-btn-secondary" onClick={onClose}>
+              Close
+            </button>
+          </div>
         </div>
 
         <div id="tax-invoice-print-area" className="tax-invoice-print-shell">
-          <h2 id="tax-invoice-title" className="visually-hidden-for-print">
-            Tax invoice {sale.saleNumber}
+          <h2 id={headingId} className="visually-hidden-for-print">
+            {docTitle}
           </h2>
-          <TaxInvoiceDocument sale={sale} />
+          {isTax ? (
+            <TaxInvoiceDocument sale={sale} />
+          ) : (
+            <NormalInvoiceDocument sale={sale} />
+          )}
         </div>
       </div>
-      <style>{`
-        .visually-hidden-for-print {
-          position: absolute;
-          width: 1px;
-          height: 1px;
-          padding: 0;
-          margin: -1px;
-          overflow: hidden;
-          clip: rect(0, 0, 0, 0);
-          white-space: nowrap;
-          border: 0;
-        }
-        @media print {
-          .visually-hidden-for-print { display: none !important; }
-        }
-      `}</style>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }

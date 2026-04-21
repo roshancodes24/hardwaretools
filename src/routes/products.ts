@@ -71,11 +71,28 @@ router.post(
       req.validatedBody as BatchCreateProductsValidated;
 
     try {
-      // Create products in a single transaction (SKU assigned per row from category sequence)
+      // Create products in a single transaction (explicit SKU when provided and unique; else category sequence)
       const created = await prisma.$transaction(async (tx) => {
         const results = [];
         for (const item of items) {
-          const sku = await generateNextSku(tx, item.category);
+          const trimmedSku =
+            typeof item.sku === "string" && item.sku.trim() !== ""
+              ? item.sku.trim()
+              : undefined;
+
+          let sku: string;
+          if (trimmedSku) {
+            const clash = await tx.product.findUnique({
+              where: { sku: trimmedSku },
+            });
+            if (clash) {
+              throw new Error(`SKU "${trimmedSku}" is already in use.`);
+            }
+            sku = trimmedSku;
+          } else {
+            sku = await generateNextSku(tx, item.category);
+          }
+
           const product = await tx.product.create({
             data: {
               sku,
@@ -89,8 +106,11 @@ router.post(
               allowsFractional: item.allowsFractional,
               sellingPrice: item.sellingPrice != null ? item.sellingPrice : null,
               costPrice: item.costPrice != null ? item.costPrice : null,
-              taxRate: item.taxRate != null ? item.taxRate : null,
+              cgstPercent: item.cgstPercent != null ? item.cgstPercent : null,
+              sgstPercent: item.sgstPercent != null ? item.sgstPercent : null,
+              igstPercent: item.igstPercent != null ? item.igstPercent : null,
               reorderLevel: item.reorderLevel != null ? item.reorderLevel : null,
+              hsnCode: item.hsnCode != null ? item.hsnCode : null,
               currentStock: item.currentStock,
               units: {
                 create: {
@@ -145,7 +165,9 @@ router.patch(
       if (body.brand !== undefined) data.brand = body.brand;
       if (body.sellingPrice !== undefined) data.sellingPrice = body.sellingPrice;
       if (body.costPrice !== undefined) data.costPrice = body.costPrice;
-      if (body.taxRate !== undefined) data.taxRate = body.taxRate;
+      if (body.cgstPercent !== undefined) data.cgstPercent = body.cgstPercent;
+      if (body.sgstPercent !== undefined) data.sgstPercent = body.sgstPercent;
+      if (body.igstPercent !== undefined) data.igstPercent = body.igstPercent;
       if (body.reorderLevel !== undefined) data.reorderLevel = body.reorderLevel;
       if (body.allowsFractional !== undefined) {
         data.allowsFractional = body.allowsFractional;
@@ -157,6 +179,7 @@ router.patch(
         };
       }
       if (body.status !== undefined) data.status = body.status;
+      if (body.hsnCode !== undefined) data.hsnCode = body.hsnCode;
 
       const updated = await prisma.product.update({
         where: { id },

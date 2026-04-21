@@ -11,6 +11,10 @@ export type UiProduct = {
   lowStock: number;
   baseUnitId: string;
   allowsFractionalSale: boolean;
+  cgstPercent: number | null;
+  sgstPercent: number | null;
+  igstPercent: number | null;
+  hsnCode: string | null;
 };
 
 export function mapApiProduct(p: ApiProduct): UiProduct {
@@ -21,6 +25,12 @@ export function mapApiProduct(p: ApiProduct): UiProduct {
 
   const low = Number(p.reorderLevel);
   const lowStock = Number.isFinite(low) && low > 0 ? low : 10;
+
+  const numOrNull = (s: string | null | undefined) => {
+    if (s == null || s === "") return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  };
 
   return {
     id: p.id,
@@ -33,5 +43,9 @@ export function mapApiProduct(p: ApiProduct): UiProduct {
     lowStock,
     baseUnitId: base.id,
     allowsFractionalSale: base.allowsFractionalSale,
+    cgstPercent: numOrNull(p.cgstPercent),
+    sgstPercent: numOrNull(p.sgstPercent),
+    igstPercent: numOrNull(p.igstPercent),
+    hsnCode: p.hsnCode?.trim() ? p.hsnCode.trim() : null,
   };
 }

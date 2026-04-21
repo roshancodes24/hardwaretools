@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ProductImportPatch } from "../lib/importProducts";
+import {
+  parseProductImportFile,
+  PRODUCT_IMPORT_TEMPLATE_CSV,
+} from "../lib/importProducts";
 import { api } from "../api/client";
 import { isApiError } from "../api/errors";
 import type { ApiProduct, UpdateProductBody } from "../api/types";
@@ -6,6 +11,7 @@ import {
   PRODUCT_CATEGORIES,
   type ProductCategory,
 } from "../productCategories";
+import type { ConfirmOptions } from "../useConfirm";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -28,6 +34,9 @@ const COMMON_UNIT_CODES = [
 
 /** Rows per page in the main product catalog table */
 const PRODUCTS_TABLE_PAGE_SIZE = 50;
+
+/** Max rows per file import (batch create limit safety). */
+const MAX_IMPORT_ROWS = 500;
 
 function suggestUnitKind(code: string): UnitKindValue {
   const c = code.toLowerCase();
@@ -62,6 +71,8 @@ type ProductStatusUi = "ACTIVE" | "INACTIVE";
 
 type ProductDraft = {
   _id: string;
+  /** Create only: optional manual SKU (blank → server assigns). */
+  sku: string;
   name: string;
   description: string;
   category: string;
@@ -71,9 +82,12 @@ type ProductDraft = {
   allowsFractional: boolean;
   sellingPrice: string;
   costPrice: string;
-  taxRate: string;
+  cgstPercent: string;
+  sgstPercent: string;
+  igstPercent: string;
   currentStock: string;
   reorderLevel: string;
+  hsnCode: string;
   status: ProductStatusUi;
 };
 
@@ -84,6 +98,7 @@ type RowErrors = Record<string, string>;
 function newDraft(overrides: Partial<ProductDraft> = {}): ProductDraft {
   return {
     _id: Math.random().toString(36).slice(2),
+    sku: "",
     name: "",
     description: "",
     category: "Electrical",
@@ -93,9 +108,12 @@ function newDraft(overrides: Partial<ProductDraft> = {}): ProductDraft {
     allowsFractional: false,
     sellingPrice: "",
     costPrice: "",
-    taxRate: "18",
+    cgstPercent: "9",
+    sgstPercent: "9",
+    igstPercent: "",
     currentStock: "0",
     reorderLevel: "",
+    hsnCode: "",
     status: "ACTIVE",
     ...overrides,
   };
@@ -110,6 +128,7 @@ function productToDraft(p: ApiProduct): ProductDraft {
     : "PIECE";
   return {
     _id: p.id,
+    sku: "",
     name: p.name,
     description: p.description ?? "",
     category: cat,
@@ -119,9 +138,12 @@ function productToDraft(p: ApiProduct): ProductDraft {
     allowsFractional: p.allowsFractional,
     sellingPrice: p.sellingPrice != null ? String(p.sellingPrice) : "",
     costPrice: p.costPrice != null ? String(p.costPrice) : "",
-    taxRate: p.taxRate != null ? String(p.taxRate) : "",
+    cgstPercent: p.cgstPercent != null ? String(p.cgstPercent) : "",
+    sgstPercent: p.sgstPercent != null ? String(p.sgstPercent) : "",
+    igstPercent: p.igstPercent != null ? String(p.igstPercent) : "",
     currentStock: String(p.currentStock),
     reorderLevel: p.reorderLevel != null ? String(p.reorderLevel) : "",
+    hsnCode: p.hsnCode?.trim() ?? "",
     status: p.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
   };
 }
@@ -134,10 +156,13 @@ function draftToUpdateBody(d: ProductDraft): UpdateProductBody {
     status: d.status,
     description: d.description.trim() ? d.description.trim() : null,
     brand: d.brand.trim() || null,
+    hsnCode: d.hsnCode.trim() ? d.hsnCode.trim() : null,
   };
   if (d.sellingPrice !== "") o.sellingPrice = Number(d.sellingPrice);
   if (d.costPrice !== "") o.costPrice = Number(d.costPrice);
-  if (d.taxRate !== "") o.taxRate = Number(d.taxRate);
+  if (d.cgstPercent !== "") o.cgstPercent = Number(d.cgstPercent);
+  if (d.sgstPercent !== "") o.sgstPercent = Number(d.sgstPercent);
+  if (d.igstPercent !== "") o.igstPercent = Number(d.igstPercent);
   if (d.reorderLevel !== "") o.reorderLevel = Number(d.reorderLevel);
   return o;
 }
@@ -172,14 +197,32 @@ function validateDraft(d: ProductDraft): RowErrors {
     if (val !== "" && (isNaN(Number(val)) || Number(val) < 0))
       e[field] = `${label} must be ≥ 0`;
   }
-  if (
-    d.taxRate !== "" &&
-    (isNaN(Number(d.taxRate)) || Number(d.taxRate) < 0 || Number(d.taxRate) > 100)
-  ) {
-    e.taxRate = "Must be 0–100";
+  const pctFields: [keyof ProductDraft, string][] = [
+    ["cgstPercent", "CGST"],
+    ["sgstPercent", "SGST"],
+    ["igstPercent", "IGST"],
+  ];
+  for (const [field, label] of pctFields) {
+    const val = d[field] as string;
+    if (
+      val !== "" &&
+      (isNaN(Number(val)) || Number(val) < 0 || Number(val) > 100)
+    ) {
+      e[field] = `${label} % must be 0–100`;
+    }
   }
   if (d.status !== "ACTIVE" && d.status !== "INACTIVE") {
     e.status = "Invalid status";
+  }
+  if (d.hsnCode.trim().length > 16) {
+    e.hsnCode = "HSN Code is too long (max 16 characters)";
+  }
+  const skuT = d.sku.trim();
+  if (skuT.length > 0) {
+    if (skuT.length > 80) e.sku = "Too long (max 80 characters)";
+    else if (!/^[A-Za-z0-9][A-Za-z0-9._\-\/\s]*$/.test(skuT)) {
+      e.sku = "Use letters, numbers, spaces, . _ - / only";
+    }
   }
   return e;
 }
@@ -208,9 +251,63 @@ function statusOf(p: ApiProduct): "ok" | "low" | "out" {
   return "ok";
 }
 
+function patchImportToDraft(patch: ProductImportPatch): ProductDraft {
+  const bc = (patch.baseUnitCode ?? "").trim() || "pc";
+  const uk =
+    patch.unitKind && UNIT_KINDS.includes(patch.unitKind as UnitKindValue)
+      ? (patch.unitKind as UnitKindValue)
+      : suggestUnitKind(bc);
+  const catRaw = (patch.category ?? "").trim();
+  const cat = PRODUCT_CATEGORIES.includes(catRaw as ProductCategory)
+    ? (catRaw as ProductCategory)
+    : "Electrical";
+  return newDraft({
+    sku: (patch.sku ?? "").trim(),
+    name: patch.name.trim(),
+    description: (patch.description ?? "").trim(),
+    category: cat,
+    brand: (patch.brand ?? "").trim(),
+    baseUnitCode: bc,
+    unitKind: uk,
+    allowsFractional: patch.allowsFractional ?? false,
+    sellingPrice:
+      patch.sellingPrice != null && String(patch.sellingPrice).trim() !== ""
+        ? String(patch.sellingPrice).trim()
+        : "",
+    costPrice:
+      patch.costPrice != null && String(patch.costPrice).trim() !== ""
+        ? String(patch.costPrice).trim()
+        : "",
+    cgstPercent:
+      patch.cgstPercent != null && String(patch.cgstPercent).trim() !== ""
+        ? String(patch.cgstPercent).trim()
+        : "9",
+    sgstPercent:
+      patch.sgstPercent != null && String(patch.sgstPercent).trim() !== ""
+        ? String(patch.sgstPercent).trim()
+        : "9",
+    igstPercent:
+      patch.igstPercent != null && String(patch.igstPercent).trim() !== ""
+        ? String(patch.igstPercent).trim()
+        : "",
+    currentStock:
+      patch.currentStock != null && String(patch.currentStock).trim() !== ""
+        ? String(patch.currentStock).trim()
+        : "0",
+    reorderLevel:
+      patch.reorderLevel != null && String(patch.reorderLevel).trim() !== ""
+        ? String(patch.reorderLevel).trim()
+        : "",
+    hsnCode: (patch.hsnCode ?? "").trim(),
+    status: patch.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
+  });
+}
+
 function draftToPayloadItem(d: ProductDraft) {
+  const skuTrim = d.sku.trim();
   return {
     name: d.name.trim(),
+    ...(skuTrim !== "" ? { sku: skuTrim } : {}),
     description: d.description.trim() || undefined,
     category: d.category.trim() as ProductCategory,
     brand: d.brand.trim() || undefined,
@@ -219,9 +316,12 @@ function draftToPayloadItem(d: ProductDraft) {
     allowsFractional: d.allowsFractional,
     sellingPrice: d.sellingPrice !== "" ? Number(d.sellingPrice) : undefined,
     costPrice: d.costPrice !== "" ? Number(d.costPrice) : undefined,
-    taxRate: d.taxRate !== "" ? Number(d.taxRate) : undefined,
+    cgstPercent: d.cgstPercent !== "" ? Number(d.cgstPercent) : undefined,
+    sgstPercent: d.sgstPercent !== "" ? Number(d.sgstPercent) : undefined,
+    igstPercent: d.igstPercent !== "" ? Number(d.igstPercent) : undefined,
     currentStock: d.currentStock !== "" ? Number(d.currentStock) : 0,
     reorderLevel: d.reorderLevel !== "" ? Number(d.reorderLevel) : undefined,
+    hsnCode: d.hsnCode.trim() || undefined,
   };
 }
 
@@ -384,7 +484,7 @@ function ProductModal({
             <div style={{ fontSize: 12, color: "#78716c", marginTop: 2 }}>
               {mode === "edit" && skuDisplay
                 ? `SKU ${skuDisplay} cannot be changed.`
-                : "SKU is assigned automatically when you save (e.g. EL-00001, HW-00001, PT-00001 by category)."}
+                : "Enter a custom SKU below or leave blank for auto codes (EL-/HW-/PT- by category)."}
             </div>
           </div>
           <button
@@ -428,6 +528,18 @@ function ProductModal({
             <MField label="Product Name" required error={errors.name}>
               {inp("name", "text", "e.g. Copper Wire 1.5mm")}
             </MField>
+            {mode === "add" ? (
+              <MField label="SKU (optional)" error={errors.sku}>
+                <input
+                  value={draft.sku}
+                  onChange={(e) => onChange("sku", e.target.value)}
+                  type="text"
+                  placeholder="Your code, or leave blank for auto (e.g. EL-00042)"
+                  autoCapitalize="characters"
+                  style={errors.sku ? mInputErr : mInput}
+                />
+              </MField>
+            ) : null}
             <div style={two}>
               <MField label="Category" required error={errors.category}>
                 <select
@@ -446,6 +558,9 @@ function ProductModal({
                 {inp("brand", "text", "e.g. PowerLine")}
               </MField>
             </div>
+            <MField label="HSN Code" error={errors.hsnCode}>
+              {inp("hsnCode", "text", "e.g. 8544 — optional (GST)")}
+            </MField>
             <MField label="Description" error={errors.description}>
               <textarea
                 value={draft.description}
@@ -540,8 +655,14 @@ function ProductModal({
               <MField label="Cost Price (₹)" error={errors.costPrice}>
                 {inp("costPrice", "number", "0.00")}
               </MField>
-              <MField label="Tax Rate (%)" error={errors.taxRate}>
-                {inp("taxRate", "number", "18")}
+              <MField label="CGST@ %" error={errors.cgstPercent}>
+                {inp("cgstPercent", "number", "e.g. 9")}
+              </MField>
+              <MField label="SGST@ %" error={errors.sgstPercent}>
+                {inp("sgstPercent", "number", "e.g. 9")}
+              </MField>
+              <MField label="IGST@ %" error={errors.igstPercent}>
+                {inp("igstPercent", "number", "e.g. 18")}
               </MField>
             </div>
           </div>
@@ -672,10 +793,12 @@ function BatchSelectCell({
 export function ProductsPage({
   onProductsCreated,
   allowMutations = true,
+  confirm,
 }: {
   onProductsCreated: () => Promise<void>;
   /** ADMIN: add/edit/delete/batch. CASHIER: view-only catalog + stock. */
   allowMutations?: boolean;
+  confirm: (opts: ConfirmOptions) => Promise<boolean>;
 }) {
   // Existing products
   const [rawProducts, setRawProducts] = useState<ApiProduct[]>([]);
@@ -698,6 +821,9 @@ export function ProductsPage({
 
   // Success feedback
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [importBanner, setImportBanner] = useState<string | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const loadProducts = async () => {
     setLoadingProducts(true);
@@ -721,7 +847,8 @@ export function ProductsPage({
         p.name.toLowerCase().includes(q) ||
         p.sku.toLowerCase().includes(q) ||
         (p.category ?? "").toLowerCase().includes(q) ||
-        (p.brand ?? "").toLowerCase().includes(q)
+        (p.brand ?? "").toLowerCase().includes(q) ||
+        (p.hsnCode ?? "").toLowerCase().includes(q)
     );
   }, [rawProducts, search]);
 
@@ -788,21 +915,23 @@ export function ProductsPage({
   };
 
   const handleDeleteProduct = async (p: ApiProduct) => {
-    if (
-      !window.confirm(
-        `Delete product ${p.sku} — ${p.name}?\n\nThis cannot be undone. You can set status to Inactive instead if the product has sales history.`
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: `Delete product ${p.sku} — ${p.name}?`,
+      message:
+        "This cannot be undone. You can set status to Inactive instead if the product has sales history.",
+      confirmLabel: "Delete",
+      variant: "danger",
+    });
+    if (!ok) return;
     setSavedMsg(null);
+    setDeleteError(null);
     try {
       await api.deleteProduct(p.id);
       setSavedMsg(`Deleted ${p.sku}.`);
       await loadProducts();
       await onProductsCreated();
     } catch (e) {
-      window.alert(isApiError(e) ? e.message : "Could not delete product");
+      setDeleteError(isApiError(e) ? e.message : "Could not delete product");
     }
   };
 
@@ -821,6 +950,7 @@ export function ProductsPage({
         await loadProducts();
         await onProductsCreated();
       } else {
+        const hadCustomSku = modalDraft.sku.trim() !== "";
         const result = await api.batchCreateProducts({
           products: [draftToPayloadItem(modalDraft)],
         });
@@ -828,7 +958,9 @@ export function ProductsPage({
         const sku = result.products[0]?.sku;
         setSavedMsg(
           sku
-            ? `Product created — assigned SKU ${sku}.`
+            ? hadCustomSku
+              ? `Product created with SKU ${sku}.`
+              : `Product created — assigned SKU ${sku}.`
             : "Product created successfully."
         );
         await loadProducts();
@@ -876,6 +1008,79 @@ export function ProductsPage({
         const c = { ...e }; delete c[field as string]; return c;
       })
     );
+  };
+
+  const downloadImportTemplate = () => {
+    const bom = "\uFEFF";
+    const blob = new Blob([bom + PRODUCT_IMPORT_TEMPLATE_CSV], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "product-import-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFileSelected = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setImportBanner(null);
+    try {
+      const { patches, rowErrors, skippedBlankRows, warnings } =
+        await parseProductImportFile(file);
+      const capped = patches.slice(0, MAX_IMPORT_ROWS);
+      const drafts = capped.map(patchImportToDraft);
+      const validationIssues: string[] = [];
+      drafts.forEach((d, i) => {
+        const ve = validateDraft(d);
+        const keys = Object.keys(ve);
+        if (keys.length) {
+          validationIssues.push(
+            `Data row ${i + 1}: ${keys.map((k) => ve[k]).join("; ")}`
+          );
+        }
+      });
+      if (drafts.length === 0) {
+        const msg =
+          rowErrors.length > 0
+            ? rowErrors.map((r) => `Row ${r.row}: ${r.message}`).join("\n")
+            : "No product rows found. Use row 1 for headers (include name) and add data from row 2.";
+        window.alert(msg);
+        return;
+      }
+      setPendingRows((prev) => [...prev, ...drafts]);
+      const parts = [
+        `Imported ${drafts.length} product line(s) into batch entry. Save batch when ready.`,
+      ];
+      if (patches.length > MAX_IMPORT_ROWS) {
+        parts.push(`Only the first ${MAX_IMPORT_ROWS} rows were loaded.`);
+      }
+      if (skippedBlankRows > 0) {
+        parts.push(`${skippedBlankRows} blank row(s) skipped.`);
+      }
+      if (rowErrors.length > 0) {
+        parts.push(
+          `Parse notes: ${rowErrors.map((r) => `row ${r.row}: ${r.message}`).join("; ")}`
+        );
+      }
+      if (validationIssues.length > 0) {
+        parts.push(`Fix before save: ${validationIssues.join(" | ")}`);
+      }
+      if (warnings.length > 0) {
+        parts.push(warnings.join(" "));
+      }
+      setImportBanner(parts.join(" "));
+      setSavedMsg(null);
+    } catch (err) {
+      window.alert(
+        err instanceof Error ? err.message : "Could not read that file."
+      );
+    }
   };
 
   const handleBatchSaveAll = async () => {
@@ -968,7 +1173,48 @@ export function ProductsPage({
             )}
           </div>
           {allowMutations ? (
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                style={{ display: "none" }}
+                onChange={(e) => void handleImportFileSelected(e)}
+              />
+              <button
+                type="button"
+                onClick={() => importFileRef.current?.click()}
+                style={{
+                  height: 36,
+                  padding: "0 14px",
+                  background: "#fff",
+                  border: "1px solid #e7e5e4",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#44403c",
+                  cursor: "pointer",
+                }}
+              >
+                Import CSV / Excel
+              </button>
+              <button
+                type="button"
+                onClick={downloadImportTemplate}
+                style={{
+                  height: 36,
+                  padding: "0 14px",
+                  background: "#fafaf9",
+                  border: "1px solid #e7e5e4",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#78716c",
+                  cursor: "pointer",
+                }}
+              >
+                Download template
+              </button>
               <button
                 type="button" onClick={openModal}
                 style={{
@@ -984,7 +1230,21 @@ export function ProductsPage({
           ) : null}
         </div>
 
-        {/* Saved feedback */}
+        {/* Saved / error feedback */}
+        {deleteError && (
+          <div
+            style={{
+              background: "rgba(220, 38, 38, 0.12)",
+              border: "1px solid rgba(220, 38, 38, 0.35)",
+              color: "#b91c1c",
+              padding: "10px 14px",
+              borderRadius: 8,
+              fontSize: 13,
+            }}
+          >
+            {deleteError}
+          </div>
+        )}
         {savedMsg && (
           <div style={{
             background: "rgba(37,99,235,0.10)", color: "#2563eb",
@@ -992,6 +1252,35 @@ export function ProductsPage({
           }}>
             {savedMsg}
           </div>
+        )}
+        {importBanner && (
+          <div
+            style={{
+              background: "#fefce8",
+              border: "1px solid #fde047",
+              color: "#854d0e",
+              padding: "10px 14px",
+              borderRadius: 8,
+              fontSize: 13,
+              lineHeight: 1.45,
+            }}
+          >
+            {importBanner}
+          </div>
+        )}
+        {allowMutations && (
+          <p style={{ margin: 0, fontSize: 12, color: "#78716c", maxWidth: 720 }}>
+            <strong>Import:</strong> First row must be column headers. Required:{" "}
+            <code style={{ fontSize: 11 }}>name</code>. Include{" "}
+            <code style={{ fontSize: 11 }}>sku</code>,{" "}
+            <code style={{ fontSize: 11 }}>item code</code>, or{" "}
+            <code style={{ fontSize: 11 }}>product code</code> to keep your SKUs; otherwise the
+            system assigns codes (e.g. EL-00001). In Excel, format the SKU column as{" "}
+            <strong>Text</strong> so values like <code style={{ fontSize: 11 }}>00123</code> are
+            not changed to numbers. Other columns match the batch form (category, brand, unit,
+            GST %, stock, HSN Code, …). Rows are added to <strong>Batch entry</strong> — review
+            and click <strong>Save all</strong>.
+          </p>
         )}
 
         {/* ── Batch rows ─────────────────────────────────────────────────── */}
@@ -1011,7 +1300,8 @@ export function ProductsPage({
                   Batch entry
                 </span>
                 <span style={{ fontSize: 12, color: "#78716c", marginLeft: 6 }}>
-                  {pendingRows.length} row{pendingRows.length !== 1 ? "s" : ""} · SKUs assigned on save
+                  {pendingRows.length} row{pendingRows.length !== 1 ? "s" : ""} · leave SKU blank
+                  to auto-assign on save
                 </span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1054,7 +1344,11 @@ export function ProductsPage({
                 <thead>
                   <tr>
                     {([
-                      ["Name *", 200], ["Category", 110], ["Brand", 110],
+                      ["Name *", 200],
+                      ["SKU", 120],
+                      ["Category", 110],
+                      ["Brand", 110],
+                      ["HSN Code", 88],
                       ["Unit *", 104], ["Kind *", 100], ["Frac.", 54],
                       ["Price ₹", 88], ["Cost ₹", 88],
                       ["Stock", 88], ["", 112],
@@ -1070,6 +1364,14 @@ export function ProductsPage({
                       <tr key={row._id} style={{ borderBottom: "1px solid #f5f4f0" }}>
                         <td style={tdStyle}><BatchCell value={row.name} onChange={(v) => updateBatchRow(i, "name", v)} error={errs.name} placeholder="Product name" /></td>
                         <td style={tdStyle}>
+                          <BatchCell
+                            value={row.sku}
+                            onChange={(v) => updateBatchRow(i, "sku", v)}
+                            error={errs.sku}
+                            placeholder="Auto"
+                          />
+                        </td>
+                        <td style={tdStyle}>
                           <BatchSelectCell
                             value={row.category}
                               options={categoryOptions}
@@ -1078,6 +1380,7 @@ export function ProductsPage({
                           />
                         </td>
                         <td style={tdStyle}><BatchCell value={row.brand} onChange={(v) => updateBatchRow(i, "brand", v)} placeholder="Brand" /></td>
+                        <td style={tdStyle}><BatchCell value={row.hsnCode} onChange={(v) => updateBatchRow(i, "hsnCode", v)} error={errs.hsnCode} placeholder="8544" /></td>
                         <td style={tdStyle}>
                           <BatchSelectCell
                             value={row.baseUnitCode}
@@ -1127,7 +1430,7 @@ export function ProductsPage({
         {/* ── Existing products ──────────────────────────────────────────── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minHeight: 200 }}>
           <input
-            placeholder="Search by name, SKU, category or brand…"
+            placeholder="Search by name, SKU, HSN Code, category or brand…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
@@ -1163,8 +1466,8 @@ export function ProductsPage({
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e7e5e4" }}>
                     {(allowMutations
-                      ? ["SKU", "Name", "Category", "Brand", "Unit", "Price", "Cost", "Stock", "Status", "Actions"]
-                      : ["SKU", "Name", "Category", "Brand", "Unit", "Price", "Cost", "Stock", "Status"]
+                      ? ["SKU", "Name", "Category", "Brand", "HSN Code", "Unit", "Price", "Cost", "Stock", "Status", "Actions"]
+                      : ["SKU", "Name", "Category", "Brand", "HSN Code", "Unit", "Price", "Cost", "Stock", "Status"]
                     ).map((h) => (
                       <th key={h} style={{
                         padding: "10px 14px", textAlign: "left", fontWeight: 600,
@@ -1189,6 +1492,7 @@ export function ProductsPage({
                         <td style={{ padding: "10px 14px", fontWeight: 500, color: "#1c1917", maxWidth: 240 }}>{p.name}</td>
                         <td style={{ padding: "10px 14px", color: "#78716c" }}>{p.category ?? "—"}</td>
                         <td style={{ padding: "10px 14px", color: "#78716c" }}>{p.brand ?? "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "#78716c", fontFamily: "monospace", fontSize: 12 }}>{p.hsnCode?.trim() || "—"}</td>
                         <td style={{ padding: "10px 14px", color: "#78716c", whiteSpace: "nowrap" }}>{p.baseUnitCode}</td>
                         <td style={{ padding: "10px 14px", fontFamily: "monospace", whiteSpace: "nowrap" }}>{fmtPrice(p.sellingPrice)}</td>
                         <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "#78716c", whiteSpace: "nowrap" }}>{fmtPrice(p.costPrice)}</td>

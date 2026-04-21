@@ -4,9 +4,12 @@ import {
   getDashboardTimeSeries,
   getGrossMarginReport,
   getPurchasesReport,
+  getSalesByCustomerReport,
   getSalesByProductReport,
   getSalesRevenueTimeSeries,
   getSalesSummaryReport,
+  getSupplierPaymentsReport,
+  getTaxInvoiceSalesReport,
   parseReportRange,
 } from "../services/reports";
 import type { SalesRevenueGranularity } from "../services/reports";
@@ -48,6 +51,16 @@ router.get("/sales-summary", async (req, res) => {
   }
 });
 
+router.get("/tax-invoice-sales", async (req, res) => {
+  try {
+    const range = reportRangeOrThrow(req);
+    const data = await getTaxInvoiceSalesReport(range);
+    res.status(200).json(data);
+  } catch (error) {
+    sendReportError(res, error, "GET /reports/tax-invoice-sales");
+  }
+});
+
 router.get("/sales-by-product", async (req, res) => {
   try {
     const range = reportRangeOrThrow(req);
@@ -55,6 +68,26 @@ router.get("/sales-by-product", async (req, res) => {
     res.status(200).json(data);
   } catch (error) {
     sendReportError(res, error, "GET /reports/sales-by-product");
+  }
+});
+
+router.get("/sales-by-customer", async (req, res) => {
+  try {
+    const range = reportRangeOrThrow(req);
+    const data = await getSalesByCustomerReport(range);
+    res.status(200).json(data);
+  } catch (error) {
+    sendReportError(res, error, "GET /reports/sales-by-customer");
+  }
+});
+
+router.get("/supplier-payments", async (req, res) => {
+  try {
+    const range = reportRangeOrThrow(req);
+    const data = await getSupplierPaymentsReport(range);
+    res.status(200).json(data);
+  } catch (error) {
+    sendReportError(res, error, "GET /reports/supplier-payments");
   }
 });
 

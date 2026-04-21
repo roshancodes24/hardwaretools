@@ -15,7 +15,9 @@ import type {
   CreateSupplierBody,
   OutstandingSaleSummary,
   ProductRecord,
-  PurchaseRecord,
+  PurchaseDetail,
+  PurchasesListResponse,
+  RecordPurchasePaymentBody,
   RecordSalePaymentBody,
   SaleDetail,
   SaleSearchResult,
@@ -23,12 +25,16 @@ import type {
   LoginResponse,
   UpdatePromotionBody,
   SalesSummaryReport,
+  SalesByCustomerReport,
   SalesByProductReport,
+  SupplierPaymentsReport,
   PurchasesReport,
   GrossMarginReport,
   DashboardTimeSeriesResponse,
   SalesRevenueGranularity,
   SalesRevenueSeriesResponse,
+  RecentActivityResponse,
+  TaxInvoiceSalesReport,
 } from "./types";
 
 function normalizeApiBase(raw: string | undefined): string {
@@ -259,11 +265,43 @@ export const api = {
     );
   },
 
-  createPurchase(payload: CreatePurchaseBody): Promise<PurchaseRecord> {
-    return request<PurchaseRecord>("/api/purchases", {
+  createPurchase(payload: CreatePurchaseBody): Promise<PurchaseDetail> {
+    return request<PurchaseDetail>("/api/purchases", {
       method: "POST",
       body: JSON.stringify(payload),
     });
+  },
+
+  getPurchases(params?: {
+    owingOnly?: boolean;
+    limit?: number;
+  }): Promise<PurchasesListResponse> {
+    const q = new URLSearchParams();
+    if (params?.owingOnly) q.set("owingOnly", "1");
+    if (params?.limit != null) q.set("limit", String(params.limit));
+    const qs = q.toString();
+    return request<PurchasesListResponse>(
+      `/api/purchases${qs ? `?${qs}` : ""}`
+    );
+  },
+
+  getPurchase(id: string): Promise<PurchaseDetail> {
+    return request<PurchaseDetail>(
+      `/api/purchases/${encodeURIComponent(id)}`
+    );
+  },
+
+  recordPurchasePayment(
+    purchaseId: string,
+    payload: RecordPurchasePaymentBody
+  ): Promise<PurchaseDetail> {
+    return request<PurchaseDetail>(
+      `/api/purchases/${encodeURIComponent(purchaseId)}/payments`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    );
   },
 
   createStockAdjustment(
@@ -304,6 +342,26 @@ export const api = {
     );
   },
 
+  getReportSalesByCustomer(
+    from: string,
+    to: string
+  ): Promise<SalesByCustomerReport> {
+    const q = new URLSearchParams({ from, to });
+    return request<SalesByCustomerReport>(
+      `/api/reports/sales-by-customer?${q.toString()}`
+    );
+  },
+
+  getReportSupplierPayments(
+    from: string,
+    to: string
+  ): Promise<SupplierPaymentsReport> {
+    const q = new URLSearchParams({ from, to });
+    return request<SupplierPaymentsReport>(
+      `/api/reports/supplier-payments?${q.toString()}`
+    );
+  },
+
   getReportPurchases(from: string, to: string): Promise<PurchasesReport> {
     const q = new URLSearchParams({ from, to });
     return request<PurchasesReport>(`/api/reports/purchases?${q.toString()}`);
@@ -313,6 +371,16 @@ export const api = {
     const q = new URLSearchParams({ from, to });
     return request<GrossMarginReport>(
       `/api/reports/gross-margin?${q.toString()}`
+    );
+  },
+
+  getReportTaxInvoiceSales(
+    from: string,
+    to: string
+  ): Promise<TaxInvoiceSalesReport> {
+    const q = new URLSearchParams({ from, to });
+    return request<TaxInvoiceSalesReport>(
+      `/api/reports/tax-invoice-sales?${q.toString()}`
     );
   },
 
@@ -335,6 +403,15 @@ export const api = {
     if (buckets != null) q.set("buckets", String(buckets));
     return request<SalesRevenueSeriesResponse>(
       `/api/reports/sales-revenue-series?${q.toString()}`
+    );
+  },
+
+  getRecentActivity(limit?: number): Promise<RecentActivityResponse> {
+    const q = new URLSearchParams();
+    if (limit != null) q.set("limit", String(limit));
+    const qs = q.toString();
+    return request<RecentActivityResponse>(
+      `/api/sales/recent-activity${qs ? `?${qs}` : ""}`
     );
   },
 };

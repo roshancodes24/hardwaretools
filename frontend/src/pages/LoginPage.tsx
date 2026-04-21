@@ -93,7 +93,7 @@ export function LoginPage({ onLoggedIn }: LoginPageProps) {
             color: "var(--text)",
           }}
         >
-          Raj Hardware, Electrical and Paint
+          Santosh Electricals Works
         </h1>
         <p style={{ margin: "0 0 22px", fontSize: 13, color: "var(--muted)" }}>
           Sign in to continue

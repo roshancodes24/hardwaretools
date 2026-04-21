@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react";
 import { api } from "./api/client";
 import { isApiError } from "./api/errors";
-import type { SalesRevenueBucket, SalesRevenueGranularity } from "./api/types";
+import type {
+  RecentActivityItem,
+  SalesRevenueBucket,
+  SalesRevenueGranularity,
+} from "./api/types";
 import type { Tab } from "./Sidebar";
+import type { UiProduct } from "./lib/mapProduct";
 import { SimpleLineChart } from "./components/SimpleLineChart";
 
 interface HomeViewProps {
   onTabChange: (tab: Tab) => void;
   /** Dashboard stats + revenue chart for admins only; cashiers see shortcuts and activity. */
   isAdmin: boolean;
+  /** Live catalog for stock alert counts (same source as POS / inventory). */
+  products: UiProduct[];
 }
 
 const fmtInr = (n: number) =>
@@ -16,6 +23,28 @@ const fmtInr = (n: number) =>
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   })}`;
+
+function formatActivityTimeIndia(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "short",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(new Date(iso));
+  } catch {
+    return "—";
+  }
+}
+
+function activityAmountCell(row: RecentActivityItem): string {
+  if (row.amountNote) return row.amountNote;
+  const n = Number.parseFloat(row.amount);
+  if (!Number.isFinite(n)) return "—";
+  return fmtInr(n);
+}
 
 function fmtAxisRupee(n: number): string {
   if (!Number.isFinite(n) || n < 0) return "₹0";
@@ -45,15 +74,27 @@ function chartSubtitleFor(granularity: SalesRevenueGranularity): string {
   return "Completed sales by calendar month (IST), last 12 months";
 }
 
-export function HomeView({ onTabChange, isAdmin }: HomeViewProps) {
+function stockAlertCounts(products: UiProduct[]): {
+  lowStockItems: number;
+  outOfStockItems: number;
+} {
+  let lowStockItems = 0;
+  let outOfStockItems = 0;
+  for (const p of products) {
+    if (p.stock === 0) outOfStockItems += 1;
+    else if (p.stock <= p.lowStock) lowStockItems += 1;
+  }
+  return { lowStockItems, outOfStockItems };
+}
+
+export function HomeView({ onTabChange, isAdmin, products }: HomeViewProps) {
   const [viewBy, setViewBy] = useState<SalesRevenueGranularity>("day");
   const [revenueSeries, setRevenueSeries] = useState<SalesRevenueBucket[]>([]);
   const [todaySnap, setTodaySnap] = useState<SalesRevenueBucket | null>(null);
   const [dashLoading, setDashLoading] = useState(true);
   const [dashError, setDashError] = useState<string | null>(null);
 
-  const lowStockItems = 9;
-  const outOfStockItems = 3;
+  const { lowStockItems, outOfStockItems } = stockAlertCounts(products);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -92,24 +133,46 @@ export function HomeView({ onTabChange, isAdmin }: HomeViewProps) {
     };
   }, [viewBy, isAdmin]);
 
-  const todaysSales = todaySnap ? Number(todaySnap.total) : isAdmin ? 28450 : 0;
-  const transactionsToday = todaySnap ? todaySnap.count : isAdmin ? 37 : 0;
+  const [activityItems, setActivityItems] = useState<RecentActivityItem[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityError, setActivityError] = useState<string | null>(null);
+  const [showAllActivity, setShowAllActivity] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setActivityLoading(true);
+      setActivityError(null);
+      try {
+        const res = await api.getRecentActivity(35);
+        if (!cancelled) setActivityItems(res.items);
+      } catch (e) {
+        if (!cancelled) {
+          setActivityItems([]);
+          setActivityError(
+            isApiError(e) ? e.message : "Could not load recent activity",
+          );
+        }
+      } finally {
+        if (!cancelled) setActivityLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const todaysSales = todaySnap ? Number(todaySnap.total) : 0;
+  const transactionsToday = todaySnap ? todaySnap.count : 0;
 
   const salesPoints = revenueSeries.map((d) => ({
     xLabel: d.label,
     y: Number(d.total),
   }));
 
-  const recentActivity = [
-    { time: "09:10 AM", type: "Sale", reference: "SAL-1084", amount: 3250, status: "Completed" },
-    { time: "10:25 AM", type: "Purchase", reference: "PUR-0421", amount: 8900, status: "Received" },
-    { time: "11:40 AM", type: "Adjustment", reference: "ADJ-0193", amount: 0, status: "Applied" },
-    { time: "01:15 PM", type: "Sale", reference: "SAL-1085", amount: 16450, status: "Completed" },
-  ];
-  const [showAllActivity, setShowAllActivity] = useState(false);
   const visibleActivity = showAllActivity
-    ? recentActivity
-    : recentActivity.slice(0, 10);
+    ? activityItems
+    : activityItems.slice(0, 10);
 
   const statCards = isAdmin
     ? ([
@@ -345,6 +408,11 @@ export function HomeView({ onTabChange, isAdmin }: HomeViewProps) {
         >
           Recent activity
         </div>
+        {activityError ? (
+          <div style={{ padding: "10px 12px", color: "var(--danger)", fontSize: 13 }}>
+            {activityError}
+          </div>
+        ) : null}
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "var(--surface-subtle)", color: "var(--muted)" }}>
@@ -356,20 +424,46 @@ export function HomeView({ onTabChange, isAdmin }: HomeViewProps) {
             </tr>
           </thead>
           <tbody>
-            {visibleActivity.map((row, i) => (
-              <tr key={`${row.reference}-${i}`} style={{ background: i % 2 ? "var(--surface-subtle)" : "var(--surface)" }}>
-                <td style={{ padding: "9px 12px", color: "var(--text)" }}>{row.time}</td>
-                <td style={{ padding: "9px 12px", color: "var(--text)" }}>{row.type}</td>
-                <td style={{ padding: "9px 12px", color: "var(--text)", fontWeight: 600 }}>{row.reference}</td>
-                <td style={{ padding: "9px 12px", color: "var(--text)", textAlign: "right", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
-                  {fmtInr(row.amount)}
+            {activityLoading ? (
+              <tr>
+                <td colSpan={5} style={{ padding: "20px 12px", color: "var(--muted)", textAlign: "center" }}>
+                  Loading activity…
                 </td>
-                <td style={{ padding: "9px 12px", color: "var(--muted)", fontWeight: 600 }}>{row.status}</td>
               </tr>
-            ))}
+            ) : visibleActivity.length === 0 ? (
+              <tr>
+                <td colSpan={5} style={{ padding: "20px 12px", color: "var(--muted)", textAlign: "center" }}>
+                  No recent activity yet.
+                </td>
+              </tr>
+            ) : (
+              visibleActivity.map((row, i) => (
+                <tr
+                  key={`${row.createdAt}-${row.type}-${row.reference}-${i}`}
+                  style={{ background: i % 2 ? "var(--surface-subtle)" : "var(--surface)" }}
+                >
+                  <td style={{ padding: "9px 12px", color: "var(--text)" }}>
+                    {formatActivityTimeIndia(row.createdAt)}
+                  </td>
+                  <td style={{ padding: "9px 12px", color: "var(--text)" }}>{row.type}</td>
+                  <td style={{ padding: "9px 12px", color: "var(--text)", fontWeight: 600 }}>{row.reference}</td>
+                  <td
+                    style={{
+                      padding: "9px 12px",
+                      color: "var(--text)",
+                      textAlign: "right",
+                      fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                    }}
+                  >
+                    {activityAmountCell(row)}
+                  </td>
+                  <td style={{ padding: "9px 12px", color: "var(--muted)", fontWeight: 600 }}>{row.status}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
-        {recentActivity.length > 10 && (
+        {activityItems.length > 10 && (
           <div
             style={{
               padding: "10px 12px",

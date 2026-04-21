@@ -25,13 +25,17 @@ export type ApiProduct = {
   description: string | null;
   category: string | null;
   brand: string | null;
+  /** GST HSN/SAC code (optional). */
+  hsnCode: string | null;
   status: string;
   baseUnitCode: string;
   unitKind: string;
   allowsFractional: boolean;
   costPrice: string | null;
   sellingPrice: string | null;
-  taxRate: string | null;
+  cgstPercent: string | null;
+  sgstPercent: string | null;
+  igstPercent: string | null;
   reorderLevel: string | null;
   currentStock: string;
   units: ApiProductUnit[];
@@ -45,10 +49,13 @@ export type UpdateProductBody = {
   brand?: string | null;
   sellingPrice?: number;
   costPrice?: number;
-  taxRate?: number;
+  cgstPercent?: number;
+  sgstPercent?: number;
+  igstPercent?: number;
   reorderLevel?: number;
   allowsFractional?: boolean;
   status?: "ACTIVE" | "INACTIVE";
+  hsnCode?: string | null;
 };
 
 export type ApiSupplier = {
@@ -78,6 +85,8 @@ export type ApiCustomer = {
   phone?: string | null;
   email?: string | null;
   address?: string | null;
+  partyGstNo?: string | null;
+  partyState?: string | null;
 };
 
 export type CreateCustomerBody = {
@@ -85,6 +94,8 @@ export type CreateCustomerBody = {
   phone: string;
   email?: string;
   address?: string;
+  partyGstNo?: string;
+  partyState?: string;
 };
 
 export type PromotionScope = "CART" | "PRODUCT" | "CATEGORY";
@@ -157,6 +168,12 @@ export type CreateSaleBody = {
   customerId?: string;
   customerName?: string;
   customerPhone?: string;
+  /** Party GST for tax invoice; stored on sale (walk-in or from customer). */
+  customerPartyGstNo?: string;
+  /** State / place for tax invoice (walk-in or from customer). */
+  customerPartyState?: string;
+  /** Freight / transport; added to charged total (not per line). */
+  transportAmount?: string | number;
   note?: string;
   paidAmount: string | number;
   lines: SaleLineBody[];
@@ -190,6 +207,8 @@ export type CreateStockAdjustmentBody = {
 
 export type ProductCreateItem = {
   name: string;
+  /** Set to use your own SKU; omit or leave empty for auto-generated EL-/HW-/PT- codes. */
+  sku?: string;
   description?: string;
   category: "Electrical" | "Hardware" | "Paint";
   brand?: string;
@@ -198,9 +217,12 @@ export type ProductCreateItem = {
   allowsFractional?: boolean;
   sellingPrice?: number | string;
   costPrice?: number | string;
-  taxRate?: number | string;
+  cgstPercent?: number | string;
+  sgstPercent?: number | string;
+  igstPercent?: number | string;
   currentStock?: number | string;
   reorderLevel?: number | string;
+  hsnCode?: string;
 };
 
 export type BatchCreateProductsBody = {
@@ -265,8 +287,14 @@ export type SaleLineDetail = {
   lineTotal: string;
   productName: string;
   productSku: string;
+  /** From product master at invoice time. */
+  productHsnCode: string | null;
   unitCode: string;
   unitDisplayName: string;
+  /** From product master at invoice time (for tax invoice). */
+  cgstPercent: string | null;
+  sgstPercent: string | null;
+  igstPercent: string | null;
 };
 
 /** Full sale payload from the API (create, get, payment). */
@@ -278,10 +306,14 @@ export type SaleDetail = {
   customerName: string | null;
   customerNameSnapshot: string | null;
   customerPhone: string | null;
+  /** From linked customer when present. */
+  customerPartyGstNo: string | null;
+  customerPartyState: string | null;
   note: string | null;
   subtotal: string;
   discountAmount: string;
   taxAmount: string;
+  transportAmount: string;
   totalAmount: string;
   paidAmount: string;
   balanceAmount: string;
@@ -308,10 +340,81 @@ export type RecordSalePaymentBody = {
   note?: string;
 };
 
-export type PurchaseRecord = {
+export type PurchasePaymentRecord = {
+  id: string;
+  amount: string;
+  paidAt: string;
+  note: string | null;
+  createdAt: string;
+  createdById: string;
+  recordedByName: string;
+};
+
+export type PurchaseLineDetail = {
+  id: string;
+  productId: string;
+  productUnitId: string;
+  quantity: string;
+  unitCost: string;
+  lineDiscount: string;
+  lineTax: string;
+  lineTotal: string;
+  productName: string;
+  productSku: string;
+  unitCode: string;
+  unitDisplayName: string;
+};
+
+/** Full purchase from API (create, get, record payment). */
+export type PurchaseDetail = {
   id: string;
   purchaseNumber: string;
+  status: string;
+  supplierId: string;
+  supplierName: string;
+  invoiceNumber: string | null;
+  invoiceDate: string | null;
+  note: string | null;
+  subtotal: string;
+  discountAmount: string;
+  taxAmount: string;
+  totalAmount: string;
+  paidAmount: string;
+  balanceAmount: string;
+  createdAt: string;
+  createdById: string;
+  recordedByName: string;
+  lines: PurchaseLineDetail[];
+  payments: PurchasePaymentRecord[];
 };
+
+export type PurchaseListRow = {
+  id: string;
+  purchaseNumber: string;
+  createdAt: string;
+  supplierName: string;
+  invoiceNumber: string | null;
+  invoiceDate: string | null;
+  totalAmount: string;
+  paidAmount: string;
+  balanceAmount: string;
+  recordedByName: string;
+};
+
+export type PurchasesListResponse = {
+  purchases: PurchaseListRow[];
+};
+
+export type RecordPurchasePaymentBody = {
+  amount: number;
+  createdById: string;
+  note?: string;
+  /** ISO date/time when the payment was made (optional; defaults to now on server). */
+  paidAt?: string;
+};
+
+/** @deprecated Use PurchaseDetail — kept for brief create responses if needed */
+export type PurchaseRecord = Pick<PurchaseDetail, "id" | "purchaseNumber">;
 
 export type ProductRecord = {
   id: string;
@@ -344,6 +447,44 @@ export type SalesSummaryReport = {
   }>;
 };
 
+/** Line-level GST register (outward supplies) for the period. */
+export type TaxInvoiceSalesReport = {
+  disclaimer: string;
+  summary: {
+    saleCount: number;
+    amountBeforeTax: string;
+    sgstAmount: string;
+    cgstAmount: string;
+    igstAmount: string;
+    grandTotal: string;
+  };
+  rows: Array<{
+    id: string;
+    saleNumber: string;
+    /** YYYY-MM-DD in India. */
+    invoiceDate: string;
+    createdAt: string;
+    partyLabel: string;
+    amountBeforeTax: string;
+    sgstAmount: string;
+    cgstAmount: string;
+    igstAmount: string;
+    grandTotal: string;
+  }>;
+  paymentSummary: {
+    paymentCount: number;
+    totalPaid: string;
+  };
+  /** Receipt lines for invoices in `rows` (payment saved time, IST date). */
+  paymentRows: Array<{
+    id: string;
+    saleNumber: string;
+    paymentDate: string;
+    amount: string;
+    note: string | null;
+  }>;
+};
+
 export type SalesByProductReport = {
   products: Array<{
     productId: string;
@@ -354,6 +495,46 @@ export type SalesByProductReport = {
     lineCount: number;
     quantityInBase: string;
     revenue: string;
+  }>;
+};
+
+export type SalesByCustomerReport = {
+  summary: {
+    customerCount: number;
+    saleCount: number;
+    totalAmount: string;
+    paidAmount: string;
+    balanceAmount: string;
+  };
+  customers: Array<{
+    customerId: string | null;
+    customerLabel: string;
+    saleCount: number;
+    totalAmount: string;
+    paidAmount: string;
+    balanceAmount: string;
+  }>;
+};
+
+export type SupplierPaymentsReport = {
+  summary: {
+    paymentCount: number;
+    totalPaid: string;
+  };
+  bySupplier: Array<{
+    supplierId: string;
+    supplierName: string;
+    paymentCount: number;
+    totalPaid: string;
+  }>;
+  payments: Array<{
+    id: string;
+    paidAt: string;
+    amount: string;
+    note: string | null;
+    purchaseNumber: string;
+    supplierName: string;
+    recordedByName: string;
   }>;
 };
 
@@ -420,4 +601,17 @@ export type SalesRevenueSeriesResponse = {
   granularity: SalesRevenueGranularity;
   buckets: number;
   series: SalesRevenueBucket[];
+};
+
+export type RecentActivityItem = {
+  createdAt: string;
+  type: string;
+  reference: string;
+  amount: string;
+  amountNote: string | null;
+  status: string;
+};
+
+export type RecentActivityResponse = {
+  items: RecentActivityItem[];
 };

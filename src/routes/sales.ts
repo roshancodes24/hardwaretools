@@ -1,7 +1,8 @@
 import { Router } from "express";
 import type { Prisma } from "@prisma/client";
-import { SaleStatus } from "@prisma/client";
+import { PurchaseStatus, SaleStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import { hasAdminAccess } from "../middleware/actingUser";
 import { validateBody } from "../middleware/validateBody";
 import { assertBodyUserMatchesActing } from "../middleware/requireRole";
 import { createSale, recordSalePayment } from "../services/inventory";
@@ -22,9 +23,19 @@ function paramStr(v: string | string[] | undefined): string {
 }
 
 const saleDetailInclude = {
+  customer: { select: { partyGstNo: true, partyState: true } },
   lines: {
     include: {
-      product: { select: { name: true, sku: true } },
+      product: {
+        select: {
+          name: true,
+          sku: true,
+          hsnCode: true,
+          cgstPercent: true,
+          sgstPercent: true,
+          igstPercent: true,
+        },
+      },
       productUnit: { select: { code: true, displayName: true } },
     },
   },
@@ -60,15 +71,19 @@ function serializeSaleDetail(sale: {
   customerName: string | null;
   customerNameSnapshot: string | null;
   customerPhone: string | null;
+  customerPartyGstNo: string | null;
+  customerPartyState: string | null;
   note: string | null;
   subtotal: Prisma.Decimal;
   discountAmount: Prisma.Decimal;
   taxAmount: Prisma.Decimal;
+  transportAmount: Prisma.Decimal;
   totalAmount: Prisma.Decimal;
   paidAmount: Prisma.Decimal;
   balanceAmount: Prisma.Decimal;
   createdAt: Date;
   createdById: string;
+  customer: { partyGstNo: string | null; partyState: string | null } | null;
   lines: Array<{
     id: string;
     productId: string;
@@ -79,7 +94,14 @@ function serializeSaleDetail(sale: {
     lineDiscount: Prisma.Decimal;
     lineTax: Prisma.Decimal;
     lineTotal: Prisma.Decimal;
-    product: { name: string; sku: string };
+    product: {
+      name: string;
+      sku: string;
+      hsnCode: string | null;
+      cgstPercent: Prisma.Decimal | null;
+      sgstPercent: Prisma.Decimal | null;
+      igstPercent: Prisma.Decimal | null;
+    };
     productUnit: { code: string; displayName: string };
   }>;
   payments: Array<{
@@ -98,10 +120,15 @@ function serializeSaleDetail(sale: {
     customerName: sale.customerName,
     customerNameSnapshot: sale.customerNameSnapshot,
     customerPhone: sale.customerPhone,
+    customerPartyGstNo:
+      sale.customerPartyGstNo ?? sale.customer?.partyGstNo ?? null,
+    customerPartyState:
+      sale.customerPartyState ?? sale.customer?.partyState ?? null,
     note: sale.note,
     subtotal: decStr(sale.subtotal),
     discountAmount: decStr(sale.discountAmount),
     taxAmount: decStr(sale.taxAmount),
+    transportAmount: decStr(sale.transportAmount),
     totalAmount: decStr(sale.totalAmount),
     paidAmount: decStr(sale.paidAmount),
     balanceAmount: decStr(sale.balanceAmount),
@@ -119,8 +146,15 @@ function serializeSaleDetail(sale: {
       lineTotal: decStr(line.lineTotal),
       productName: line.product.name,
       productSku: line.product.sku,
+      productHsnCode: line.product.hsnCode?.trim() ? line.product.hsnCode.trim() : null,
       unitCode: line.productUnit.code,
       unitDisplayName: line.productUnit.displayName,
+      cgstPercent:
+        line.product.cgstPercent != null ? decStr(line.product.cgstPercent) : null,
+      sgstPercent:
+        line.product.sgstPercent != null ? decStr(line.product.sgstPercent) : null,
+      igstPercent:
+        line.product.igstPercent != null ? decStr(line.product.igstPercent) : null,
     })),
     payments: sale.payments.map(serializePayment),
   };
@@ -142,6 +176,9 @@ router.post(
         customerId: body.customerId,
         customerName: body.customerName,
         customerPhone: body.customerPhone,
+        customerPartyGstNo: body.customerPartyGstNo,
+        customerPartyState: body.customerPartyState,
+        transportAmount: body.transportAmount,
         note: body.note,
         paidAmount: body.paidAmount,
         lines: body.lines,
@@ -160,6 +197,135 @@ router.post(
     }
   }
 );
+
+router.get("/recent-activity", async (req, res) => {
+  const acting = req.actingUser;
+  if (!acting) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  let limit = Number.parseInt(String(req.query.limit ?? "25"), 10);
+  if (!Number.isFinite(limit) || limit < 1) limit = 25;
+  limit = Math.min(50, limit);
+  const takeSource = Math.min(30, limit + 10);
+
+  try {
+    const isAdmin = hasAdminAccess(acting.role);
+
+    const [sales, purchases, adjustments] = await Promise.all([
+      prisma.sale.findMany({
+        where: { status: SaleStatus.COMPLETED },
+        orderBy: { createdAt: "desc" },
+        take: takeSource,
+        select: {
+          createdAt: true,
+          saleNumber: true,
+          totalAmount: true,
+          status: true,
+        },
+      }),
+      isAdmin
+        ? prisma.purchase.findMany({
+            where: { status: PurchaseStatus.RECEIVED },
+            orderBy: { createdAt: "desc" },
+            take: takeSource,
+            select: {
+              createdAt: true,
+              purchaseNumber: true,
+              totalAmount: true,
+            },
+          })
+        : Promise.resolve(
+            [] as {
+              createdAt: Date;
+              purchaseNumber: string;
+              totalAmount: Prisma.Decimal;
+            }[]
+          ),
+      isAdmin
+        ? prisma.stockAdjustment.findMany({
+            orderBy: { createdAt: "desc" },
+            take: takeSource,
+            select: {
+              createdAt: true,
+              difference: true,
+              product: { select: { sku: true, baseUnitCode: true } },
+            },
+          })
+        : Promise.resolve(
+            [] as {
+              createdAt: Date;
+              difference: Prisma.Decimal;
+              product: { sku: string; baseUnitCode: string };
+            }[]
+          ),
+    ]);
+
+    type OutRow = {
+      createdAt: string;
+      type: string;
+      reference: string;
+      amount: string;
+      amountNote: string | null;
+      status: string;
+    };
+
+    const rows: OutRow[] = [];
+
+    for (const s of sales) {
+      rows.push({
+        createdAt: s.createdAt.toISOString(),
+        type: "Sale",
+        reference: s.saleNumber,
+        amount: decStr(s.totalAmount),
+        amountNote: null,
+        status:
+          s.status === SaleStatus.COMPLETED ? "Completed" : String(s.status),
+      });
+    }
+
+    for (const p of purchases) {
+      rows.push({
+        createdAt: p.createdAt.toISOString(),
+        type: "Purchase",
+        reference: p.purchaseNumber,
+        amount: decStr(p.totalAmount),
+        amountNote: null,
+        status: "Received",
+      });
+    }
+
+    for (const a of adjustments) {
+      const n = Number(a.difference);
+      const absTrim = a.difference
+        .abs()
+        .toFixed(4)
+        .replace(/\.?0+$/, "");
+      const qtyNote =
+        n === 0
+          ? `0 ${a.product.baseUnitCode}`
+          : `${n > 0 ? "+" : "−"}${absTrim} ${a.product.baseUnitCode}`;
+      rows.push({
+        createdAt: a.createdAt.toISOString(),
+        type: "Adjustment",
+        reference: `Stock · ${a.product.sku}`,
+        amount: "0.00",
+        amountNote: qtyNote,
+        status: "Applied",
+      });
+    }
+
+    rows.sort((x, y) =>
+      x.createdAt < y.createdAt ? 1 : x.createdAt > y.createdAt ? -1 : 0
+    );
+
+    res.status(200).json({ items: rows.slice(0, limit) });
+  } catch (error) {
+    console.error("GET /sales/recent-activity failed:", error);
+    res.status(500).json({ error: "Failed to load recent activity" });
+  }
+});
 
 router.get("/outstanding", async (_req, res) => {
   try {

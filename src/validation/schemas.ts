@@ -27,6 +27,41 @@ const optionalSupplierTrimmed = (max: number, label: string) =>
     z.string().trim().max(max, `${label} is too long`).optional()
   );
 
+/** Customer / supplier / sale walk-in mobile: exactly 10 digits (no spaces or country code). */
+const indianMobile10Digits = z
+  .string()
+  .trim()
+  .regex(/^\d{10}$/, "Phone must be exactly 10 digits.");
+
+const optionalIndianMobile10Digits = z.preprocess(
+  (v) => {
+    if (v === null || v === undefined) return undefined;
+    const s = String(v).trim();
+    return s === "" ? undefined : s;
+  },
+  indianMobile10Digits.optional()
+);
+
+/** GSTIN-style: letters and digits only (no spaces, hyphens, etc.). */
+const gstinAlphanumericSegment = (max: number, label: string) =>
+  z
+    .string()
+    .max(max, `${label} is too long`)
+    .regex(
+      /^[A-Za-z0-9]+$/,
+      `${label} may only contain letters and numbers.`,
+    );
+
+const optionalGstinAlphanumeric = (max: number, label: string) =>
+  z.preprocess(
+    (v) => {
+      if (v === null || v === undefined) return undefined;
+      const s = String(v).trim();
+      return s === "" ? undefined : s;
+    },
+    gstinAlphanumericSegment(max, label).optional()
+  );
+
 export const saleLineSchema = z.object({
   productId: z.string().trim().min(1, "productId is required"),
   productUnitId: z.string().trim().min(1, "productUnitId is required"),
@@ -45,7 +80,10 @@ export const createSaleSchema = z.object({
   createdById: z.string().trim().min(1, "createdById is required"),
   customerId: optionalCustomerId,
   customerName: z.string().trim().max(500).optional(),
-  customerPhone: z.string().trim().max(50).optional(),
+  customerPhone: optionalIndianMobile10Digits,
+  customerPartyGstNo: optionalGstinAlphanumeric(20, "Party GST No."),
+  customerPartyState: optionalSupplierTrimmed(100, "State"),
+  transportAmount: nonNegativeMoney.optional().default(0),
   note: z.string().max(5000).optional(),
   paidAmount: nonNegativeMoney,
   lines: z
@@ -57,6 +95,18 @@ export const recordSalePaymentSchema = z.object({
   amount: positiveMoney,
   createdById: z.string().trim().min(1, "createdById is required"),
   note: z.string().max(500).optional(),
+});
+
+const optionalPaidAt = z.preprocess(
+  (v) => (v === null || v === undefined || v === "" ? undefined : v),
+  z.coerce.date().optional()
+);
+
+export const recordPurchasePaymentSchema = z.object({
+  amount: positiveMoney,
+  createdById: z.string().trim().min(1, "createdById is required"),
+  note: z.string().max(500).optional(),
+  paidAt: optionalPaidAt,
 });
 
 export const purchaseLineSchema = z.object({
@@ -100,6 +150,9 @@ export type CreateSaleValidated = z.infer<typeof createSaleSchema>;
 export type RecordSalePaymentValidated = z.infer<
   typeof recordSalePaymentSchema
 >;
+export type RecordPurchasePaymentValidated = z.infer<
+  typeof recordPurchasePaymentSchema
+>;
 
 export const createCustomerSchema = z.object({
   name: z
@@ -111,7 +164,7 @@ export const createCustomerSchema = z.object({
     .string()
     .trim()
     .min(1, "Phone number is required to save a customer.")
-    .max(50, "Phone is too long"),
+    .pipe(indianMobile10Digits),
   email: z.preprocess(
     (v) => (v === null || v === undefined || v === "" ? undefined : v),
     z
@@ -122,6 +175,8 @@ export const createCustomerSchema = z.object({
       .optional()
   ),
   address: optionalSupplierTrimmed(500, "Address"),
+  partyGstNo: optionalGstinAlphanumeric(20, "Party GST No."),
+  partyState: optionalSupplierTrimmed(100, "State"),
 });
 
 export type CreateCustomerValidated = z.infer<typeof createCustomerSchema>;
@@ -137,7 +192,7 @@ export const createSupplierSchema = z.object({
     .min(1, "Name is required")
     .max(200, "Name is too long"),
   contactPerson: optionalSupplierTrimmed(200, "Contact person"),
-  phone: optionalSupplierTrimmed(50, "Phone"),
+  phone: optionalIndianMobile10Digits,
   email: z.preprocess(
     (v) => (v === null || v === undefined || v === "" ? undefined : v),
     z
@@ -148,7 +203,7 @@ export const createSupplierSchema = z.object({
       .optional()
   ),
   address: optionalSupplierTrimmed(500, "Address"),
-  gstNumber: optionalSupplierTrimmed(50, "GST number"),
+  gstNumber: optionalGstinAlphanumeric(50, "GST number"),
   note: optionalSupplierTrimmed(5000, "Note"),
 });
 
@@ -236,12 +291,40 @@ const optionalNonNegative = z.preprocess(
   z.coerce.number().finite("Must be finite").min(0, "Must be ≥ 0").optional()
 );
 
+const optionalPercent0to100 = z.preprocess(
+  (v) => (v === null || v === undefined || v === "" ? undefined : v),
+  z.coerce
+    .number()
+    .finite()
+    .min(0, "Must be ≥ 0")
+    .max(100, "Must be ≤ 100")
+    .optional()
+);
+
+/** Optional manual SKU (omit or empty → server assigns category sequence SKU). */
+const optionalManualSkuSchema = z.preprocess(
+  (v) =>
+    v === null || v === undefined || v === ""
+      ? undefined
+      : String(v).trim(),
+  z
+    .string()
+    .min(1, "SKU cannot be empty")
+    .max(80, "SKU is too long")
+    .regex(
+      /^[A-Za-z0-9][A-Za-z0-9._\-\/\s]*$/,
+      "SKU may only contain letters, numbers, spaces, . _ - /"
+    )
+    .optional()
+);
+
 export const productCreateItemSchema = z.object({
   name: z
     .string()
     .trim()
     .min(1, "Name is required")
     .max(500, "Name is too long"),
+  sku: optionalManualSkuSchema,
   description: z.string().trim().max(2000).optional(),
   category: z.enum(["Electrical", "Hardware", "Paint"], {
     error: "Category must be Electrical, Hardware, or Paint",
@@ -256,27 +339,39 @@ export const productCreateItemSchema = z.object({
   allowsFractional: z.boolean().optional().default(false),
   sellingPrice: optionalNonNegative,
   costPrice: optionalNonNegative,
-  taxRate: z.preprocess(
-    (v) => (v === null || v === undefined || v === "" ? undefined : v),
-    z.coerce
-      .number()
-      .finite()
-      .min(0, "Tax must be ≥ 0")
-      .max(100, "Tax must be ≤ 100")
-      .optional()
-  ),
+  cgstPercent: optionalPercent0to100,
+  sgstPercent: optionalPercent0to100,
+  igstPercent: optionalPercent0to100,
   currentStock: z.preprocess(
     (v) => (v === null || v === undefined || v === "" ? 0 : v),
     z.coerce.number().finite().min(0, "Stock must be ≥ 0").default(0)
   ),
   reorderLevel: optionalNonNegative,
+  hsnCode: optionalSupplierTrimmed(16, "HSN Code"),
 });
 
-export const batchCreateProductsSchema = z.object({
-  products: z
-    .array(productCreateItemSchema)
-    .min(1, "At least one product is required"),
-});
+export const batchCreateProductsSchema = z
+  .object({
+    products: z
+      .array(productCreateItemSchema)
+      .min(1, "At least one product is required"),
+  })
+  .superRefine((data, ctx) => {
+    const seen = new Map<string, number>();
+    for (let i = 0; i < data.products.length; i++) {
+      const sku = data.products[i]?.sku?.trim();
+      if (!sku) continue;
+      if (seen.has(sku)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["products", i, "sku"],
+          message: `Duplicate SKU "${sku}" in this batch (also row ${(seen.get(sku) ?? 0) + 1}).`,
+        });
+      } else {
+        seen.set(sku, i);
+      }
+    }
+  });
 
 export type BatchCreateProductsValidated = z.infer<
   typeof batchCreateProductsSchema
@@ -301,13 +396,25 @@ export const updateProductBodySchema = z
     ),
     sellingPrice: optionalNonNegative,
     costPrice: optionalNonNegative,
-    taxRate: z.preprocess(
-      (v) => (v === null || v === undefined || v === "" ? undefined : v),
-      z.coerce.number().finite().min(0).max(100).optional()
-    ),
+    cgstPercent: optionalPercent0to100,
+    sgstPercent: optionalPercent0to100,
+    igstPercent: optionalPercent0to100,
     reorderLevel: optionalNonNegative,
     allowsFractional: z.boolean().optional(),
     status: z.nativeEnum(ProductStatus).optional(),
+    hsnCode: z.preprocess(
+      (v) => {
+        if (v === undefined) return undefined;
+        if (v === null || v === "") return null;
+        return v;
+      },
+      z
+        .union([
+          z.string().trim().max(16, "HSN Code is too long"),
+          z.null(),
+        ])
+        .optional()
+    ),
   })
   .strict()
   .refine((data) => Object.keys(data).length > 0, {

@@ -1,31 +1,15 @@
 import type { SaleDetail } from "../api/types";
 import {
   INVOICE_AMOUNT_FOR_LABEL,
-  INVOICE_BANK_ACCOUNT_NO,
-  INVOICE_BANK_BRANCH,
-  INVOICE_BANK_IFSC,
-  INVOICE_BANK_NAME,
   INVOICE_BUSINESS_ADDRESS,
   INVOICE_BUSINESS_NAME,
   INVOICE_EMAIL_PLACEHOLDER,
   INVOICE_PHONE,
-  INVOICE_PLACE_OF_SUPPLY_STATE,
-  INVOICE_SELLER_GSTIN,
-  INVOICE_SELLER_MSME_REG,
 } from "./invoiceBranding";
-import { saleGstTotals } from "./invoiceGst";
 import { rupeesToWords } from "./rupeesToWords";
 
 function fmtInr(amountStr: string): string {
   const n = Number.parseFloat(amountStr);
-  if (!Number.isFinite(n)) return "₹ 0.00";
-  return `₹ ${n.toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
-function fmtInrFromNum(n: number): string {
   if (!Number.isFinite(n)) return "₹ 0.00";
   return `₹ ${n.toLocaleString("en-IN", {
     minimumFractionDigits: 2,
@@ -70,13 +54,13 @@ function fmtHsn(code: string | null | undefined): string {
 
 type Props = { sale: SaleDetail };
 
-export function TaxInvoiceDocument({ sale }: Props) {
+/** Bill of supply style: no tax lines, title Bill. */
+export function NormalInvoiceDocument({ sale }: Props) {
   const disc = Number.parseFloat(sale.discountAmount ?? "0");
   const total = Number.parseFloat(sale.totalAmount ?? "0");
   const balanceDue = Number.parseFloat(sale.balanceAmount ?? "0");
   const transportDue = Number.parseFloat(sale.transportAmount ?? "0");
   const amountWords = rupeesToWords(total);
-  const gst = saleGstTotals(sale.lines);
 
   return (
     <div className="tax-invoice-doc">
@@ -88,7 +72,7 @@ export function TaxInvoiceDocument({ sale }: Props) {
           Phone no: {INVOICE_PHONE} | Email: {INVOICE_EMAIL_PLACEHOLDER}
         </p>
         <hr className="inv-rule" />
-        <p className="inv-title">Tax Invoice</p>
+        <p className="inv-title">Bill</p>
       </header>
 
       <section className="inv-meta-card">
@@ -108,12 +92,9 @@ export function TaxInvoiceDocument({ sale }: Props) {
             ) : null}
           </div>
           <div className="inv-details-block">
-            <p className="inv-col-title inv-details-heading">Invoice Details</p>
+            <p className="inv-col-title inv-details-heading">Bill Details</p>
             <div>
-              <strong>Invoice No:</strong> {sale.saleNumber}
-            </div>
-            <div>
-              <strong>Place of Supply:</strong> {INVOICE_PLACE_OF_SUPPLY_STATE}
+              <strong>Bill No. :</strong> {sale.saleNumber}
             </div>
             <div>
               <strong>Date :</strong> {formatInvoiceDate(sale.createdAt)}
@@ -123,7 +104,7 @@ export function TaxInvoiceDocument({ sale }: Props) {
       </section>
 
       <div className="tax-invoice-table-wrap">
-        <table className="tax-invoice-table tax-invoice-table--gst">
+        <table className="tax-invoice-table">
           <thead>
             <tr>
               <th className="tax-invoice-accent">#</th>
@@ -157,32 +138,8 @@ export function TaxInvoiceDocument({ sale }: Props) {
         <div className="tax-invoice-summary-grid">
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div className="tax-invoice-panel">
-              <p className="panel-head tax-invoice-accent">Registration</p>
-              <div className="panel-body inv-registration-body">
-                <div>
-                  <strong>GSTIN :</strong> {INVOICE_SELLER_GSTIN}
-                </div>
-                <div>
-                  <strong>MSME REG No:</strong> {INVOICE_SELLER_MSME_REG}
-                </div>
-              </div>
-            </div>
-            <div className="tax-invoice-panel tax-invoice-panel--bank">
-              <p className="panel-head tax-invoice-accent">Bank Details</p>
-              <div className="panel-body inv-bank-details">
-                <div>
-                  <strong>Bank Name:</strong> {INVOICE_BANK_NAME}
-                </div>
-                <div>
-                  <strong>Branch Name:</strong> {INVOICE_BANK_BRANCH}
-                </div>
-                <div>
-                  <strong>A/C No.:</strong> {INVOICE_BANK_ACCOUNT_NO}
-                </div>
-                <div>
-                  <strong>IFSC Code:</strong> {INVOICE_BANK_IFSC}
-                </div>
-              </div>
+              <p className="panel-head tax-invoice-accent">Bill Amount In Words</p>
+              <div className="panel-body">{amountWords}</div>
             </div>
             <div className="tax-invoice-panel tax-invoice-panel--terms">
               <p className="panel-head tax-invoice-accent">Terms :</p>
@@ -204,7 +161,7 @@ export function TaxInvoiceDocument({ sale }: Props) {
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: 12,
+              gap: 8,
               minWidth: 0,
             }}
           >
@@ -222,18 +179,6 @@ export function TaxInvoiceDocument({ sale }: Props) {
                   <span>− {fmtInr(sale.discountAmount)}</span>
                 </div>
               ) : null}
-              <div className="amt-row">
-                <span>CGST@ %</span>
-                <span>{fmtInrFromNum(gst.cgst)}</span>
-              </div>
-              <div className="amt-row">
-                <span>SGST@ %</span>
-                <span>{fmtInrFromNum(gst.sgst)}</span>
-              </div>
-              <div className="amt-row">
-                <span>IGST@ %</span>
-                <span>{fmtInrFromNum(gst.igst)}</span>
-              </div>
               {transportDue > 0.005 ? (
                 <div className="amt-row">
                   <span>Transport</span>
@@ -241,7 +186,7 @@ export function TaxInvoiceDocument({ sale }: Props) {
                 </div>
               ) : null}
               <div className="amt-row amt-row-total">
-                <strong>Total (charged)</strong>
+                <strong>Total</strong>
                 <strong>{fmtInr(sale.totalAmount)}</strong>
               </div>
               <div className="amt-row">
@@ -256,19 +201,6 @@ export function TaxInvoiceDocument({ sale }: Props) {
               ) : null}
             </div>
             <p className="inv-for-proprietor">{INVOICE_AMOUNT_FOR_LABEL}</p>
-            <div className="tax-invoice-panel">
-              <p className="panel-head tax-invoice-accent">Invoice Amount In Words</p>
-              <div className="panel-body">{amountWords}</div>
-            </div>
-            <div className="tax-invoice-panel inv-pay-qr-panel">
-              <div className="panel-body inv-pay-qr-body">
-                <img
-                  src="/invoice-pay-qr.png"
-                  alt="Scan and pay with UPI"
-                  className="inv-pay-qr-img"
-                />
-              </div>
-            </div>
           </div>
         </div>
       </footer>

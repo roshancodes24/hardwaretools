@@ -2,7 +2,9 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
+  type ChangeEvent,
   type CSSProperties,
   type ReactNode,
 } from "react";
@@ -15,6 +17,7 @@ import type {
   ApiSupplier,
   CreateSaleBody,
   OutstandingSaleSummary,
+  PurchaseListRow,
   SaleDetail,
   SessionUserRow,
 } from "./api/types";
@@ -23,7 +26,6 @@ import { allocateLineDiscounts } from "./lib/allocateLineDiscounts";
 import {
   lineErrorsFromDetails,
   mapAdjustmentDetailField,
-  mapPurchaseDetailField,
   recordFieldErrors,
 } from "./lib/formErrors";
 import {
@@ -31,7 +33,14 @@ import {
   formatIndiaDateTime,
   ymdInIndia,
 } from "./lib/indiaTime";
+import {
+  parsePurchaseLinesImportFile,
+  PURCHASE_IMPORT_TEMPLATE_CSV,
+  resolvePurchaseImportPatches,
+} from "./lib/importPurchaseLines";
 import { mapApiProduct, type UiProduct } from "./lib/mapProduct";
+import { sanitizeGstinInput } from "./lib/gstinInput";
+import { sanitizePhoneDigits } from "./lib/phoneInput";
 import { HomeView } from "./HomeView";
 import { ConfirmModal } from "./ConfirmModal";
 import { PromotionsPage } from "./pages/PromotionsPage";
@@ -631,11 +640,19 @@ function POSView({
   const [customerQuery, setCustomerQuery] = useState("");
   /** Optional phone for walk-in; cleared when a registered customer is selected */
   const [walkInPhone, setWalkInPhone] = useState("");
+  /** Optional Party GST No for walk-in / save-customer; cleared with phone on pick/clear */
+  const [walkInPartyGstNo, setWalkInPartyGstNo] = useState("");
+  /** Optional State (tax invoice); cleared when picking a registered customer */
+  const [walkInPartyState, setWalkInPartyState] = useState("");
   const [customerPhoneError, setCustomerPhoneError] = useState<string | null>(null);
   const [customerSuggestOpen, setCustomerSuggestOpen] = useState(false);
   const [savingCustomer, setSavingCustomer] = useState(false);
   const [amountPaidStr, setAmountPaidStr] = useState("");
+  /** Freight / transport (added to charged total). */
+  const [transportStr, setTransportStr] = useState("");
   const [taxInvoiceSale, setTaxInvoiceSale] = useState<SaleDetail | null>(null);
+  /** If true, post-sale invoice opens in tax layout (chosen before Confirm Sale). */
+  const [posTaxInvoice, setPosTaxInvoice] = useState(false);
 
   useEffect(() => {
     setFieldErrors({});
@@ -795,14 +812,100 @@ function POSView({
   const cartPromoAmt = subtotalAfterLinePromos * (cartPromoPercent / 100);
   const total = subtotalAfterLinePromos - discountAmt - cartPromoAmt;
 
+  /** Same per-line discounts as checkout (for GST on taxable value). */
+  const lineDiscountsForPos = useMemo(() => {
+    if (cart.length === 0) return [];
+    const orderLevelDiscountAmt = discountAmt + cartPromoAmt;
+    const orderLevelDiscountPercent =
+      subtotalAfterLinePromos > 0
+        ? (orderLevelDiscountAmt / subtotalAfterLinePromos) * 100
+        : 0;
+    const orderLevelLineDiscounts = allocateLineDiscounts(
+      lineSubtotals.map((v, i) => Math.max(0, v - linePromotionDiscounts[i])),
+      orderLevelDiscountPercent
+    );
+    return linePromotionDiscounts.map(
+      (v, i) => v + (orderLevelLineDiscounts[i] ?? 0)
+    );
+  }, [
+    cart.length,
+    lineSubtotals,
+    linePromotionDiscounts,
+    subtotalAfterLinePromos,
+    discountAmt,
+    cartPromoAmt,
+  ]);
+
+  const posGstTotals = useMemo(() => {
+    if (!posTaxInvoice || cart.length === 0) return null;
+    let cgst = 0;
+    let sgst = 0;
+    let igst = 0;
+    for (let i = 0; i < cart.length; i++) {
+      const line = cart[i];
+      const disc = lineDiscountsForPos[i] ?? 0;
+      const taxable = Math.max(0, line.price * line.qty - disc);
+      const c = line.cgstPercent ?? 0;
+      const s = line.sgstPercent ?? 0;
+      const ig = line.igstPercent ?? 0;
+      cgst += (taxable * c) / 100;
+      sgst += (taxable * s) / 100;
+      igst += (taxable * ig) / 100;
+    }
+    return {
+      cgst: Math.round(cgst * 100) / 100,
+      sgst: Math.round(sgst * 100) / 100,
+      igst: Math.round(igst * 100) / 100,
+    };
+  }, [posTaxInvoice, cart, lineDiscountsForPos]);
+
+  /**
+   * Sum of per-line GST exactly as sent to POST /sales (rounded per line).
+   * Must match server taxAmount — do not use bucket-rounded posGstTotals here or
+   * grandTotal vs paidAmount can drift by cents vs server total (+ transport).
+   */
+  const posLineTaxSum = useMemo(() => {
+    if (!posTaxInvoice || cart.length === 0) return 0;
+    let sum = 0;
+    for (let i = 0; i < cart.length; i++) {
+      const line = cart[i];
+      const disc = lineDiscountsForPos[i] ?? 0;
+      const taxable = Math.max(0, line.price * line.qty - disc);
+      const rateSum =
+        (line.cgstPercent ?? 0) +
+        (line.sgstPercent ?? 0) +
+        (line.igstPercent ?? 0);
+      const lineTaxRaw = rateSum > 0 ? (taxable * rateSum) / 100 : 0;
+      sum += Math.round(lineTaxRaw * 100) / 100;
+    }
+    return Math.round(sum * 100) / 100;
+  }, [posTaxInvoice, cart, lineDiscountsForPos]);
+
+  const transportAmount = useMemo(() => {
+    const t = Number.parseFloat(String(transportStr).replace(/,/g, "").trim());
+    if (!Number.isFinite(t) || t < 0) return 0;
+    return Math.round(t * 100) / 100;
+  }, [transportStr]);
+
+  /** Charged total: net + line taxes (same formula as API) + transport. */
+  const grandTotal = useMemo(() => {
+    const base =
+      !posTaxInvoice || cart.length === 0
+        ? total
+        : Math.round((total + posLineTaxSum) * 100) / 100;
+    return Math.round((base + transportAmount) * 100) / 100;
+  }, [total, posTaxInvoice, cart.length, posLineTaxSum, transportAmount]);
+
   useEffect(() => {
-    setAmountPaidStr(total > 0 ? total.toFixed(2) : "0.00");
-  }, [total]);
+    setAmountPaidStr(grandTotal > 0 ? grandTotal.toFixed(2) : "0.00");
+  }, [grandTotal]);
 
   const pickRegisteredCustomer = (c: ApiCustomer) => {
     setPosCustomerId(c.id);
     setCustomerQuery("");
     setWalkInPhone("");
+    setWalkInPartyGstNo("");
+    setWalkInPartyState("");
     setCustomerPhoneError(null);
     setCustomerSuggestOpen(false);
   };
@@ -816,10 +919,14 @@ function POSView({
   /** Registers typed walk-in as a customer only when cashier clicks Save — not on checkout */
   const saveCustomerFromWalkIn = async () => {
     const name = customerQuery.trim();
-    const phone = walkInPhone.trim();
+    const phone = sanitizePhoneDigits(walkInPhone);
     if (!name || posCustomerId || savingCustomer) return;
     if (!phone) {
       setCustomerPhoneError("Phone number is required to save a customer.");
+      return;
+    }
+    if (phone.length !== 10) {
+      setCustomerPhoneError("Phone must be exactly 10 digits.");
       return;
     }
     setCustomerPhoneError(null);
@@ -829,11 +936,21 @@ function POSView({
       const c = await api.createCustomer({
         name,
         phone,
+        partyGstNo:
+          posTaxInvoice && sanitizeGstinInput(walkInPartyGstNo, 20)
+            ? sanitizeGstinInput(walkInPartyGstNo, 20)
+            : undefined,
+        partyState:
+          posTaxInvoice && walkInPartyState.trim()
+            ? walkInPartyState.trim()
+            : undefined,
       });
       await refreshCustomers();
       setPosCustomerId(c.id);
       setCustomerQuery("");
       setWalkInPhone("");
+      setWalkInPartyGstNo("");
+      setWalkInPartyState("");
       setCustomerPhoneError(null);
       setCustomerSuggestOpen(false);
       setStatus({ type: "success", msg: `Customer saved — ${c.name}` });
@@ -888,16 +1005,27 @@ function POSView({
         return;
       }
       const clampedPaid =
-        Math.round(Math.min(total, Math.max(0, parsedPaid)) * 100) / 100;
-      const hasBalance = total - clampedPaid > 0.005;
+        Math.round(Math.min(grandTotal, Math.max(0, parsedPaid)) * 100) / 100;
+      const hasBalance = grandTotal - clampedPaid > 0.005;
+      const walkPhoneDigits = sanitizePhoneDigits(walkInPhone);
+      if (
+        walkPhoneDigits.length > 0 &&
+        walkPhoneDigits.length !== 10
+      ) {
+        setStatus({
+          type: "error",
+          msg: "Walk-in phone must be exactly 10 digits.",
+        });
+        return;
+      }
       if (hasBalance) {
         if (!posCustomerId) {
           const nameOk = customerQuery.trim().length > 0;
-          const phoneOk = walkInPhone.trim().length > 0;
+          const phoneOk = walkPhoneDigits.length === 10;
           if (!nameOk || !phoneOk) {
             setStatus({
               type: "error",
-              msg: "Balance due requires a registered customer, or walk-in name and phone number.",
+              msg: "Balance due requires a registered customer, or walk-in name and a 10-digit phone number.",
             });
             return;
           }
@@ -915,18 +1043,28 @@ function POSView({
         note: [
           discount > 0 ? `POS discount ${discount}%` : "",
           cartPromotion ? `Cart promo ${cartPromotion.code}` : "",
+          posTaxInvoice ? "Tax invoice" : "",
         ]
           .filter(Boolean)
           .join(" | ") || undefined,
         paidAmount: clampedPaid,
-        lines: cart.map((x, i) => ({
-          productId: x.id,
-          productUnitId: x.baseUnitId,
-          quantity: x.qty,
-          unitPrice: x.price,
-          lineDiscount: lineDiscounts[i] ?? 0,
-          lineTax: 0,
-        })),
+        transportAmount,
+        lines: cart.map((x, i) => {
+          const disc = lineDiscounts[i] ?? 0;
+          const taxable = Math.max(0, x.price * x.qty - disc);
+          const rateSum =
+            (x.cgstPercent ?? 0) + (x.sgstPercent ?? 0) + (x.igstPercent ?? 0);
+          const lineTaxRaw = posTaxInvoice && rateSum > 0 ? (taxable * rateSum) / 100 : 0;
+          const lineTax = Math.round(lineTaxRaw * 100) / 100;
+          return {
+            productId: x.id,
+            productUnitId: x.baseUnitId,
+            quantity: x.qty,
+            unitPrice: x.price,
+            lineDiscount: disc,
+            lineTax,
+          };
+        }),
       };
       if (posCustomerId) {
         saleBody.customerId = posCustomerId;
@@ -934,8 +1072,29 @@ function POSView({
         if (customerQuery.trim()) {
           saleBody.customerName = customerQuery.trim();
         }
-        if (walkInPhone.trim()) {
-          saleBody.customerPhone = walkInPhone.trim();
+        if (walkPhoneDigits.length === 10) {
+          saleBody.customerPhone = walkPhoneDigits;
+        }
+      }
+      if (posTaxInvoice) {
+        const gstFromCustomer = posCustomerId
+          ? sanitizeGstinInput(
+              customers.find((c) => c.id === posCustomerId)?.partyGstNo ?? "",
+              20,
+            )
+          : "";
+        const gstWalk = sanitizeGstinInput(walkInPartyGstNo, 20);
+        const gst = gstFromCustomer || gstWalk;
+        if (gst) {
+          saleBody.customerPartyGstNo = gst;
+        }
+        const stateFromCustomer = posCustomerId
+          ? customers.find((c) => c.id === posCustomerId)?.partyState?.trim()
+          : undefined;
+        const stateWalk = walkInPartyState.trim();
+        const st = stateFromCustomer ?? stateWalk;
+        if (st) {
+          saleBody.customerPartyState = st;
         }
       }
 
@@ -963,6 +1122,9 @@ function POSView({
       setPosCustomerId("");
       setCustomerQuery("");
       setWalkInPhone("");
+      setWalkInPartyGstNo("");
+      setWalkInPartyState("");
+      setTransportStr("");
       setCustomerPhoneError(null);
       setCustomerSuggestOpen(false);
       await onSaleComplete();
@@ -1000,7 +1162,11 @@ function POSView({
       {taxInvoiceSale ? (
         <TaxInvoiceModal
           sale={taxInvoiceSale}
-          onClose={() => setTaxInvoiceSale(null)}
+          variant={posTaxInvoice ? "tax" : "normal"}
+          onClose={() => {
+            setTaxInvoiceSale(null);
+            setPosTaxInvoice(false);
+          }}
         />
       ) : null}
       <div
@@ -1222,7 +1388,10 @@ function POSView({
           {cart.length > 0 && (
             <button
               type="button"
-              onClick={() => setCart([])}
+              onClick={() => {
+                setCart([]);
+                setPosTaxInvoice(false);
+              }}
               style={{
                 fontSize: 12,
                 color: "var(--danger)",
@@ -1428,13 +1597,35 @@ function POSView({
                       "Customer"}
                   </div>
                   {(() => {
-                    const ph = customers.find((x) => x.id === posCustomerId)
-                      ?.phone;
-                    return ph ? (
-                      <div style={{ fontSize: 12, color: "#78716c", marginTop: 2 }}>
-                        {ph}
-                      </div>
-                    ) : null;
+                    const sel = customers.find((x) => x.id === posCustomerId);
+                    const ph = sel?.phone;
+                    const gst = sel?.partyGstNo?.trim();
+                    const pst = sel?.partyState?.trim();
+                    return (
+                      <>
+                        {ph ? (
+                          <div
+                            style={{ fontSize: 12, color: "#78716c", marginTop: 2 }}
+                          >
+                            {ph}
+                          </div>
+                        ) : null}
+                        {posTaxInvoice && gst ? (
+                          <div
+                            style={{ fontSize: 12, color: "#78716c", marginTop: 2 }}
+                          >
+                            Party GST No: {gst}
+                          </div>
+                        ) : null}
+                        {posTaxInvoice && pst ? (
+                          <div
+                            style={{ fontSize: 12, color: "#78716c", marginTop: 2 }}
+                          >
+                            State: {pst}
+                          </div>
+                        ) : null}
+                      </>
+                    );
                   })()}
                 </div>
                 <button
@@ -1531,10 +1722,14 @@ function POSView({
                   ) : null}
                 </div>
                 <input
-                  placeholder="Phone (optional if paying in full; required if balance due)"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  maxLength={10}
+                  placeholder="10-digit mobile (optional if paying in full; required if balance due)"
                   value={walkInPhone}
                   onChange={(e) => {
-                    setWalkInPhone(e.target.value);
+                    setWalkInPhone(sanitizePhoneDigits(e.target.value));
                     if (customerPhoneError) setCustomerPhoneError(null);
                   }}
                   style={{
@@ -1546,6 +1741,61 @@ function POSView({
                     marginBottom: 8,
                   }}
                 />
+                {posTaxInvoice ? (
+                  <>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: 11,
+                        color: "var(--muted)",
+                        marginBottom: 4,
+                      }}
+                    >
+                      Party GST No
+                    </label>
+                    <input
+                      type="text"
+                      autoComplete="off"
+                      placeholder="Letters and digits only (optional)"
+                      maxLength={20}
+                      value={walkInPartyGstNo}
+                      onChange={(e) =>
+                        setWalkInPartyGstNo(sanitizeGstinInput(e.target.value, 20))
+                      }
+                      style={{
+                        ...inputStyle,
+                        width: "100%",
+                        boxSizing: "border-box",
+                        fontSize: 12,
+                        height: 32,
+                        marginBottom: 8,
+                      }}
+                    />
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: 11,
+                        color: "var(--muted)",
+                        marginBottom: 4,
+                      }}
+                    >
+                      State
+                    </label>
+                    <input
+                      placeholder="Optional"
+                      value={walkInPartyState}
+                      onChange={(e) => setWalkInPartyState(e.target.value)}
+                      style={{
+                        ...inputStyle,
+                        width: "100%",
+                        boxSizing: "border-box",
+                        fontSize: 12,
+                        height: 32,
+                        marginBottom: 8,
+                      }}
+                    />
+                  </>
+                ) : null}
                 {customerPhoneError ? (
                   <div style={{ fontSize: 12, color: "var(--danger)", marginBottom: 8 }}>
                     {customerPhoneError}
@@ -1586,6 +1836,34 @@ function POSView({
             <span>Subtotal</span>
             <span style={{ fontFamily: "monospace" }}>{fmt(subtotal)}</span>
           </div>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 8,
+              cursor: loading ? "not-allowed" : "pointer",
+              userSelect: "none",
+              fontSize: 12,
+              color: "var(--text)",
+              lineHeight: 1.35,
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={posTaxInvoice}
+              disabled={loading}
+              onChange={(e) => setPosTaxInvoice(e.target.checked)}
+              style={{
+                width: 16,
+                height: 16,
+                marginTop: 2,
+                cursor: loading ? "not-allowed" : "pointer",
+                flexShrink: 0,
+              }}
+            />
+            <span>Tax invoice</span>
+          </label>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <label style={{ fontSize: 13, color: "#78716c", flex: 1 }}>
               Discount %
@@ -1669,6 +1947,88 @@ function POSView({
               </div>
             </>
           ) : null}
+          {posTaxInvoice && posGstTotals ? (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+                padding: "8px 0",
+                borderTop: "1px dashed var(--border)",
+                borderBottom: "1px dashed var(--border)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  color: "var(--muted)",
+                }}
+              >
+                GST
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 13,
+                  color: "var(--text)",
+                }}
+              >
+                <span>CGST@ %</span>
+                <span style={{ fontFamily: "monospace" }}>{fmt(posGstTotals.cgst)}</span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 13,
+                  color: "var(--text)",
+                }}
+              >
+                <span>SGST@ %</span>
+                <span style={{ fontFamily: "monospace" }}>{fmt(posGstTotals.sgst)}</span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 13,
+                  color: "var(--text)",
+                }}
+              >
+                <span>IGST@ %</span>
+                <span style={{ fontFamily: "monospace" }}>{fmt(posGstTotals.igst)}</span>
+              </div>
+            </div>
+          ) : null}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <label style={{ fontSize: 13, color: "#78716c", flex: 1 }}>
+              Transport (₹)
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={transportStr}
+              onChange={(e) => setTransportStr(e.target.value)}
+              placeholder="0"
+              disabled={loading}
+              style={{
+                width: 100,
+                height: 32,
+                textAlign: "right",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                fontSize: 13,
+                outline: "none",
+                background: "var(--surface)",
+                color: "var(--text)",
+              }}
+            />
+          </div>
           <div
             style={{
               display: "flex",
@@ -1679,7 +2039,7 @@ function POSView({
           >
             <span>Total</span>
             <span style={{ fontFamily: "monospace", color: "var(--accent)" }}>
-              {fmt(total)}
+              {fmt(grandTotal)}
             </span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -1707,7 +2067,7 @@ function POSView({
                 String(amountPaidStr).replace(/,/g, "").trim()
               );
               if (!Number.isFinite(p) || p < 0) return null;
-              const due = Math.max(0, total - Math.min(total, p));
+              const due = Math.max(0, grandTotal - Math.min(grandTotal, p));
               if (due < 0.005) return null;
               return (
                 <div
@@ -2035,12 +2395,29 @@ function InventoryView({ products }: { products: UiProduct[] }) {
 
 const PURCHASE_INLINE_ERROR_KEYS = new Set([
   "supplierId",
-  "productId",
-  "quantity",
-  "unitCost",
   "invoiceDate",
   "note",
 ]);
+
+/** Max purchase lines from one CSV/Excel file (matches batch safety). */
+const MAX_PURCHASE_IMPORT_ROWS = 500;
+
+function newPurchaseLineRow(): {
+  key: string;
+  productId: string;
+  quantity: string;
+  unitCost: string;
+} {
+  return {
+    key:
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `pl-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    productId: "",
+    quantity: "",
+    unitCost: "",
+  };
+}
 
 const ADJUSTMENT_INLINE_ERROR_KEYS = new Set([
   "productId",
@@ -2060,28 +2437,33 @@ function PurchaseView({
   actingUserId,
   onPurchaseComplete,
   refreshSuppliers,
+  isAdminUser = false,
 }: {
   products: UiProduct[];
   suppliers: ApiSupplier[];
   actingUserId: string;
   onPurchaseComplete: () => Promise<void>;
   refreshSuppliers: () => Promise<void>;
+  /** Admin / manager: supplier payment register */
+  isAdminUser?: boolean;
 }) {
-  const empty = {
-    productId: "",
+  const [form, setForm] = useState(() => ({
     supplierId: "",
-    quantity: "",
-    unitCost: "",
+    lines: [newPurchaseLineRow()],
     purchaseDate: ymdInIndia(),
     notes: "",
-  };
-  const [form, setForm] = useState(empty);
+  }));
   const [status, setStatus] = useState<{
     type: "success" | "error";
     msg: string;
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [lineFieldErrors, setLineFieldErrors] = useState<
+    Map<number, Record<string, string>>
+  >(() => new Map());
+  const purchaseImportRef = useRef<HTMLInputElement>(null);
+  const [importBanner, setImportBanner] = useState<string | null>(null);
 
   const newSupplierEmpty = useMemo(
     () => ({
@@ -2106,16 +2488,51 @@ function PurchaseView({
     text: string;
   } | null>(null);
 
+  const [payRows, setPayRows] = useState<PurchaseListRow[]>([]);
+  const [payLoading, setPayLoading] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+  const [payFor, setPayFor] = useState<PurchaseListRow | null>(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payNote, setPayNote] = useState("");
+  const [payPaidAt, setPayPaidAt] = useState("");
+  const [payLoadingSubmit, setPayLoadingSubmit] = useState(false);
+  const [payMsg, setPayMsg] = useState<{
+    type: "ok" | "err";
+    text: string;
+  } | null>(null);
+
+  const loadPayables = useCallback(async () => {
+    if (!isAdminUser) return;
+    setPayLoading(true);
+    setPayError(null);
+    try {
+      const data = await api.getPurchases({ owingOnly: true, limit: 200 });
+      setPayRows(data.purchases);
+    } catch (e) {
+      setPayError(isApiError(e) ? e.message : "Failed to load supplier payables");
+      setPayRows([]);
+    } finally {
+      setPayLoading(false);
+    }
+  }, [isAdminUser]);
+
+  useEffect(() => {
+    void loadPayables();
+  }, [loadPayables]);
+
+  useEffect(() => {
+    if (payFor) {
+      setPayAmount(Number(payFor.balanceAmount).toFixed(2));
+      setPayNote("");
+      setPayPaidAt(ymdInIndia());
+      setPayMsg(null);
+    }
+  }, [payFor]);
+
   useEffect(() => {
     setFieldErrors({});
-  }, [
-    form.productId,
-    form.supplierId,
-    form.quantity,
-    form.unitCost,
-    form.purchaseDate,
-    form.notes,
-  ]);
+    setLineFieldErrors(new Map());
+  }, [form.supplierId, form.purchaseDate, form.notes, form.lines]);
 
   useEffect(() => {
     setNewSupplierErrors({});
@@ -2129,8 +2546,130 @@ function PurchaseView({
     return extra.map(([k, v]) => `${k}: ${v}`).join(" · ");
   }, [fieldErrors]);
 
-  const set = (k: keyof typeof empty, v: string) =>
-    setForm((f) => ({ ...f, [k]: v }));
+  const setLine = (
+    index: number,
+    patch: Partial<{
+      productId: string;
+      quantity: string;
+      unitCost: string;
+    }>
+  ) => {
+    setForm((f) => ({
+      ...f,
+      lines: f.lines.map((ln, i) => (i === index ? { ...ln, ...patch } : ln)),
+    }));
+  };
+
+  const addPurchaseLine = () => {
+    setForm((f) => ({ ...f, lines: [...f.lines, newPurchaseLineRow()] }));
+  };
+
+  const removePurchaseLine = (index: number) => {
+    setForm((f) => {
+      if (f.lines.length <= 1) {
+        return { ...f, lines: [newPurchaseLineRow()] };
+      }
+      return { ...f, lines: f.lines.filter((_, i) => i !== index) };
+    });
+  };
+
+  const downloadPurchaseImportTemplate = () => {
+    const bom = "\uFEFF";
+    const blob = new Blob([bom + PURCHASE_IMPORT_TEMPLATE_CSV], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "purchase-lines-import-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePurchaseImportFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setImportBanner(null);
+    try {
+      const {
+        patches,
+        patchSourceRows,
+        rowErrors,
+        skippedBlankRows,
+        hasSupplierColumn,
+      } = await parsePurchaseLinesImportFile(file);
+      const capped = patches.slice(0, MAX_PURCHASE_IMPORT_ROWS);
+      const cappedRows = patchSourceRows.slice(0, MAX_PURCHASE_IMPORT_ROWS);
+      const {
+        lines: importedLines,
+        unresolved,
+        supplierUnresolved,
+        resolvedSupplierId,
+      } = resolvePurchaseImportPatches(capped, products, cappedRows, {
+        suppliers,
+        hasSupplierColumn,
+        defaultSupplierId: form.supplierId || null,
+      });
+      if (importedLines.length === 0) {
+        const msg =
+          supplierUnresolved.length > 0
+            ? supplierUnresolved.map((u) => `Row ${u.row}: ${u.message}`).join("\n")
+            : unresolved.length > 0
+              ? unresolved.map((u) => `Row ${u.row}: ${u.message}`).join("\n")
+              : rowErrors.length > 0
+                ? rowErrors.map((r) => `Row ${r.row}: ${r.message}`).join("\n")
+                : "No valid lines. Check headers: sku and/or product name, quantity, unit cost.";
+        window.alert(msg);
+        return;
+      }
+      setForm((f) => {
+        const sole = f.lines.length === 1;
+        const emptyRow =
+          sole &&
+          !f.lines[0].productId &&
+          !String(f.lines[0].quantity).trim() &&
+          !String(f.lines[0].unitCost).trim();
+        const nextLines = emptyRow ? importedLines : [...f.lines, ...importedLines];
+        return {
+          ...f,
+          lines: nextLines,
+          supplierId: resolvedSupplierId ?? f.supplierId,
+        };
+      });
+      const parts = [
+        `Imported ${importedLines.length} line(s). Review and record purchase when ready.`,
+      ];
+      if (resolvedSupplierId) {
+        const sn = suppliers.find((s) => s.id === resolvedSupplierId)?.name;
+        if (sn) {
+          parts.push(`Supplier set to “${sn}”.`);
+        }
+      }
+      if (patches.length > MAX_PURCHASE_IMPORT_ROWS) {
+        parts.push(`Only the first ${MAX_PURCHASE_IMPORT_ROWS} data rows were loaded.`);
+      }
+      if (skippedBlankRows > 0) {
+        parts.push(`${skippedBlankRows} blank row(s) skipped.`);
+      }
+      if (rowErrors.length > 0) {
+        parts.push(
+          `Notes: ${rowErrors.map((r) => `row ${r.row}: ${r.message}`).join("; ")}`
+        );
+      }
+      if (unresolved.length > 0) {
+        parts.push(
+          `Not imported: ${unresolved.map((u) => `row ${u.row}: ${u.message}`).join("; ")}`
+        );
+      }
+      setImportBanner(parts.join(" "));
+      setStatus(null);
+    } catch (err) {
+      window.alert(
+        err instanceof Error ? err.message : "Could not read that file."
+      );
+    }
+  };
 
   const duplicateSupplierMsg =
     "This supplier already exists. Select it from the dropdown or enter a different name.";
@@ -2146,7 +2685,13 @@ function PurchaseView({
     k: keyof typeof newSupplierEmpty,
     v: string
   ) => {
-    setNewSupplier((s) => ({ ...s, [k]: v }));
+    const next =
+      k === "phone"
+        ? sanitizePhoneDigits(v)
+        : k === "gstNumber"
+          ? sanitizeGstinInput(v, 50)
+          : v;
+    setNewSupplier((s) => ({ ...s, [k]: next }));
     if (k === "name") {
       setForm((f) => {
         if (!f.supplierId) return f;
@@ -2172,6 +2717,11 @@ function PurchaseView({
       setForm((f) => ({ ...f, supplierId: matchingSupplier.id }));
       return;
     }
+    const supplierPhoneDigits = sanitizePhoneDigits(newSupplier.phone);
+    if (supplierPhoneDigits.length > 0 && supplierPhoneDigits.length !== 10) {
+      setNewSupplierErrors({ phone: "Phone must be exactly 10 digits." });
+      return;
+    }
     setCreatingSupplier(true);
     setNewSupplierErrors({});
     setSupplierPanelMsg(null);
@@ -2179,10 +2729,10 @@ function PurchaseView({
       const s = await api.createSupplier({
         name: trimmedName,
         contactPerson: newSupplier.contactPerson.trim() || undefined,
-        phone: newSupplier.phone.trim() || undefined,
+        phone: supplierPhoneDigits.length === 10 ? supplierPhoneDigits : undefined,
         email: newSupplier.email.trim() || undefined,
         address: newSupplier.address.trim() || undefined,
-        gstNumber: newSupplier.gstNumber.trim() || undefined,
+        gstNumber: sanitizeGstinInput(newSupplier.gstNumber, 50) || undefined,
         note: newSupplier.note.trim() || undefined,
       });
       await refreshSuppliers();
@@ -2225,49 +2775,55 @@ function PurchaseView({
     }
   };
 
-  const selectedProduct = products.find((p) => p.id === form.productId);
-
-  const totalCost =
-    (Number(form.quantity) || 0) * (Number(form.unitCost) || 0);
+  const totalCost = useMemo(() => {
+    return form.lines.reduce((sum, ln) => {
+      const q = Number(ln.quantity) || 0;
+      const c = Number(ln.unitCost) || 0;
+      return sum + q * c;
+    }, 0);
+  }, [form.lines]);
 
   const handleSubmit = async () => {
     if (loading) return;
     setLoading(true);
     setStatus(null);
     setFieldErrors({});
+    setLineFieldErrors(new Map());
     try {
+      const linesPayload = form.lines.map((ln) => {
+        const p = products.find((x) => x.id === ln.productId);
+        return {
+          productId: ln.productId,
+          productUnitId: p?.baseUnitId ?? "",
+          quantity: Number(ln.quantity),
+          unitCost: Number(ln.unitCost),
+        };
+      });
       const purchase = await api.createPurchase({
         supplierId: form.supplierId,
         createdById: actingUserId,
         invoiceDate: form.purchaseDate || undefined,
         note: form.notes || undefined,
-        lines: [
-          {
-            productId: form.productId,
-            productUnitId: selectedProduct?.baseUnitId ?? "",
-            quantity: Number(form.quantity),
-            unitCost: Number(form.unitCost),
-          },
-        ],
+        lines: linesPayload,
       });
       setStatus({
         type: "success",
         msg: `Purchase recorded — ${purchase.purchaseNumber}`,
       });
       setForm({
-        ...empty,
+        supplierId: "",
+        lines: [newPurchaseLineRow()],
         purchaseDate: ymdInIndia(),
+        notes: "",
       });
+      setImportBanner(null);
       await onPurchaseComplete();
+      if (isAdminUser) void loadPayables();
       setTimeout(() => setStatus(null), 4000);
     } catch (e) {
       if (isApiError(e)) {
-        const fe: Record<string, string> = {};
-        for (const d of e.details ?? []) {
-          const k = mapPurchaseDetailField(d.field);
-          if (!fe[k]) fe[k] = d.message;
-        }
-        setFieldErrors(fe);
+        setFieldErrors(recordFieldErrors(e.details));
+        setLineFieldErrors(lineErrorsFromDetails(e.details));
         setStatus({ type: "error", msg: e.message });
       } else {
         setStatus({
@@ -2281,7 +2837,54 @@ function PurchaseView({
     }
   };
 
+  const submitSupplierPayment = async () => {
+    if (!payFor || !actingUserId) return;
+    const amt = Number.parseFloat(payAmount.replace(/,/g, ""));
+    if (!Number.isFinite(amt) || amt <= 0) {
+      setPayMsg({ type: "err", text: "Enter a valid payment amount." });
+      return;
+    }
+    const maxBal = Number(payFor.balanceAmount);
+    if (amt > maxBal + 1e-6) {
+      setPayMsg({
+        type: "err",
+        text: "Amount cannot exceed balance owed to supplier.",
+      });
+      return;
+    }
+    setPayLoadingSubmit(true);
+    setPayMsg(null);
+    try {
+      await api.recordPurchasePayment(payFor.id, {
+        amount: amt,
+        createdById: actingUserId,
+        note: payNote.trim() || undefined,
+        paidAt: payPaidAt.trim()
+          ? new Date(`${payPaidAt.trim()}T12:00:00`).toISOString()
+          : undefined,
+      });
+      setPayFor(null);
+      await loadPayables();
+    } catch (e) {
+      setPayMsg({
+        type: "err",
+        text: isApiError(e) ? e.message : "Payment failed",
+      });
+    } finally {
+      setPayLoadingSubmit(false);
+    }
+  };
+
   return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 28,
+        maxWidth: 960,
+        width: "100%",
+      }}
+    >
     <div style={{ maxWidth: 560 }}>
       <div
         style={{
@@ -2296,20 +2899,73 @@ function PurchaseView({
       >
         <div
           style={{
-            fontWeight: 600,
-            fontSize: 16,
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
             borderBottom: "1px solid #f0ece8",
             paddingBottom: 14,
           }}
         >
-          New Purchase Entry
+          <div style={{ fontWeight: 600, fontSize: 16 }}>New Purchase Entry</div>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
+              alignItems: "center",
+            }}
+          >
+            <input
+              ref={purchaseImportRef}
+              type="file"
+              accept=".csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+              style={{ display: "none" }}
+              onChange={(e) => void handlePurchaseImportFile(e)}
+            />
+            <button
+              type="button"
+              onClick={() => purchaseImportRef.current?.click()}
+              style={{
+                height: 34,
+                padding: "0 12px",
+                background: "#fff",
+                border: "1px solid #e7e5e4",
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#44403c",
+                cursor: "pointer",
+              }}
+            >
+              Import CSV / Excel
+            </button>
+            <button
+              type="button"
+              onClick={downloadPurchaseImportTemplate}
+              style={{
+                height: 34,
+                padding: "0 12px",
+                background: "#fafaf9",
+                border: "1px solid #e7e5e4",
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#78716c",
+                cursor: "pointer",
+              }}
+            >
+              Download template
+            </button>
+          </div>
         </div>
 
         <FieldWrap label="Supplier *" error={fieldErrors.supplierId}>
           <select
             value={form.supplierId}
             onChange={(e) => {
-              set("supplierId", e.target.value);
+              setForm((f) => ({ ...f, supplierId: e.target.value }));
               if (e.target.value) {
                 setNewSupplierErrors((prev) => {
                   if (!prev.name) return prev;
@@ -2452,7 +3108,12 @@ function PurchaseView({
               }}
             >
               <FieldWrap label="Phone" error={newSupplierErrors.phone}>
-                <input
+                  <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  maxLength={10}
+                  placeholder="10-digit mobile (optional)"
                   value={newSupplier.phone}
                   onChange={(e) =>
                     setNewSupplierField("phone", e.target.value)
@@ -2490,7 +3151,11 @@ function PurchaseView({
               />
             </FieldWrap>
             <FieldWrap label="GST number" error={newSupplierErrors.gstNumber}>
-              <input
+                <input
+                type="text"
+                autoComplete="off"
+                placeholder="Letters and digits only (optional)"
+                maxLength={50}
                 value={newSupplier.gstNumber}
                 onChange={(e) =>
                   setNewSupplierField("gstNumber", e.target.value)
@@ -2541,84 +3206,189 @@ function PurchaseView({
           </div>
         )}
 
-        <FieldWrap label="Product *" error={fieldErrors.productId}>
-          <select
-            value={form.productId}
-            onChange={(e) => set("productId", e.target.value)}
-            style={{ ...inputStyle, padding: "0 10px", cursor: "pointer" }}
-          >
-            <option value="">— Select product —</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.sku})
-              </option>
-            ))}
-          </select>
-        </FieldWrap>
-
-        {selectedProduct && (
-          <div
-            style={{
-              background: "#fef9ee",
-              borderRadius: 8,
-              padding: "10px 14px",
-              fontSize: 13,
-              color: "#78716c",
-              display: "flex",
-              gap: 20,
-            }}
-          >
-            <span>
-              Current stock:{" "}
-              <strong style={{ color: "#1c1917" }}>
-                {selectedProduct.stock} {selectedProduct.unit}
-              </strong>
-            </span>
-            <span>
-              Sale price:{" "}
-              <strong style={{ color: "#1c1917" }}>
-                {fmt(selectedProduct.price)}
-              </strong>
-            </span>
-          </div>
-        )}
-
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 14,
+            fontWeight: 600,
+            fontSize: 14,
+            color: "#44403c",
+            borderBottom: "1px solid #f0ece8",
+            paddingBottom: 10,
           }}
         >
-          <FieldWrap label="Quantity *" error={fieldErrors.quantity}>
-            <input
-              type="number"
-              min={0.0001}
-              step="any"
-              placeholder="0"
-              value={form.quantity}
-              onChange={(e) => set("quantity", e.target.value)}
-              style={{
-                ...inputStyle,
-                borderColor: fieldErrors.quantity ? "#fca5a5" : "#e7e5e4",
-              }}
-            />
-          </FieldWrap>
-          <FieldWrap label="Unit Cost (₹) *" error={fieldErrors.unitCost}>
-            <input
-              type="number"
-              min={0}
-              step="any"
-              placeholder="0.00"
-              value={form.unitCost}
-              onChange={(e) => set("unitCost", e.target.value)}
-              style={{
-                ...inputStyle,
-                borderColor: fieldErrors.unitCost ? "#fca5a5" : "#e7e5e4",
-              }}
-            />
-          </FieldWrap>
+          Line items
         </div>
+
+        <p style={{ margin: 0, fontSize: 12, color: "#78716c" }}>
+          Row 1 = headers. Required:{" "}
+          <code style={{ fontSize: 11 }}>quantity</code>,{" "}
+          <code style={{ fontSize: 11 }}>unit cost</code> (or rate / purchase price), and{" "}
+          <code style={{ fontSize: 11 }}>sku</code> and/or{" "}
+          <code style={{ fontSize: 11 }}>product name</code> to match your catalog. Optional:{" "}
+          <code style={{ fontSize: 11 }}>supplier</code> / <code style={{ fontSize: 11 }}>vendor</code>{" "}
+          (name or GST); all rows must be the same supplier. Leave a cell blank only if you
+          already selected that supplier above. Imported rows become line items you can edit
+          before recording.
+        </p>
+
+        {importBanner ? (
+          <div
+            style={{
+              background: "#fefce8",
+              border: "1px solid #fde047",
+              color: "#854d0e",
+              padding: "10px 14px",
+              borderRadius: 8,
+              fontSize: 13,
+              lineHeight: 1.45,
+            }}
+          >
+            {importBanner}
+          </div>
+        ) : null}
+
+        {form.lines.map((line, idx) => {
+          const rowErr = lineFieldErrors.get(idx);
+          const prodErr = rowErr?.productId ?? rowErr?.productUnitId;
+          const qtyErr = rowErr?.quantity;
+          const costErr = rowErr?.unitCost;
+          const sel = products.find((p) => p.id === line.productId);
+          return (
+            <div
+              key={line.key}
+              style={{
+                border: "1px solid #e7e5e4",
+                borderRadius: 10,
+                padding: 14,
+                background: "#fafaf9",
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#78716c" }}>
+                  Line {idx + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removePurchaseLine(idx)}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#78716c",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+              <FieldWrap label="Product *" error={prodErr}>
+                <select
+                  value={line.productId}
+                  onChange={(e) => setLine(idx, { productId: e.target.value })}
+                  style={{ ...inputStyle, padding: "0 10px", cursor: "pointer" }}
+                >
+                  <option value="">— Select product —</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.sku})
+                    </option>
+                  ))}
+                </select>
+              </FieldWrap>
+              {sel ? (
+                <div
+                  style={{
+                    background: "#fef9ee",
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                    fontSize: 12,
+                    color: "#78716c",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 16,
+                  }}
+                >
+                  <span>
+                    Stock:{" "}
+                    <strong style={{ color: "#1c1917" }}>
+                      {sel.stock} {sel.unit}
+                    </strong>
+                  </span>
+                  <span>
+                    Sale:{" "}
+                    <strong style={{ color: "#1c1917" }}>{fmt(sel.price)}</strong>
+                  </span>
+                </div>
+              ) : null}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 14,
+                }}
+              >
+                <FieldWrap label="Quantity *" error={qtyErr}>
+                  <input
+                    type="number"
+                    min={0.0001}
+                    step="any"
+                    placeholder="0"
+                    value={line.quantity}
+                    onChange={(e) => setLine(idx, { quantity: e.target.value })}
+                    style={{
+                      ...inputStyle,
+                      borderColor: qtyErr ? "#fca5a5" : "#e7e5e4",
+                    }}
+                  />
+                </FieldWrap>
+                <FieldWrap label="Unit Cost (₹) *" error={costErr}>
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    placeholder="0.00"
+                    value={line.unitCost}
+                    onChange={(e) => setLine(idx, { unitCost: e.target.value })}
+                    style={{
+                      ...inputStyle,
+                      borderColor: costErr ? "#fca5a5" : "#e7e5e4",
+                    }}
+                  />
+                </FieldWrap>
+              </div>
+            </div>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={addPurchaseLine}
+          style={{
+            alignSelf: "flex-start",
+            height: 36,
+            padding: "0 14px",
+            background: "#fff",
+            border: "1px solid #e7e5e4",
+            borderRadius: 8,
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#44403c",
+            cursor: "pointer",
+          }}
+        >
+          + Add line
+        </button>
 
         {totalCost > 0 && (
           <div
@@ -2640,7 +3410,9 @@ function PurchaseView({
           <input
             type="date"
             value={form.purchaseDate}
-            onChange={(e) => set("purchaseDate", e.target.value)}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, purchaseDate: e.target.value }))
+            }
             style={{
               ...inputStyle,
               borderColor: fieldErrors.invoiceDate ? "#fca5a5" : "#e7e5e4",
@@ -2651,7 +3423,7 @@ function PurchaseView({
         <FieldWrap label="Notes (optional)" error={fieldErrors.note}>
           <textarea
             value={form.notes}
-            onChange={(e) => set("notes", e.target.value)}
+            onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
             rows={3}
             placeholder="Any additional notes..."
             style={{
@@ -2687,6 +3459,346 @@ function PurchaseView({
           {loading ? "Recording..." : "Record Purchase"}
         </button>
       </div>
+    </div>
+
+      {isAdminUser ? (
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 12,
+            border: "1px solid #e7e5e4",
+            padding: 24,
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontWeight: 600,
+                fontSize: 16,
+                borderBottom: "1px solid #f0ece8",
+                paddingBottom: 10,
+                color: "var(--text)",
+              }}
+            >
+              Supplier payments
+            </div>
+            <p style={{ margin: "8px 0 0", fontSize: 13, color: "#78716c" }}>
+              Purchases still owed to suppliers. Record partial payments; each entry
+              is stored with date and who recorded it.
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={() => void loadPayables()}
+              disabled={payLoading}
+              style={{
+                height: 36,
+                padding: "0 14px",
+                borderRadius: 8,
+                border: "1px solid #e7e5e4",
+                background: "#fafaf9",
+                color: "#44403c",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: payLoading ? "not-allowed" : "pointer",
+              }}
+            >
+              Refresh
+            </button>
+            {payLoading ? (
+              <span style={{ fontSize: 13, color: "#78716c" }}>Loading…</span>
+            ) : null}
+          </div>
+          {payError ? (
+            <div
+              style={{
+                padding: "10px 12px",
+                borderRadius: 8,
+                background: "#fef2f2",
+                color: "#b91c1c",
+                fontSize: 13,
+              }}
+            >
+              {payError}
+            </div>
+          ) : null}
+          {!payLoading && !payError && payRows.length === 0 ? (
+            <div style={{ fontSize: 14, color: "#78716c" }}>
+              No outstanding supplier balances.
+            </div>
+          ) : null}
+          {!payLoading && payRows.length > 0 ? (
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: 13,
+                }}
+              >
+                <thead>
+                  <tr style={{ background: "#fafaf9", color: "#78716c" }}>
+                    <th style={{ textAlign: "left", padding: "10px 12px" }}>
+                      Purchase
+                    </th>
+                    <th style={{ textAlign: "left", padding: "10px 12px" }}>
+                      Date
+                    </th>
+                    <th style={{ textAlign: "left", padding: "10px 12px" }}>
+                      Supplier
+                    </th>
+                    <th style={{ textAlign: "right", padding: "10px 12px" }}>
+                      Total
+                    </th>
+                    <th style={{ textAlign: "right", padding: "10px 12px" }}>
+                      Paid
+                    </th>
+                    <th style={{ textAlign: "right", padding: "10px 12px" }}>
+                      Owed
+                    </th>
+                    <th style={{ textAlign: "right", padding: "10px 12px" }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {payRows.map((r) => {
+                    const dt = new Date(r.createdAt);
+                    return (
+                      <tr
+                        key={r.id}
+                        style={{ borderTop: "1px solid #f0ece8" }}
+                      >
+                        <td style={{ padding: "10px 12px", fontWeight: 600 }}>
+                          {r.purchaseNumber}
+                        </td>
+                        <td style={{ padding: "10px 12px", color: "#78716c" }}>
+                          {Number.isNaN(dt.getTime())
+                            ? r.createdAt
+                            : formatIndiaDateTime(dt)}
+                        </td>
+                        <td style={{ padding: "10px 12px" }}>{r.supplierName}</td>
+                        <td
+                          style={{
+                            padding: "10px 12px",
+                            textAlign: "right",
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          {fmt(Number(r.totalAmount))}
+                        </td>
+                        <td
+                          style={{
+                            padding: "10px 12px",
+                            textAlign: "right",
+                            fontFamily: "monospace",
+                            color: "#78716c",
+                          }}
+                        >
+                          {fmt(Number(r.paidAmount))}
+                        </td>
+                        <td
+                          style={{
+                            padding: "10px 12px",
+                            textAlign: "right",
+                            fontFamily: "monospace",
+                            fontWeight: 600,
+                            color: "var(--accent)",
+                          }}
+                        >
+                          {fmt(Number(r.balanceAmount))}
+                        </td>
+                        <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                          <button
+                            type="button"
+                            onClick={() => setPayFor(r)}
+                            style={{
+                              height: 32,
+                              padding: "0 12px",
+                              borderRadius: 8,
+                              border: "none",
+                              background: "var(--accent)",
+                              color: "#fff",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Pay supplier
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {payFor ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="supplier-pay-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 16,
+          }}
+          onClick={() => !payLoadingSubmit && setPayFor(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && !payLoadingSubmit) setPayFor(null);
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              background: "var(--surface)",
+              borderRadius: 12,
+              border: "1px solid var(--border)",
+              padding: 20,
+              boxShadow: "0 20px 50px rgba(0,0,0,0.15)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <h3
+              id="supplier-pay-title"
+              style={{ margin: "0 0 4px", fontSize: 17, color: "var(--text)" }}
+            >
+              Pay supplier
+            </h3>
+            <p style={{ margin: "0 0 16px", fontSize: 12, color: "var(--muted)" }}>
+              {payFor.purchaseNumber} · {payFor.supplierName} · Balance{" "}
+              {fmt(Number(payFor.balanceAmount))}
+            </p>
+            <label
+              style={{
+                display: "block",
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--muted)",
+                marginBottom: 6,
+              }}
+            >
+              Amount (₹)
+            </label>
+            <input
+              type="number"
+              min={0.01}
+              step={0.01}
+              value={payAmount}
+              onChange={(e) => setPayAmount(e.target.value)}
+              style={{
+                ...inputStyle,
+                width: "100%",
+                boxSizing: "border-box",
+                marginBottom: 12,
+              }}
+            />
+            <label
+              style={{
+                display: "block",
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--muted)",
+                marginBottom: 6,
+              }}
+            >
+              Payment date
+            </label>
+            <input
+              type="date"
+              value={payPaidAt}
+              onChange={(e) => setPayPaidAt(e.target.value)}
+              style={{
+                ...inputStyle,
+                width: "100%",
+                boxSizing: "border-box",
+                marginBottom: 12,
+              }}
+            />
+            <label
+              style={{
+                display: "block",
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--muted)",
+                marginBottom: 6,
+              }}
+            >
+              Note (optional)
+            </label>
+            <input
+              type="text"
+              value={payNote}
+              onChange={(e) => setPayNote(e.target.value)}
+              placeholder="e.g. NEFT ref, UTR"
+              style={{
+                ...inputStyle,
+                width: "100%",
+                boxSizing: "border-box",
+                marginBottom: 12,
+              }}
+            />
+            {payMsg ? (
+              <div
+                style={{
+                  fontSize: 13,
+                  marginBottom: 10,
+                  color: payMsg.type === "err" ? "var(--danger)" : "var(--accent)",
+                }}
+              >
+                {payMsg.text}
+              </div>
+            ) : null}
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                disabled={payLoadingSubmit}
+                onClick={() => setPayFor(null)}
+                style={{
+                  height: 38,
+                  padding: "0 16px",
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: "var(--surface)",
+                  cursor: payLoadingSubmit ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={payLoadingSubmit}
+                onClick={() => void submitSupplierPayment()}
+                style={{
+                  height: 38,
+                  padding: "0 18px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: "var(--accent)",
+                  color: "#fff",
+                  fontWeight: 600,
+                  cursor: payLoadingSubmit ? "wait" : "pointer",
+                }}
+              >
+                {payLoadingSubmit ? "Saving…" : "Record payment"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -3290,7 +4402,7 @@ export default function App() {
           }}
         >
           <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 600 }}>
-            Raj Hardware, Electrical and Paint
+            Santosh Electricals Works
           </span>
           <div
             style={{
@@ -3414,12 +4526,17 @@ export default function App() {
             {!loading && !error && (
               <>
                 {tab === "home" && (
-                  <HomeView onTabChange={setTab} isAdmin={isAdminUser} />
+                  <HomeView
+                    onTabChange={setTab}
+                    isAdmin={isAdminUser}
+                    products={products}
+                  />
                 )}
                 {tab === "products" && (
                   <ProductsPage
                     onProductsCreated={refreshProducts}
                     allowMutations={isAdminUser}
+                    confirm={confirm}
                   />
                 )}
                 {FEATURE_FLAGS.catalogPromotions && tab === "promotion" && (
@@ -3454,6 +4571,7 @@ export default function App() {
                     actingUserId={actingUserId}
                     onPurchaseComplete={refreshProducts}
                     refreshSuppliers={refreshSuppliers}
+                    isAdminUser={isAdminUser}
                   />
                 )}
                 {tab === "adjustment" && (

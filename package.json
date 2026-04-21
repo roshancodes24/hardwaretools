@@ -11,6 +11,7 @@
     "build:release": "npm run build:frontend && prisma generate",
     "start:prod": "cross-env NODE_ENV=production SERVE_FRONTEND=1 tsx src/server.ts",
     "seed": "prisma db seed",
+    "db:clear-catalog": "tsx scripts/clear-catalog.ts",
     "test:inventory": "tsx src/test-inventory.ts",
     "test:regression": "vitest run tests/regression",
     "test:login": "vitest run tests/regression/login.test.ts tests/regression/login-schema.test.ts",

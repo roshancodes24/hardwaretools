@@ -409,7 +409,7 @@ describe.runIf(runWrites)("R6 — Write path: POS sale (opt-in REGRESSION_WRITES
     const payload = {
       createdById: adminId,
       customerName: "Regression QA",
-      customerPhone: "919876543210",
+      customerPhone: "9876543210",
       paidAmount: 30,
       note: `REGRESSION_WRITES sale ${Date.now()}`,
       lines: [

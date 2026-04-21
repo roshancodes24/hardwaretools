@@ -86,6 +86,7 @@ model User {
   stockMovements   StockMovement[]
   stockAdjustments StockAdjustment[]
   salePayments     SalePayment[]
+  purchasePayments PurchasePayment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -110,11 +111,14 @@ model Supplier {
 }
 
 model Customer {
-  id      String  @id @default(cuid())
-  name    String
-  phone   String? @unique
-  email   String?
-  address String?
+  id          String  @id @default(cuid())
+  name        String
+  phone       String? @unique
+  email       String?
+  address     String?
+  partyGstNo  String?
+  /// State / place (e.g. for tax invoice bill-to).
+  partyState  String?
 
   sales Sale[]
 
@@ -132,6 +136,8 @@ model Product {
   description String?
   category    String?
   brand       String?
+  /// Harmonized System of Nomenclature (GST), e.g. 4/6/8 digit code
+  hsnCode     String?
   status      ProductStatus @default(ACTIVE)
 
   baseUnitCode     String
@@ -140,7 +146,9 @@ model Product {
 
   costPrice    Decimal? @db.Decimal(14, 4)
   sellingPrice Decimal? @db.Decimal(14, 4)
-  taxRate      Decimal? @db.Decimal(5, 2)
+  cgstPercent  Decimal? @db.Decimal(5, 2)
+  sgstPercent  Decimal? @db.Decimal(5, 2)
+  igstPercent  Decimal? @db.Decimal(5, 2)
 
   reorderLevel Decimal? @db.Decimal(14, 4)
   currentStock Decimal  @default(0) @db.Decimal(18, 4)
@@ -254,18 +262,37 @@ model Purchase {
   discountAmount Decimal @default(0) @db.Decimal(14, 2)
   taxAmount      Decimal @default(0) @db.Decimal(14, 2)
   totalAmount    Decimal @default(0) @db.Decimal(14, 2)
+  paidAmount     Decimal @default(0) @db.Decimal(14, 2)
+  balanceAmount  Decimal @default(0) @db.Decimal(14, 2)
 
   createdById String
   createdBy   User   @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
 
   lines          PurchaseLine[]
   stockMovements StockMovement[]
+  payments       PurchasePayment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([supplierId, status])
   @@index([invoiceDate])
+}
+
+model PurchasePayment {
+  id          String   @id @default(cuid())
+  purchaseId  String
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  amount      Decimal  @db.Decimal(14, 2)
+  /// When the payment was made (can differ from createdAt if backdated).
+  paidAt      DateTime @default(now())
+  note        String?
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([purchaseId, paidAt])
+  @@index([createdById])
 }
 
 model PurchaseLine {
@@ -304,12 +331,18 @@ model Sale {
   customerId           String?
   customer             Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
   customerNameSnapshot String?
+  /// Snapshot for invoices (walk-in Party GST or copied from customer at sale time).
+  customerPartyGstNo   String?
+  /// State / place for tax invoice (walk-in or copied from customer at sale time).
+  customerPartyState   String?
 
   note String?
 
   subtotal       Decimal @default(0) @db.Decimal(14, 2)
   discountAmount Decimal @default(0) @db.Decimal(14, 2)
   taxAmount      Decimal @default(0) @db.Decimal(14, 2)
+  /// Freight / transport (added to charged total; not per line item).
+  transportAmount Decimal @default(0) @db.Decimal(14, 2)
   totalAmount    Decimal @default(0) @db.Decimal(14, 2)
   paidAmount     Decimal @default(0) @db.Decimal(14, 2)
   balanceAmount  Decimal @default(0) @db.Decimal(14, 2)

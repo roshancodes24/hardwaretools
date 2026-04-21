@@ -40,7 +40,7 @@ export function ConfirmModal({
   if (!open) return null;
 
   const confirmBg =
-    variant === "danger" ? "#111827" : variant === "warning" ? "#2563eb" : "#1c1917";
+    variant === "danger" ? "#dc2626" : "var(--accent)";
 
   const icon =
     variant === "default" ? null : (
@@ -50,8 +50,11 @@ export function ConfirmModal({
           height: 40,
           borderRadius: "50%",
           marginBottom: 16,
-          background: variant === "danger" ? "#f3f4f6" : "#eff6ff",
-          color: variant === "danger" ? "#111827" : "#2563eb",
+          background:
+            variant === "danger"
+              ? "rgba(220, 38, 38, 0.12)"
+              : "var(--accent-soft)",
+          color: variant === "danger" ? "#dc2626" : "var(--accent)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -75,11 +78,12 @@ export function ConfirmModal({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.45)",
+        background: "rgba(0, 0, 0, 0.5)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 1000,
+        fontFamily: "inherit",
       }}
     >
       <div
@@ -87,24 +91,34 @@ export function ConfirmModal({
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "#fff",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
           borderRadius: 12,
           padding: "28px 28px 20px",
-          width: 380,
+          width: 400,
           maxWidth: "calc(100vw - 32px)",
-          boxShadow: "none",
+          boxShadow: "0 24px 48px rgba(0, 0, 0, 0.18)",
         }}
       >
         {icon}
-        <div style={{ fontSize: 16, fontWeight: 500, color: "#1c1917", marginBottom: 8 }}>
+        <div
+          style={{
+            fontSize: 16,
+            fontWeight: 600,
+            color: "var(--text)",
+            marginBottom: 8,
+            lineHeight: 1.35,
+          }}
+        >
           {title}
         </div>
         <div
           style={{
             fontSize: 14,
-            color: "#78716c",
+            color: "var(--muted)",
             lineHeight: 1.6,
             marginBottom: 24,
+            whiteSpace: "pre-line",
           }}
         >
           {message}
@@ -115,12 +129,13 @@ export function ConfirmModal({
             type="button"
             onClick={onCancel}
             style={{
-              border: "1px solid #e7e5e4",
-              background: "#fff",
-              color: "#1c1917",
+              border: "1px solid var(--border)",
+              background: "var(--surface-subtle)",
+              color: "var(--text)",
               borderRadius: 8,
               padding: "8px 20px",
               fontSize: 14,
+              fontWeight: 600,
               cursor: "pointer",
             }}
           >
@@ -136,6 +151,7 @@ export function ConfirmModal({
               borderRadius: 8,
               padding: "8px 20px",
               fontSize: 14,
+              fontWeight: 600,
               cursor: "pointer",
             }}
           >
