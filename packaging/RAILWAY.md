@@ -72,15 +72,32 @@ Requires **`DATABASE_URL`** (and the same **`JWT_SECRET`** if seed touches auth�
 
 ---
 
-## Custom domain (purchased on Railway)
+## Custom domain
 
-1. In the **web** service, open **Settings** → **Networking** / **Domains** (UI labels change over time).
-2. **Add custom domain** → enter your domain (e.g. `app.yourbusiness.com` or `yourbusiness.com`).
-3. Railway shows **DNS records** to add (often a **CNAME** to a `*.up.railway.app` target, or **A/ALIAS** for apex domains).
-4. At your **DNS host** (where the domain’s nameservers point—sometimes Railway DNS, sometimes Cloudflare, GoDaddy, etc.), add exactly the records Railway lists.
-5. Wait for DNS (often minutes, sometimes up to 48 hours). Railway will show **SSL** as active when ready.
+### Apex (root) domain — e.g. `example.com`
 
-**Tip:** Use a **subdomain** (`inventory.yourdomain.com`) first; apex (`yourdomain.com`) DNS can be trickier depending on the provider.
+You said you are using the **apex** (no `www`, no `app.` prefix). Railway’s flow is the same in the dashboard, but **DNS at the root is stricter** than for a subdomain.
+
+1. In the **web** service, open **Settings** → **Networking** / **Public networking** → **Custom domain**.
+2. Add **`example.com`** (your real domain). Railway shows **two** records you must create:
+   - A **CNAME** pointing the hostname Railway gives (often `@` or the bare domain) to a target like **`xxxx.up.railway.app`**.
+   - A **TXT** record for verification. **Both are required.** If the TXT record is missing, you can see **404** on the custom domain even when the CNAME looks correct (see Railway’s [Working with domains](https://docs.railway.com/networking/domains/working-with-domains).)
+
+3. **Why apex is special:** Normal DNS does not allow a plain **CNAME at the zone apex** next to other required records (like `NS` / `SOA`). Railway does **not** give you a fixed **A** record IP for “point `@` here”; it expects a **CNAME-style** target. So your **DNS host** must support one of:
+   - **CNAME flattening** (e.g. **Cloudflare**: CNAME on `@` is flattened automatically), or  
+   - **ALIAS** / **ANAME** (e.g. **DNSimple**) pointing `@` at the same `*.up.railway.app` hostname Railway shows.
+
+   Many bare registrars (e.g. some Hostinger / GoDaddy / Reg.ru setups) **do not** support apex CNAME flattening. If adding the records Railway shows is impossible or stuck on “Waiting for DNS”, the usual fix is: move **only DNS** to a provider that supports apex CNAME/ALIAS (Cloudflare is the common free option), set the **nameservers** at your registrar to that provider, then add Railway’s **CNAME** (or ALIAS) + **TXT** there exactly as in the Railway UI.
+
+4. **Domain bought on Railway:** If Railway (or a partner) holds the domain, still open the **DNS / nameservers** panel and confirm you can create **both** records Railway lists for the **root** name. If the product only allows simple **A** records at `@` and no flattening, you may need to point nameservers to DNS that supports Railway’s model, per above.
+
+5. Wait for propagation (often **15–30 minutes**, sometimes longer). Railway issues **HTTPS** once verification succeeds.
+
+**Optional:** Add a second custom domain **`www.example.com`** in Railway and a **CNAME** for `www` → the same Railway target, so both `https://example.com` and `https://www.example.com` work (or redirect one in your app later).
+
+### Subdomain — e.g. `app.example.com`
+
+Easier at most DNS hosts: a normal **CNAME** for `app` (no flattening needed) plus Railway’s **TXT** if shown.
 
 ---
 
@@ -93,6 +110,7 @@ Requires **`DATABASE_URL`** (and the same **`JWT_SECRET`** if seed touches auth�
 | App starts but login fails | **`JWT_SECRET`** set on the **web** service; redeploy after adding it. |
 | 404 on `/` but `/api/health` works | Build did not produce `frontend/dist`; check build logs. |
 | CORS / wrong API host | Production UI calls **`/api/...`** on the **same** origin when `VITE_API_URL` is empty—correct for this setup. |
+| Apex domain stuck “Waiting for DNS” / 404 on custom host | **TXT** verification record added? DNS provider supports **apex CNAME flattening** or **ALIAS**? See **Custom domain → Apex** above. |
 
 ---
 
