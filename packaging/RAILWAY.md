@@ -62,13 +62,17 @@ Production mode **requires** a non-empty secret (`src/lib/jwt.ts`).
 
 ### 7. Optional: seed demo users / data
 
-One-off (Railway CLI or **one-off command** in the dashboard, if available):
+Creates **`admin` / `admin123`** and **`cashier` / `cashier123`** (see `prisma/seed.ts`). **Wipes** existing transactional/catalog rows in that database—use on a fresh DB or only when you accept a reset.
+
+**From your PC** (after `npm install -g @railway/cli`, `railway login`, and `railway link` in the repo root):
 
 ```bash
-npm run seed
+railway run npm run seed
 ```
 
-Requires **`DATABASE_URL`** (and the same **`JWT_SECRET`** if seed touches auth—your `prisma/seed.ts` may vary). Use the same environment as production.
+**Windows helper** (same prerequisites): run `scripts\railway-seed.ps1` from PowerShell in the repo (it `cd`s to root and runs `railway run npm run seed`).
+
+Requires **`DATABASE_URL`** on the linked Railway service. **`JWT_SECRET`** is not required for the seed itself, but you still need it on the web service to **log in** in the browser afterward.
 
 ---
 
