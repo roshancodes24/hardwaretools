@@ -1007,6 +1007,10 @@ main()
   .catch((e) => {
     console.error("❌ Seed failed");
     console.error(e);
+    if (e instanceof Error && e.stack) console.error(e.stack);
+    if (e && typeof e === "object" && "code" in e) {
+      console.error("Prisma / DB code:", (e as { code: unknown }).code);
+    }
     process.exit(1);
   })
   .finally(async () => {

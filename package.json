@@ -11,7 +11,7 @@
     "build:release": "npm run build:frontend && prisma generate",
     "start:prod": "cross-env NODE_ENV=production SERVE_FRONTEND=1 tsx src/server.ts",
     "migrate:deploy": "prisma migrate deploy",
-    "seed": "prisma db seed",
+    "seed": "npx --yes tsx prisma/seed.ts",
     "db:clear-catalog": "tsx scripts/clear-catalog.ts",
     "test:inventory": "tsx src/test-inventory.ts",
     "test:regression": "vitest run tests/regression",
@@ -28,7 +28,7 @@
     "node": ">=20"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "npx --yes tsx prisma/seed.ts"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

@@ -119,6 +119,7 @@ Easier at most DNS hosts: a normal **CNAME** for `app` (no flattening needed) pl
 | 404 on `/` but `/api/health` works | Build did not produce `frontend/dist`; check build logs. |
 | CORS / wrong API host | Production UI calls **`/api/...`** on the **same** origin when `VITE_API_URL` is empty—correct for this setup. |
 | Apex domain stuck “Waiting for DNS” / 404 on custom host | **TXT** verification record added? DNS provider supports **apex CNAME flattening** or **ALIAS**? See **Custom domain → Apex** above. |
+| `railway run npm run seed` exits **1** / `tsx prisma/seed.ts` failed | Scroll **above** the last line for `❌ Seed failed` and the real Postgres/Prisma message. Common fixes: **`DATABASE_URL` missing** on the linked service; **migrations not applied** (deploy once, or `railway run npx prisma migrate deploy`); **SSL** — for some public Postgres URLs append **`?sslmode=require`** (or use Railway’s **private** / linked URL). From repo root run **`npm install`** so `npx tsx` can run the seed. |
 
 ---
 
