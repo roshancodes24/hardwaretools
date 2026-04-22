@@ -134,6 +134,7 @@ Easier at most DNS hosts: a normal **CNAME** for `app` (no flattening needed) pl
 | `railway run npm run seed` exits **1** / **P1001** / `postgres.railway.internal` | **`DATABASE_URL` is internal-only** — your PC cannot reach it. Enable Postgres **TCP proxy**, add **`DATABASE_PUBLIC_URL`** to the web service (reference Postgres), then run **`scripts\railway-seed.cmd`**. |
 | **Multiple services found** | Run **`railway service link <WebServiceName>`** once in the repo root (the **web** app, not Postgres), or **`set RAILWAY_SERVICE=WebServiceName`** before **`scripts\railway-seed.cmd`**. |
 | Other seed failures | Scroll for `❌ Seed failed`. Check **migrations applied**, **`npm install`** at repo root, **SSL** (`?sslmode=require` on public URL if required). |
+| Seed **P2028** (transaction expired ~5000 ms) | Normal over a **public** DB URL; the seed uses a longer interactive transaction timeout. Pull latest `prisma/seed.ts` and run again. |
 
 ---
 

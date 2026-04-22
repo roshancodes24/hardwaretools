@@ -24,7 +24,10 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  await prisma.$transaction(async (tx) => {
+  // Default interactive tx timeout is 5s; seed does a lot of work and public DB
+  // links (e.g. Railway DATABASE_PUBLIC_URL) add latency — P2028 otherwise.
+  await prisma.$transaction(
+    async (tx) => {
     // Optional cleanup for repeatable local seeding
       await tx.promotionProduct.deleteMany();
       await tx.promotion.deleteMany();
@@ -998,7 +1001,12 @@ async function main() {
       where: { id: hammer.id },
       data: { currentStock: "6.0000" },
     });
-  });
+  },
+  {
+    maxWait: 60_000,
+    timeout: 300_000,
+  },
+  );
 
   console.log("✅ Seed completed successfully");
 }
