@@ -40,7 +40,11 @@ If Railway only exposes `DATABASE_PUBLIC_URL` for external tools, the **internal
 
 1. **Postgres** service → enable **TCP Proxy** / public networking (Railway’s Postgres panel; required for `DATABASE_PUBLIC_URL`).
 2. **Web** service → **Variables** → **Add** **`DATABASE_PUBLIC_URL`** → **Reference** → Postgres → **`DATABASE_PUBLIC_URL`** (exact name may match your template).
-3. Run **`scripts\railway-seed.cmd`** (recommended on Windows) or  
+3. In the repo root, link the **web** service once (so `railway run` knows which service’s variables to use):  
+   `railway service link <YourWebServiceName>`  
+   (Use the exact name shown in the Railway project sidebar — **not** the Postgres service.)  
+   If you skip this and have several services, you may see **“Multiple services found”** — then either run **`railway service link …`** or set **`RAILWAY_SERVICE`** to the web service name before seeding (see **`scripts\railway-seed.cmd`**).
+4. Run **`scripts\railway-seed.cmd`** (recommended on Windows) or  
    `railway run powershell -NoProfile -ExecutionPolicy Bypass -File scripts\railway-seed-inner.ps1`  
    The helper sets **`DATABASE_URL`** from **`DATABASE_PUBLIC_URL`** for that run only.  
    Your **deployed** app still uses the internal **`DATABASE_URL`** reference for normal traffic.
@@ -128,6 +132,7 @@ Easier at most DNS hosts: a normal **CNAME** for `app` (no flattening needed) pl
 | CORS / wrong API host | Production UI calls **`/api/...`** on the **same** origin when `VITE_API_URL` is empty—correct for this setup. |
 | Apex domain stuck “Waiting for DNS” / 404 on custom host | **TXT** verification record added? DNS provider supports **apex CNAME flattening** or **ALIAS**? See **Custom domain → Apex** above. |
 | `railway run npm run seed` exits **1** / **P1001** / `postgres.railway.internal` | **`DATABASE_URL` is internal-only** — your PC cannot reach it. Enable Postgres **TCP proxy**, add **`DATABASE_PUBLIC_URL`** to the web service (reference Postgres), then run **`scripts\railway-seed.cmd`**. |
+| **Multiple services found** | Run **`railway service link <WebServiceName>`** once in the repo root (the **web** app, not Postgres), or **`set RAILWAY_SERVICE=WebServiceName`** before **`scripts\railway-seed.cmd`**. |
 | Other seed failures | Scroll for `❌ Seed failed`. Check **migrations applied**, **`npm install`** at repo root, **SSL** (`?sslmode=require` on public URL if required). |
 
 ---

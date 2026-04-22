@@ -14,5 +14,10 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Running seed (public DB URL when available)..." -ForegroundColor Cyan
-& railway run powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "railway-seed-inner.ps1")
+$svc = $env:RAILWAY_SERVICE
+if ($svc) {
+  & railway run -s $svc powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "railway-seed-inner.ps1")
+} else {
+  & railway run powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "railway-seed-inner.ps1")
+}
 exit $LASTEXITCODE
