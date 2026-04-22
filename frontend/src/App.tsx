@@ -896,6 +896,32 @@ function POSView({
     return Math.round((base + transportAmount) * 100) / 100;
   }, [total, posTaxInvoice, cart.length, posLineTaxSum, transportAmount]);
 
+  const hasPosSaleDraft = useMemo(
+    () =>
+      cart.length > 0 ||
+      Boolean(posCustomerId) ||
+      Boolean(customerQuery.trim()) ||
+      Boolean(walkInPhone.trim()) ||
+      Boolean(walkInPartyGstNo.trim()) ||
+      Boolean(walkInPartyState.trim()) ||
+      discount > 0 ||
+      Boolean(promotionCode.trim()) ||
+      Boolean(transportStr.trim()) ||
+      posTaxInvoice,
+    [
+      cart.length,
+      posCustomerId,
+      customerQuery,
+      walkInPhone,
+      walkInPartyGstNo,
+      walkInPartyState,
+      discount,
+      promotionCode,
+      transportStr,
+      posTaxInvoice,
+    ],
+  );
+
   useEffect(() => {
     setAmountPaidStr(grandTotal > 0 ? grandTotal.toFixed(2) : "0.00");
   }, [grandTotal]);
@@ -915,6 +941,25 @@ function POSView({
     setCustomerPhoneError(null);
     setCustomerSuggestOpen(false);
   };
+
+  /** Reset cart + customer + discounts + transport + tax toggle + validation. */
+  const resetPosSaleForm = useCallback((clearStatus: boolean) => {
+    setCart([]);
+    setDiscount(0);
+    setPromotionCode("");
+    setPosCustomerId("");
+    setCustomerQuery("");
+    setWalkInPhone("");
+    setWalkInPartyGstNo("");
+    setWalkInPartyState("");
+    setTransportStr("");
+    setPosTaxInvoice(false);
+    setCustomerPhoneError(null);
+    setCustomerSuggestOpen(false);
+    setFieldErrors({});
+    setLineErrors(new Map());
+    if (clearStatus) setStatus(null);
+  }, []);
 
   /** Registers typed walk-in as a customer only when cashier clicks Save — not on checkout */
   const saveCustomerFromWalkIn = async () => {
@@ -1116,17 +1161,7 @@ function POSView({
         msg,
       });
       setTaxInvoiceSale(sale);
-      setCart([]);
-      setDiscount(0);
-      setPromotionCode("");
-      setPosCustomerId("");
-      setCustomerQuery("");
-      setWalkInPhone("");
-      setWalkInPartyGstNo("");
-      setWalkInPartyState("");
-      setTransportStr("");
-      setCustomerPhoneError(null);
-      setCustomerSuggestOpen(false);
+      resetPosSaleForm(false);
       await onSaleComplete();
       setTimeout(() => setStatus(null), 4000);
     } catch (e) {
@@ -1385,13 +1420,10 @@ function POSView({
           }}
         >
           <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>Current Sale</span>
-          {cart.length > 0 && (
+          {hasPosSaleDraft && (
             <button
               type="button"
-              onClick={() => {
-                setCart([]);
-                setPosTaxInvoice(false);
-              }}
+              onClick={() => resetPosSaleForm(true)}
               style={{
                 fontSize: 12,
                 color: "var(--danger)",
