@@ -177,7 +177,7 @@ export function TaxInvoiceDocument({ sale }: Props) {
                   <strong>Branch Name:</strong> {INVOICE_BANK_BRANCH}
                 </div>
                 <div>
-                  <strong>A/C No.:</strong> {INVOICE_BANK_ACCOUNT_NO}
+                  <strong>A/C No:</strong> {INVOICE_BANK_ACCOUNT_NO}
                 </div>
                 <div>
                   <strong>IFSC Code:</strong> {INVOICE_BANK_IFSC}
