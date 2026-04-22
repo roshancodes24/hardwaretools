@@ -94,7 +94,7 @@ export function NormalInvoiceDocument({ sale }: Props) {
           <div className="inv-details-block">
             <p className="inv-col-title inv-details-heading">Bill Details</p>
             <div>
-              <strong>Bill No. :</strong> {sale.saleNumber}
+              <strong>Bill No :</strong> {sale.saleNumber}
             </div>
             <div>
               <strong>Date :</strong> {formatInvoiceDate(sale.createdAt)}
