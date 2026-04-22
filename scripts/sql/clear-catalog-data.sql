@@ -1,5 +1,5 @@
 -- Clear products, suppliers, customers, sales, purchases, stock, promotions.
--- Keeps "User" rows (same as: npm run db:clear-catalog).
+-- NEVER deletes "User" — admin / cashier logins stay (same as: npm run db:clear-catalog).
 -- Run in psql / Railway Postgres query tab against your app database (usually public schema).
 -- Do NOT truncate "_prisma_migrations".
 
