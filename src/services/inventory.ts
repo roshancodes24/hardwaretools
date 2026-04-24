@@ -44,6 +44,11 @@ type CreateSaleInput = {
   transportAmount?: string | number;
   note?: string;
   paidAmount?: string | number;
+  /**
+   * Bill (BIL-*) vs GST tax invoice (INV-*). Separate sequences; first in each series
+   * uses SALE_NUMBER_BILL_START / SALE_NUMBER_TAX_START (default 1000).
+   */
+  documentKind?: "bill" | "tax_invoice";
   lines: SaleLineInput[];
 };
 
@@ -73,8 +78,54 @@ function makePurchaseNumber() {
   return `PUR-${Date.now()}`;
 }
 
-function makeSaleNumber() {
-  return `SAL-${Date.now()}`;
+const SALE_NUMBER_BILL_START = Number.parseInt(
+  process.env.SALE_NUMBER_BILL_START ?? "1000",
+  10
+);
+const SALE_NUMBER_TAX_START = Number.parseInt(
+  process.env.SALE_NUMBER_TAX_START ?? "1000",
+  10
+);
+
+/** Next unique sale number: BIL-1000, BIL-1001, … or INV-1000, … */
+async function allocateSaleNumber(
+  tx: Prisma.TransactionClient,
+  kind: "bill" | "tax_invoice"
+): Promise<string> {
+  const prefix = kind === "tax_invoice" ? "INV" : "BIL";
+  const start =
+    kind === "tax_invoice" ? SALE_NUMBER_TAX_START : SALE_NUMBER_BILL_START;
+  if (!Number.isFinite(start) || start < 0) {
+    throw new Error("Invalid sale number series start (check env vars).");
+  }
+
+  const rows = await tx.sale.findMany({
+    where: { saleNumber: { startsWith: `${prefix}-` } },
+    select: { saleNumber: true },
+  });
+
+  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`^${escaped}-(\\d+)$`);
+  let maxNum = start - 1;
+  for (const { saleNumber } of rows) {
+    const m = saleNumber.match(re);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (!Number.isNaN(n)) maxNum = Math.max(maxNum, n);
+    }
+  }
+
+  let next = maxNum + 1;
+  for (let guard = 0; guard < 200; guard++) {
+    const candidate = `${prefix}-${next}`;
+    const clash = await tx.sale.findUnique({
+      where: { saleNumber: candidate },
+      select: { id: true },
+    });
+    if (!clash) return candidate;
+    next++;
+  }
+  throw new Error("Could not allocate a unique sale number.");
 }
 
 async function getUnitOrThrow(
@@ -310,7 +361,10 @@ export async function createSale(input: CreateSaleInput) {
       throw new Error("Sale must contain at least one line.");
     }
 
-    const saleNumber = makeSaleNumber();
+    const saleNumber = await allocateSaleNumber(
+      tx,
+      input.documentKind === "tax_invoice" ? "tax_invoice" : "bill"
+    );
 
     let subtotal = dec(0);
     let discountAmount = dec(0);

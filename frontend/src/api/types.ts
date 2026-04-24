@@ -175,6 +175,8 @@ export type CreateSaleBody = {
   /** Freight / transport; added to charged total (not per line). */
   transportAmount?: string | number;
   note?: string;
+  /** Bill → BIL-* ; GST tax invoice → INV-* (server assigns next in series). */
+  documentKind?: "bill" | "tax_invoice";
   paidAmount: string | number;
   lines: SaleLineBody[];
 };

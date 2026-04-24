@@ -893,7 +893,7 @@ async function main() {
     // 7) Sale: sell 0.5 kg nails and 2 hammers
     const sale = await tx.sale.create({
       data: {
-        saleNumber: "SAL-0001",
+        saleNumber: "BIL-1000",
         status: SaleStatus.COMPLETED,
         customerName: "Walk-in Customer",
         customerNameSnapshot: "Walk-in Customer",

@@ -1085,6 +1085,7 @@ function POSView({
 
       const saleBody: CreateSaleBody = {
         createdById: actingUserId,
+        documentKind: posTaxInvoice ? "tax_invoice" : "bill",
         note: [
           discount > 0 ? `POS discount ${discount}%` : "",
           cartPromotion ? `Cart promo ${cartPromotion.code}` : "",

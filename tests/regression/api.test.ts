@@ -429,7 +429,7 @@ describe.runIf(runWrites)("R6 — Write path: POS sale (opt-in REGRESSION_WRITES
     expect(create.status, create.body?.error ?? JSON.stringify(create.body)).toBe(
       201
     );
-    expect(create.body.saleNumber).toMatch(/^SAL-/);
+    expect(create.body.saleNumber).toMatch(/^BIL-\d+$/);
     expect(create.body.totalAmount).toBe("30.00");
     expect(create.body.payments?.length).toBeGreaterThanOrEqual(1);
 

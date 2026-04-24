@@ -180,6 +180,7 @@ router.post(
         customerPartyState: body.customerPartyState,
         transportAmount: body.transportAmount,
         note: body.note,
+        documentKind: body.documentKind,
         paidAmount: body.paidAmount,
         lines: body.lines,
       });

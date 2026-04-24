@@ -85,6 +85,8 @@ export const createSaleSchema = z.object({
   customerPartyState: optionalSupplierTrimmed(100, "State"),
   transportAmount: nonNegativeMoney.optional().default(0),
   note: z.string().max(5000).optional(),
+  /** Bill → BIL-* ; GST tax invoice → INV-* (separate counters). */
+  documentKind: z.enum(["bill", "tax_invoice"]).optional().default("bill"),
   paidAmount: nonNegativeMoney,
   lines: z
     .array(saleLineSchema)
