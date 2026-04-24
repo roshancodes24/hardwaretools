@@ -255,20 +255,11 @@ export function TaxInvoiceDocument({ sale }: Props) {
                 </div>
               ) : null}
             </div>
-            <p className="inv-for-proprietor">{INVOICE_AMOUNT_FOR_LABEL}</p>
             <div className="tax-invoice-panel">
               <p className="panel-head tax-invoice-accent">Invoice Amount In Words</p>
               <div className="panel-body">{amountWords}</div>
             </div>
-            <div className="tax-invoice-panel inv-pay-qr-panel">
-              <div className="panel-body inv-pay-qr-body">
-                <img
-                  src="/invoice-pay-qr.png"
-                  alt="Scan and pay with UPI"
-                  className="inv-pay-qr-img"
-                />
-              </div>
-            </div>
+            <p className="inv-for-proprietor">{INVOICE_AMOUNT_FOR_LABEL}</p>
           </div>
         </div>
       </footer>
