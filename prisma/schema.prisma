@@ -136,6 +136,8 @@ model Product {
   description String?
   category    String?
   brand       String?
+  brandCode   String?
+  color       String?
   /// Harmonized System of Nomenclature (GST), e.g. 4/6/8 digit code
   hsnCode     String?
   status      ProductStatus @default(ACTIVE)
@@ -145,6 +147,8 @@ model Product {
   allowsFractional Boolean  @default(false)
 
   costPrice    Decimal? @db.Decimal(14, 4)
+  percentage   Decimal? @db.Decimal(8, 4)
+  mrp          Decimal? @db.Decimal(14, 4)
   sellingPrice Decimal? @db.Decimal(14, 4)
   cgstPercent  Decimal? @db.Decimal(5, 2)
   sgstPercent  Decimal? @db.Decimal(5, 2)

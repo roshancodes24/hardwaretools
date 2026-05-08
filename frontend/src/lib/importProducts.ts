@@ -13,6 +13,8 @@ export type ProductImportPatch = {
   allowsFractional?: boolean;
   sellingPrice?: string;
   costPrice?: string;
+  percentage?: string;
+  mrp?: string;
   cgstPercent?: string;
   sgstPercent?: string;
   igstPercent?: string;
@@ -80,7 +82,10 @@ function headerToField(h: string): keyof ProductImportPatch | null {
     fractional: "allowsFractional",
     sellingprice: "sellingPrice",
     price: "sellingPrice",
-    mrp: "sellingPrice",
+    percentage: "percentage",
+    marginpercent: "percentage",
+    markuppercent: "percentage",
+    mrp: "mrp",
     costprice: "costPrice",
     cost: "costPrice",
     cgstpercent: "cgstPercent",
@@ -123,6 +128,10 @@ function headerToField(h: string): keyof ProductImportPatch | null {
     "allow fractional": "allowsFractional",
     "selling price": "sellingPrice",
     "cost price": "costPrice",
+    "percentage": "percentage",
+    "margin %": "percentage",
+    "markup %": "percentage",
+    "mrp": "mrp",
     "cgst %": "cgstPercent",
     "sgst %": "sgstPercent",
     "igst %": "igstPercent",
@@ -311,6 +320,6 @@ export async function parseProductImportFile(
 }
 
 /** CSV template for download (UTF-8 BOM added by caller if needed). */
-export const PRODUCT_IMPORT_TEMPLATE_CSV = `name,sku,category,brand,baseUnitCode,unitKind,allowsFractional,sellingPrice,costPrice,cgstPercent,sgstPercent,igstPercent,currentStock,reorderLevel,hsnCode,description
-"Example MCB 16A",,Electrical,PowerLine,pc,PIECE,false,450,320,9,9,,5,10,8536,Optional notes
+export const PRODUCT_IMPORT_TEMPLATE_CSV = `name,sku,category,brand,baseUnitCode,unitKind,allowsFractional,sellingPrice,costPrice,percentage,mrp,cgstPercent,sgstPercent,igstPercent,currentStock,reorderLevel,hsnCode,description
+"Example MCB 16A",,Electrical,PowerLine,pc,PIECE,false,450,320,40.625,500,9,9,,5,10,8536,Optional notes
 `;

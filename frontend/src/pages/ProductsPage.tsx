@@ -77,11 +77,15 @@ type ProductDraft = {
   description: string;
   category: string;
   brand: string;
+  brandCode: string;
+  color: string;
   baseUnitCode: string;
   unitKind: UnitKindValue;
   allowsFractional: boolean;
   sellingPrice: string;
   costPrice: string;
+  percentage: string;
+  mrp: string;
   cgstPercent: string;
   sgstPercent: string;
   igstPercent: string;
@@ -103,11 +107,15 @@ function newDraft(overrides: Partial<ProductDraft> = {}): ProductDraft {
     description: "",
     category: "Electrical",
     brand: "",
+    brandCode: "",
+    color: "",
     baseUnitCode: "pc",
     unitKind: "PIECE",
     allowsFractional: false,
     sellingPrice: "",
     costPrice: "",
+    percentage: "",
+    mrp: "",
     cgstPercent: "9",
     sgstPercent: "9",
     igstPercent: "",
@@ -133,11 +141,15 @@ function productToDraft(p: ApiProduct): ProductDraft {
     description: p.description ?? "",
     category: cat,
     brand: p.brand ?? "",
+    brandCode: p.brandCode ?? "",
+    color: p.color ?? "",
     baseUnitCode: p.baseUnitCode,
     unitKind: uk,
     allowsFractional: p.allowsFractional,
     sellingPrice: p.sellingPrice != null ? String(p.sellingPrice) : "",
     costPrice: p.costPrice != null ? String(p.costPrice) : "",
+    percentage: p.percentage != null ? String(p.percentage) : "",
+    mrp: p.mrp != null ? String(p.mrp) : "",
     cgstPercent: p.cgstPercent != null ? String(p.cgstPercent) : "",
     sgstPercent: p.sgstPercent != null ? String(p.sgstPercent) : "",
     igstPercent: p.igstPercent != null ? String(p.igstPercent) : "",
@@ -156,10 +168,14 @@ function draftToUpdateBody(d: ProductDraft): UpdateProductBody {
     status: d.status,
     description: d.description.trim() ? d.description.trim() : null,
     brand: d.brand.trim() || null,
+    brandCode: d.brandCode.trim() || null,
+    color: d.color.trim() || null,
     hsnCode: d.hsnCode.trim() ? d.hsnCode.trim() : null,
   };
   if (d.sellingPrice !== "") o.sellingPrice = Number(d.sellingPrice);
   if (d.costPrice !== "") o.costPrice = Number(d.costPrice);
+  if (d.percentage !== "") o.percentage = Number(d.percentage);
+  if (d.mrp !== "") o.mrp = Number(d.mrp);
   if (d.cgstPercent !== "") o.cgstPercent = Number(d.cgstPercent);
   if (d.sgstPercent !== "") o.sgstPercent = Number(d.sgstPercent);
   if (d.igstPercent !== "") o.igstPercent = Number(d.igstPercent);
@@ -189,6 +205,8 @@ function validateDraft(d: ProductDraft): RowErrors {
   const numFields: [keyof ProductDraft, string][] = [
     ["sellingPrice", "Price"],
     ["costPrice", "Cost"],
+    ["percentage", "Percentage"],
+    ["mrp", "MRP"],
     ["currentStock", "Stock"],
     ["reorderLevel", "Reorder"],
   ];
@@ -213,6 +231,12 @@ function validateDraft(d: ProductDraft): RowErrors {
   }
   if (d.status !== "ACTIVE" && d.status !== "INACTIVE") {
     e.status = "Invalid status";
+  }
+  if (d.brandCode.trim().length > 100) {
+    e.brandCode = "Brand Code is too long (max 100 characters)";
+  }
+  if (d.color.trim().length > 100) {
+    e.color = "Colour is too long (max 100 characters)";
   }
   if (d.hsnCode.trim().length > 16) {
     e.hsnCode = "HSN Code is too long (max 16 characters)";
@@ -278,6 +302,14 @@ function patchImportToDraft(patch: ProductImportPatch): ProductDraft {
       patch.costPrice != null && String(patch.costPrice).trim() !== ""
         ? String(patch.costPrice).trim()
         : "",
+    percentage:
+      patch.percentage != null && String(patch.percentage).trim() !== ""
+        ? String(patch.percentage).trim()
+        : "",
+    mrp:
+      patch.mrp != null && String(patch.mrp).trim() !== ""
+        ? String(patch.mrp).trim()
+        : "",
     cgstPercent:
       patch.cgstPercent != null && String(patch.cgstPercent).trim() !== ""
         ? String(patch.cgstPercent).trim()
@@ -303,6 +335,14 @@ function patchImportToDraft(patch: ProductImportPatch): ProductDraft {
   });
 }
 
+function computedSellingPriceFromCostAndPercentage(costRaw: string, pctRaw: string): string {
+  const cost = Number(costRaw);
+  const pct = Number(pctRaw);
+  if (!Number.isFinite(cost) || !Number.isFinite(pct) || cost < 0 || pct < 0) return "";
+  const selling = cost + (cost * pct) / 100;
+  return selling.toFixed(2);
+}
+
 function draftToPayloadItem(d: ProductDraft) {
   const skuTrim = d.sku.trim();
   return {
@@ -311,11 +351,15 @@ function draftToPayloadItem(d: ProductDraft) {
     description: d.description.trim() || undefined,
     category: d.category.trim() as ProductCategory,
     brand: d.brand.trim() || undefined,
+    brandCode: d.brandCode.trim() || undefined,
+    color: d.color.trim() || undefined,
     baseUnitCode: d.baseUnitCode.trim(),
     unitKind: d.unitKind,
     allowsFractional: d.allowsFractional,
     sellingPrice: d.sellingPrice !== "" ? Number(d.sellingPrice) : undefined,
     costPrice: d.costPrice !== "" ? Number(d.costPrice) : undefined,
+    percentage: d.percentage !== "" ? Number(d.percentage) : undefined,
+    mrp: d.mrp !== "" ? Number(d.mrp) : undefined,
     cgstPercent: d.cgstPercent !== "" ? Number(d.cgstPercent) : undefined,
     sgstPercent: d.sgstPercent !== "" ? Number(d.sgstPercent) : undefined,
     igstPercent: d.igstPercent !== "" ? Number(d.igstPercent) : undefined,
@@ -558,9 +602,17 @@ function ProductModal({
                 {inp("brand", "text", "e.g. PowerLine")}
               </MField>
             </div>
-            <MField label="HSN Code" error={errors.hsnCode}>
-              {inp("hsnCode", "text", "e.g. 8544 — optional (GST)")}
+            <MField label="Brand Code" error={errors.brandCode}>
+              {inp("brandCode", "text", "e.g. PL-RED")}
             </MField>
+            <div style={two}>
+              <MField label="Colour" error={errors.color}>
+                {inp("color", "text", "e.g. Red")}
+              </MField>
+              <MField label="HSN Code" error={errors.hsnCode}>
+                {inp("hsnCode", "text", "e.g. 8544 — optional (GST)")}
+              </MField>
+            </div>
             <MField label="Description" error={errors.description}>
               <textarea
                 value={draft.description}
@@ -649,11 +701,17 @@ function ProductModal({
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <SectionHeading>Pricing & Tax</SectionHeading>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14 }}>
-              <MField label="Selling Price (₹)" error={errors.sellingPrice}>
-                {inp("sellingPrice", "number", "0.00")}
-              </MField>
               <MField label="Cost Price (₹)" error={errors.costPrice}>
                 {inp("costPrice", "number", "0.00")}
+              </MField>
+              <MField label="Percentage (%)" error={errors.percentage}>
+                {inp("percentage", "number", "e.g. 25")}
+              </MField>
+              <MField label="Selling Price (₹)" error={errors.sellingPrice}>
+                {inp("sellingPrice", "number", "Auto from Cost + %")}
+              </MField>
+              <MField label="MRP (₹)" error={errors.mrp}>
+                {inp("mrp", "number", "0.00")}
               </MField>
               <MField label="CGST@ %" error={errors.cgstPercent}>
                 {inp("cgstPercent", "number", "e.g. 9")}
@@ -822,6 +880,7 @@ export function ProductsPage({
   // Success feedback
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [importBanner, setImportBanner] = useState<string | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
 
@@ -848,6 +907,8 @@ export function ProductsPage({
         p.sku.toLowerCase().includes(q) ||
         (p.category ?? "").toLowerCase().includes(q) ||
         (p.brand ?? "").toLowerCase().includes(q) ||
+        (p.brandCode ?? "").toLowerCase().includes(q) ||
+        (p.color ?? "").toLowerCase().includes(q) ||
         (p.hsnCode ?? "").toLowerCase().includes(q)
     );
   }, [rawProducts, search]);
@@ -867,6 +928,22 @@ export function ProductsPage({
     const start = (listPage - 1) * PRODUCTS_TABLE_PAGE_SIZE;
     return filtered.slice(start, start + PRODUCTS_TABLE_PAGE_SIZE);
   }, [filtered, listPage]);
+
+  const selectedIdSet = useMemo(() => new Set(selectedProductIds), [selectedProductIds]);
+  const filteredProductIds = useMemo(() => filtered.map((p) => p.id), [filtered]);
+  const pagedProductIds = useMemo(() => pagedProducts.map((p) => p.id), [pagedProducts]);
+  const selectedCountOnPage = useMemo(
+    () => pagedProductIds.filter((id) => selectedIdSet.has(id)).length,
+    [pagedProductIds, selectedIdSet]
+  );
+  const allPagedSelected = pagedProductIds.length > 0 && selectedCountOnPage === pagedProductIds.length;
+  const allFilteredSelected =
+    filteredProductIds.length > 0 && filteredProductIds.every((id) => selectedIdSet.has(id));
+
+  useEffect(() => {
+    const valid = new Set(rawProducts.map((p) => p.id));
+    setSelectedProductIds((prev) => prev.filter((id) => valid.has(id)));
+  }, [rawProducts]);
 
   const categoryOptions = useMemo(
     () =>
@@ -905,6 +982,11 @@ export function ProductsPage({
       const updated = { ...d, [field]: value };
       if (field === "baseUnitCode" && typeof value === "string" && !editProductId)
         updated.unitKind = suggestUnitKind(value);
+      if (typeof value === "string" && (field === "costPrice" || field === "percentage")) {
+        const nextCost = field === "costPrice" ? value : updated.costPrice;
+        const nextPct = field === "percentage" ? value : updated.percentage;
+        updated.sellingPrice = computedSellingPriceFromCostAndPercentage(nextCost, nextPct);
+      }
       return updated;
     });
     setModalErrors((e) => {
@@ -912,6 +994,41 @@ export function ProductsPage({
       delete c[field as string];
       return c;
     });
+  };
+
+  const deleteProductsByIds = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    setSavedMsg(null);
+    setDeleteError(null);
+    let deleted = 0;
+    let failed = 0;
+    let firstError = "";
+    for (const id of ids) {
+      try {
+        await api.deleteProduct(id);
+        deleted++;
+      } catch (e) {
+        failed++;
+        if (!firstError) firstError = isApiError(e) ? e.message : "Could not delete product";
+      }
+    }
+    setSelectedProductIds((prev) => prev.filter((id) => !ids.includes(id)));
+    if (deleted > 0) {
+      setSavedMsg(
+        deleted === 1
+          ? "Deleted 1 product."
+          : `Deleted ${deleted} products.`
+      );
+      await loadProducts();
+      await onProductsCreated();
+    }
+    if (failed > 0) {
+      setDeleteError(
+        failed === ids.length
+          ? firstError
+          : `${firstError} (${failed} failed)`
+      );
+    }
   };
 
   const handleDeleteProduct = async (p: ApiProduct) => {
@@ -923,16 +1040,45 @@ export function ProductsPage({
       variant: "danger",
     });
     if (!ok) return;
-    setSavedMsg(null);
-    setDeleteError(null);
-    try {
-      await api.deleteProduct(p.id);
-      setSavedMsg(`Deleted ${p.sku}.`);
-      await loadProducts();
-      await onProductsCreated();
-    } catch (e) {
-      setDeleteError(isApiError(e) ? e.message : "Could not delete product");
-    }
+    await deleteProductsByIds([p.id]);
+  };
+
+  const handleDeleteSelectedProducts = async () => {
+    if (selectedProductIds.length === 0) return;
+    const ok = await confirm({
+      title: `Delete ${selectedProductIds.length} selected product${
+        selectedProductIds.length === 1 ? "" : "s"
+      }?`,
+      message:
+        "This cannot be undone. You can set status to Inactive instead if a product has sales history.",
+      confirmLabel: `Delete ${selectedProductIds.length}`,
+      variant: "danger",
+    });
+    if (!ok) return;
+    await deleteProductsByIds(selectedProductIds);
+  };
+
+  const toggleProductSelection = (id: string, checked: boolean) => {
+    setSelectedProductIds((prev) => {
+      if (checked) return prev.includes(id) ? prev : [...prev, id];
+      return prev.filter((x) => x !== id);
+    });
+  };
+
+  const toggleSelectPaged = (checked: boolean) => {
+    setSelectedProductIds((prev) => {
+      if (checked) return Array.from(new Set([...prev, ...pagedProductIds]));
+      const pageSet = new Set(pagedProductIds);
+      return prev.filter((id) => !pageSet.has(id));
+    });
+  };
+
+  const toggleSelectFiltered = (checked: boolean) => {
+    setSelectedProductIds((prev) => {
+      if (checked) return Array.from(new Set([...prev, ...filteredProductIds]));
+      const filteredSet = new Set(filteredProductIds);
+      return prev.filter((id) => !filteredSet.has(id));
+    });
   };
 
   const handleModalSave = async () => {
@@ -999,6 +1145,11 @@ export function ProductsPage({
         const updated = { ...r, [field]: value };
         if (field === "baseUnitCode" && typeof value === "string")
           updated.unitKind = suggestUnitKind(value);
+        if (typeof value === "string" && (field === "costPrice" || field === "percentage")) {
+          const nextCost = field === "costPrice" ? value : updated.costPrice;
+          const nextPct = field === "percentage" ? value : updated.percentage;
+          updated.sellingPrice = computedSellingPriceFromCostAndPercentage(nextCost, nextPct);
+        }
         return updated;
       })
     );
@@ -1277,7 +1428,7 @@ export function ProductsPage({
             <code style={{ fontSize: 11 }}>product code</code> to keep your SKUs; otherwise the
             system assigns codes (e.g. EL-00001). In Excel, format the SKU column as{" "}
             <strong>Text</strong> so values like <code style={{ fontSize: 11 }}>00123</code> are
-            not changed to numbers. Other columns match the batch form (category, brand, unit,
+            not changed to numbers. Other columns match the batch form (category, brand, brand code, colour, unit,
             GST %, stock, HSN Code, …). Rows are added to <strong>Batch entry</strong> — review
             and click <strong>Save all</strong>.
           </p>
@@ -1348,9 +1499,11 @@ export function ProductsPage({
                       ["SKU", 120],
                       ["Category", 110],
                       ["Brand", 110],
+                      ["Brand Code", 98],
+                      ["Colour", 92],
                       ["HSN Code", 88],
                       ["Unit *", 104], ["Kind *", 100], ["Frac.", 54],
-                      ["Price ₹", 88], ["Cost ₹", 88],
+                      ["Price ₹", 88], ["Cost ₹", 88], ["%", 72], ["MRP ₹", 88],
                       ["Stock", 88], ["", 112],
                     ] as [string, number][]).map(([label, w]) => (
                       <th key={label} style={{ ...thStyle, minWidth: w }}>{label}</th>
@@ -1380,6 +1533,8 @@ export function ProductsPage({
                           />
                         </td>
                         <td style={tdStyle}><BatchCell value={row.brand} onChange={(v) => updateBatchRow(i, "brand", v)} placeholder="Brand" /></td>
+                        <td style={tdStyle}><BatchCell value={row.brandCode} onChange={(v) => updateBatchRow(i, "brandCode", v)} error={errs.brandCode} placeholder="Code" /></td>
+                        <td style={tdStyle}><BatchCell value={row.color} onChange={(v) => updateBatchRow(i, "color", v)} error={errs.color} placeholder="Colour" /></td>
                         <td style={tdStyle}><BatchCell value={row.hsnCode} onChange={(v) => updateBatchRow(i, "hsnCode", v)} error={errs.hsnCode} placeholder="8544" /></td>
                         <td style={tdStyle}>
                           <BatchSelectCell
@@ -1395,6 +1550,8 @@ export function ProductsPage({
                         </td>
                         <td style={tdStyle}><BatchCell value={row.sellingPrice} onChange={(v) => updateBatchRow(i, "sellingPrice", v)} error={errs.sellingPrice} type="number" placeholder="0.00" /></td>
                         <td style={tdStyle}><BatchCell value={row.costPrice} onChange={(v) => updateBatchRow(i, "costPrice", v)} error={errs.costPrice} type="number" placeholder="0.00" /></td>
+                        <td style={tdStyle}><BatchCell value={row.percentage} onChange={(v) => updateBatchRow(i, "percentage", v)} error={errs.percentage} type="number" placeholder="0" /></td>
+                        <td style={tdStyle}><BatchCell value={row.mrp} onChange={(v) => updateBatchRow(i, "mrp", v)} error={errs.mrp} type="number" placeholder="0.00" /></td>
                         <td style={tdStyle}><BatchCell value={row.currentStock} onChange={(v) => updateBatchRow(i, "currentStock", v)} error={errs.currentStock} type="number" placeholder="0" /></td>
                         <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                           <div style={{ display: "flex", gap: 5 }}>
@@ -1429,16 +1586,75 @@ export function ProductsPage({
 
         {/* ── Existing products ──────────────────────────────────────────── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minHeight: 200 }}>
-          <input
-            placeholder="Search by name, SKU, HSN Code, category or brand…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{
-              height: 36, padding: "0 12px", border: "1px solid #e7e5e4",
-              borderRadius: 8, fontSize: 13, outline: "none",
-              background: "#fff", maxWidth: 380,
-            }}
-          />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <input
+            placeholder="Search by name, SKU, HSN Code, category, brand, brand code or colour…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                height: 36, padding: "0 12px", border: "1px solid #e7e5e4",
+                borderRadius: 8, fontSize: 13, outline: "none",
+                background: "#fff", maxWidth: 380, width: "100%",
+              }}
+            />
+            {allowMutations && filtered.length > 0 ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 12, color: "#78716c" }}>
+                  Selected: <strong style={{ color: "#44403c" }}>{selectedProductIds.length}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => toggleSelectPaged(!allPagedSelected)}
+                  style={{
+                    height: 30,
+                    padding: "0 10px",
+                    borderRadius: 8,
+                    border: "1px solid #e7e5e4",
+                    background: "#fff",
+                    color: "#44403c",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  {allPagedSelected ? "Unselect page" : "Select page"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSelectFiltered(!allFilteredSelected)}
+                  style={{
+                    height: 30,
+                    padding: "0 10px",
+                    borderRadius: 8,
+                    border: "1px solid #e7e5e4",
+                    background: "#fff",
+                    color: "#44403c",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  {allFilteredSelected ? "Unselect all" : "Select all"}
+                </button>
+                <button
+                  type="button"
+                  disabled={selectedProductIds.length === 0}
+                  onClick={() => void handleDeleteSelectedProducts()}
+                  style={{
+                    height: 30,
+                    padding: "0 12px",
+                    borderRadius: 8,
+                    border: "1px solid #fecaca",
+                    background: selectedProductIds.length ? "#fff" : "#f5f4f0",
+                    color: selectedProductIds.length ? "#b91c1c" : "#a8a29e",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: selectedProductIds.length ? "pointer" : "not-allowed",
+                  }}
+                >
+                  Delete selected
+                </button>
+              </div>
+            ) : null}
+          </div>
 
           <div style={{
             flex: 1, background: "#fff", borderRadius: 12,
@@ -1466,15 +1682,23 @@ export function ProductsPage({
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e7e5e4" }}>
                     {(allowMutations
-                      ? ["SKU", "Name", "Category", "Brand", "HSN Code", "Unit", "Price", "Cost", "Stock", "Status", "Actions"]
-                      : ["SKU", "Name", "Category", "Brand", "HSN Code", "Unit", "Price", "Cost", "Stock", "Status"]
+                      ? ["", "SKU", "Name", "Category", "Brand", "Brand Code", "Colour", "HSN Code", "Unit", "Price", "Cost", "%", "MRP", "Stock", "Status", "Actions"]
+                      : ["SKU", "Name", "Category", "Brand", "Brand Code", "Colour", "HSN Code", "Unit", "Price", "Cost", "%", "MRP", "Stock", "Status"]
                     ).map((h) => (
                       <th key={h} style={{
                         padding: "10px 14px", textAlign: "left", fontWeight: 600,
                         color: "#78716c", fontSize: 12, background: "#fafaf9",
                         whiteSpace: "nowrap", position: "sticky", top: 0,
                       }}>
-                        {h}
+                        {allowMutations && h === "" ? (
+                          <input
+                            type="checkbox"
+                            aria-label="Select all products on page"
+                            checked={allPagedSelected}
+                            onChange={(e) => toggleSelectPaged(e.target.checked)}
+                            style={{ cursor: "pointer" }}
+                          />
+                        ) : h}
                       </th>
                     ))}
                   </tr>
@@ -1488,14 +1712,29 @@ export function ProductsPage({
                         borderBottom: "1px solid #f5f4f0",
                         background: globalIdx % 2 === 0 ? "#fff" : "#fafaf9",
                       }}>
+                        {allowMutations ? (
+                          <td style={{ padding: "10px 14px" }}>
+                            <input
+                              type="checkbox"
+                              aria-label={`Select ${p.sku}`}
+                              checked={selectedIdSet.has(p.id)}
+                              onChange={(e) => toggleProductSelection(p.id, e.target.checked)}
+                              style={{ cursor: "pointer" }}
+                            />
+                          </td>
+                        ) : null}
                         <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "#78716c", fontSize: 12, whiteSpace: "nowrap" }}>{p.sku}</td>
                         <td style={{ padding: "10px 14px", fontWeight: 500, color: "#1c1917", maxWidth: 240 }}>{p.name}</td>
                         <td style={{ padding: "10px 14px", color: "#78716c" }}>{p.category ?? "—"}</td>
                         <td style={{ padding: "10px 14px", color: "#78716c" }}>{p.brand ?? "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "#78716c", fontFamily: "monospace", fontSize: 12 }}>{p.brandCode ?? "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "#78716c" }}>{p.color ?? "—"}</td>
                         <td style={{ padding: "10px 14px", color: "#78716c", fontFamily: "monospace", fontSize: 12 }}>{p.hsnCode?.trim() || "—"}</td>
                         <td style={{ padding: "10px 14px", color: "#78716c", whiteSpace: "nowrap" }}>{p.baseUnitCode}</td>
                         <td style={{ padding: "10px 14px", fontFamily: "monospace", whiteSpace: "nowrap" }}>{fmtPrice(p.sellingPrice)}</td>
                         <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "#78716c", whiteSpace: "nowrap" }}>{fmtPrice(p.costPrice)}</td>
+                        <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "#78716c", whiteSpace: "nowrap" }}>{p.percentage != null ? `${Number(p.percentage).toFixed(2)}%` : "—"}</td>
+                        <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "#78716c", whiteSpace: "nowrap" }}>{fmtPrice(p.mrp)}</td>
                         <td style={{
                           padding: "10px 14px", fontFamily: "monospace", fontWeight: 700,
                           whiteSpace: "nowrap",

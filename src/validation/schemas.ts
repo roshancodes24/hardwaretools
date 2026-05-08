@@ -332,6 +332,8 @@ export const productCreateItemSchema = z.object({
     error: "Category must be Electrical, Hardware, or Paint",
   }),
   brand: z.string().trim().max(200).optional(),
+  brandCode: z.string().trim().max(100).optional(),
+  color: z.string().trim().max(100).optional(),
   baseUnitCode: z
     .string()
     .trim()
@@ -341,6 +343,8 @@ export const productCreateItemSchema = z.object({
   allowsFractional: z.boolean().optional().default(false),
   sellingPrice: optionalNonNegative,
   costPrice: optionalNonNegative,
+  percentage: optionalNonNegative,
+  mrp: optionalNonNegative,
   cgstPercent: optionalPercent0to100,
   sgstPercent: optionalPercent0to100,
   igstPercent: optionalPercent0to100,
@@ -360,7 +364,35 @@ export const batchCreateProductsSchema = z
   })
   .superRefine((data, ctx) => {
     const seen = new Map<string, number>();
+    const seenNames = new Map<string, number>();
+    const seenBrandCodes = new Map<string, number>();
     for (let i = 0; i < data.products.length; i++) {
+      const name = data.products[i]?.name?.trim().toLowerCase();
+      if (name) {
+        if (seenNames.has(name)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["products", i, "name"],
+            message: `Duplicate product name "${data.products[i]?.name}" in this batch (also row ${(seenNames.get(name) ?? 0) + 1}).`,
+          });
+        } else {
+          seenNames.set(name, i);
+        }
+      }
+
+      const brandCode = data.products[i]?.brandCode?.trim().toLowerCase();
+      if (brandCode) {
+        if (seenBrandCodes.has(brandCode)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["products", i, "brandCode"],
+            message: `Duplicate brand code "${data.products[i]?.brandCode}" in this batch (also row ${(seenBrandCodes.get(brandCode) ?? 0) + 1}).`,
+          });
+        } else {
+          seenBrandCodes.set(brandCode, i);
+        }
+      }
+
       const sku = data.products[i]?.sku?.trim();
       if (!sku) continue;
       if (seen.has(sku)) {
@@ -396,8 +428,26 @@ export const updateProductBodySchema = z
       },
       z.union([z.string().trim().max(200), z.null()]).optional()
     ),
+    brandCode: z.preprocess(
+      (v) => {
+        if (v === undefined || v === "") return undefined;
+        if (v === null) return null;
+        return v;
+      },
+      z.union([z.string().trim().max(100), z.null()]).optional()
+    ),
+    color: z.preprocess(
+      (v) => {
+        if (v === undefined || v === "") return undefined;
+        if (v === null) return null;
+        return v;
+      },
+      z.union([z.string().trim().max(100), z.null()]).optional()
+    ),
     sellingPrice: optionalNonNegative,
     costPrice: optionalNonNegative,
+    percentage: optionalNonNegative,
+    mrp: optionalNonNegative,
     cgstPercent: optionalPercent0to100,
     sgstPercent: optionalPercent0to100,
     igstPercent: optionalPercent0to100,

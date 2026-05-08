@@ -25,6 +25,8 @@ export type ApiProduct = {
   description: string | null;
   category: string | null;
   brand: string | null;
+  brandCode: string | null;
+  color: string | null;
   /** GST HSN/SAC code (optional). */
   hsnCode: string | null;
   status: string;
@@ -32,6 +34,8 @@ export type ApiProduct = {
   unitKind: string;
   allowsFractional: boolean;
   costPrice: string | null;
+  percentage: string | null;
+  mrp: string | null;
   sellingPrice: string | null;
   cgstPercent: string | null;
   sgstPercent: string | null;
@@ -47,8 +51,12 @@ export type UpdateProductBody = {
   description?: string | null;
   category?: "Electrical" | "Hardware" | "Paint";
   brand?: string | null;
+  brandCode?: string | null;
+  color?: string | null;
   sellingPrice?: number;
   costPrice?: number;
+  percentage?: number;
+  mrp?: number;
   cgstPercent?: number;
   sgstPercent?: number;
   igstPercent?: number;
@@ -214,6 +222,10 @@ export type ProductCreateItem = {
   description?: string;
   category: "Electrical" | "Hardware" | "Paint";
   brand?: string;
+  brandCode?: string;
+  color?: string;
+  percentage?: number | string;
+  mrp?: number | string;
   baseUnitCode: string;
   unitKind: string;
   allowsFractional?: boolean;

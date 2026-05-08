@@ -462,51 +462,12 @@ html[data-theme="dark"] .tax-invoice-backdrop {
   font-variant-numeric: tabular-nums;
 }
 
-/* UPI QR — tax invoice only (soft card frame; image corners clipped round) */
-.tax-invoice-doc .inv-pay-qr-panel.tax-invoice-panel {
-  margin-top: 4px;
-  border-radius: 18px;
-  border-color: rgba(214, 211, 209, 0.9);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.04),
-    0 12px 32px rgba(28, 25, 23, 0.08);
-  overflow: hidden;
-}
-
-.tax-invoice-doc .inv-pay-qr-panel .panel-body.inv-pay-qr-body {
-  text-align: center;
-  padding: 18px 20px 20px;
-  background: linear-gradient(
-    165deg,
-    #fafaf9 0%,
-    #ffffff 42%,
-    #f5f5f4 100%
-  );
-}
-
-.tax-invoice-doc .inv-pay-qr-img {
-  display: block;
-  margin: 0 auto;
-  max-width: 100%;
-  width: min(280px, 100%);
-  height: auto;
-  border-radius: 14px;
-  object-fit: contain;
-  vertical-align: middle;
-  box-shadow:
-    0 2px 8px rgba(28, 25, 23, 0.07),
-    0 1px 2px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.95);
-  outline: 1px solid rgba(231, 229, 228, 0.9);
-  outline-offset: -1px;
-}
-
 @media print {
   html.print-tax-invoice .tax-invoice-modal-toolbar {
     display: none !important;
   }
 
-  /* Let full invoice flow across PDF pages — avoid clipping footer / QR */
+  /* Let full invoice flow across PDF pages — avoid clipping footer */
   html.print-tax-invoice .tax-invoice-backdrop {
     position: static !important;
     inset: auto !important;
@@ -689,23 +650,10 @@ html[data-theme="dark"] .tax-invoice-backdrop {
     border-radius: 12px !important;
   }
 
-  html.print-tax-invoice .tax-invoice-panel:not(.inv-pay-qr-panel) {
+  html.print-tax-invoice .tax-invoice-panel {
     overflow: hidden !important;
     box-shadow: none !important;
     border-radius: 12px !important;
-  }
-
-  html.print-tax-invoice .inv-pay-qr-panel.tax-invoice-panel {
-    overflow: hidden !important;
-    box-shadow: none !important;
-    border-radius: 14px !important;
-    border-color: #e7e5e4 !important;
-  }
-
-  html.print-tax-invoice .inv-pay-qr-panel .inv-pay-qr-body {
-    background: #fafaf9 !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
   }
 
   html.print-tax-invoice .tax-invoice-panel--bank .inv-bank-details,
@@ -719,15 +667,5 @@ html[data-theme="dark"] .tax-invoice-backdrop {
   html.print-tax-invoice .tax-invoice-doc .tax-invoice-panel--terms .inv-terms-thanks {
     font-size: 9pt !important;
     line-height: 1.35 !important;
-  }
-
-  html.print-tax-invoice .inv-pay-qr-img {
-    max-width: 62mm;
-    border-radius: 12px !important;
-    box-shadow: none !important;
-    outline: none !important;
-    border: 1px solid #e7e5e4 !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
   }
 }
