@@ -3849,6 +3849,15 @@ function AdjustmentView({
   onAdjustmentComplete: () => Promise<void>;
 }) {
   const empty = { productId: "", type: "add" as const, quantity: "", reason: "" };
+  const pageSize = 12;
+  const reasonOptions = [
+    "Physical Count",
+    "Damage",
+    "Wastage",
+    "Supplier Return",
+    "Correction",
+    "Other",
+  ];
   const [form, setForm] = useState<{
     productId: string;
     type: "add" | "remove" | "set";
@@ -3861,6 +3870,11 @@ function AdjustmentView({
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [productSearch, setProductSearch] = useState("");
+  const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">("all");
+  const [listPage, setListPage] = useState(1);
+  const [reasonPreset, setReasonPreset] = useState("Physical Count");
+  const [reasonNote, setReasonNote] = useState("");
 
   useEffect(() => {
     setFieldErrors({});
@@ -3878,6 +3892,27 @@ function AdjustmentView({
     setForm((f) => ({ ...f, [k]: v }));
 
   const selectedProduct = products.find((p) => p.id === form.productId);
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    return products.filter((p) => {
+      if (stockFilter === "out" && p.stock !== 0) return false;
+      if (stockFilter === "low" && (p.stock === 0 || p.stock > p.lowStock)) return false;
+      if (!q) return true;
+      return (
+        p.name.toLowerCase().includes(q) ||
+        p.sku.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q)
+      );
+    });
+  }, [products, productSearch, stockFilter]);
+  const pageCount = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
+  useEffect(() => {
+    if (listPage > pageCount) setListPage(pageCount);
+  }, [listPage, pageCount]);
+  const pagedProducts = useMemo(() => {
+    const start = (listPage - 1) * pageSize;
+    return filteredProducts.slice(start, start + pageSize);
+  }, [filteredProducts, listPage]);
 
   const previewStock = (): number | null => {
     if (!selectedProduct || form.quantity === "") return null;
@@ -3900,6 +3935,11 @@ function AdjustmentView({
       setTimeout(() => setStatus(null), 4000);
       return;
     }
+    if (reasonPreset === "Other" && reasonNote.trim() === "") {
+      setStatus({ type: "error", msg: "Please enter a reason note for 'Other'." });
+      setTimeout(() => setStatus(null), 4000);
+      return;
+    }
 
     const qtyVal = Number(form.quantity);
     if (form.quantity === "" || !Number.isFinite(qtyVal) || qtyVal < 0) {
@@ -3914,6 +3954,23 @@ function AdjustmentView({
     else if (form.type === "remove") quantityAfter = Math.max(0, current - qtyVal);
     else quantityAfter = qtyVal;
 
+    const riskyAction =
+      (form.type === "remove" && qtyVal >= Math.max(20, current * 0.5)) ||
+      (form.type === "set" && quantityAfter === 0);
+    if (riskyAction) {
+      const ok = window.confirm(
+        `Please confirm this adjustment.\nCurrent: ${current} ${selectedProduct.unit}\nAfter: ${quantityAfter} ${selectedProduct.unit}`
+      );
+      if (!ok) return;
+    }
+
+    const resolvedReason =
+      reasonPreset === "Other" ? reasonNote.trim() : reasonPreset;
+    const noteParts = [
+      form.type !== "set" ? `Mode: ${form.type}` : null,
+      reasonPreset !== "Other" && reasonNote.trim() ? reasonNote.trim() : null,
+    ].filter((x): x is string => Boolean(x));
+
     setLoading(true);
     setStatus(null);
     setFieldErrors({});
@@ -3922,14 +3979,16 @@ function AdjustmentView({
         productId: form.productId,
         adjustedById: actingUserId,
         quantityAfter,
-        reason: form.reason.trim() || "Stock adjustment",
-        note: form.type !== "set" ? `Mode: ${form.type}` : undefined,
+        reason: resolvedReason,
+        note: noteParts.length > 0 ? noteParts.join(" | ") : undefined,
       });
       setStatus({
         type: "success",
         msg: "Adjustment recorded — stock updated.",
       });
       setForm(empty);
+      setReasonPreset("Physical Count");
+      setReasonNote("");
       await onAdjustmentComplete();
       setTimeout(() => setStatus(null), 4000);
     } catch (e) {
@@ -3954,177 +4013,302 @@ function AdjustmentView({
   };
 
   const adjTypes = [
-    { value: "add" as const, label: "Add", sub: "Received stock" },
-    { value: "remove" as const, label: "Remove", sub: "Damage / write-off" },
-    { value: "set" as const, label: "Set", sub: "Physical count" },
+    { value: "add" as const, label: "Add Stock", sub: "Received stock" },
+    { value: "remove" as const, label: "Reduce Stock", sub: "Damage / write-off" },
+    { value: "set" as const, label: "Set Exact Count", sub: "Physical count" },
   ];
+  const adjustQuantityBy = (delta: number) => {
+    const cur = Number(form.quantity || 0);
+    const next = Math.max(0, (Number.isFinite(cur) ? cur : 0) + delta);
+    set("quantity", String(next));
+  };
 
   const preview = previewStock();
 
   return (
-    <div style={{ maxWidth: 560 }}>
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 12,
-          border: "1px solid #e7e5e4",
-          padding: 24,
-          display: "flex",
-          flexDirection: "column",
-          gap: 18,
-        }}
-      >
-        <div
-          style={{
-            fontWeight: 600,
-            fontSize: 16,
-            borderBottom: "1px solid #f0ece8",
-            paddingBottom: 14,
-          }}
-        >
-          Stock Adjustment
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(0, 1.8fr) minmax(420px, 1.2fr)",
+        gap: 16,
+        width: "100%",
+        alignItems: "start",
+      }}
+    >
+      <div style={{ background: "#fff", border: "1px solid #e7e5e4", borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ padding: 14, borderBottom: "1px solid #f0ece8", display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <input
+            value={productSearch}
+            onChange={(e) => {
+              setProductSearch(e.target.value);
+              setListPage(1);
+            }}
+            placeholder="Search by name, SKU or category..."
+            style={{ ...inputStyle, flex: 1, minWidth: 240 }}
+          />
+          {([
+            ["all", "All"],
+            ["low", "Low Stock"],
+            ["out", "Out of Stock"],
+          ] as const).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => {
+                setStockFilter(k);
+                setListPage(1);
+              }}
+              style={{
+                height: 32,
+                padding: "0 10px",
+                borderRadius: 8,
+                border: stockFilter === k ? "2px solid var(--accent)" : "1px solid #e7e5e4",
+                background: stockFilter === k ? "rgba(37,99,235,0.08)" : "#fff",
+                color: stockFilter === k ? "var(--accent)" : "#44403c",
+                fontWeight: 600,
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-
-        <FieldWrap label="Product *" error={fieldErrors.productId}>
-          <select
-            value={form.productId}
-            onChange={(e) => set("productId", e.target.value)}
-            style={{ ...inputStyle, padding: "0 10px", cursor: "pointer" }}
-          >
-            <option value="">— Select product —</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.sku}) — {p.stock} {p.unit}
-              </option>
-            ))}
-          </select>
-        </FieldWrap>
-
-        <FieldWrap label="Adjustment Type *">
+        <div style={{ maxHeight: 560, overflow: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #f0ece8", background: "#fafaf9" }}>
+                {["SKU", "Name", "Category", "Price", "Stock", "Status"].map((h) => (
+                  <th
+                    key={h}
+                    style={{
+                      textAlign: "left",
+                      padding: "8px 10px",
+                      color: "#78716c",
+                      fontWeight: 600,
+                      position: "sticky",
+                      top: 0,
+                      background: "#fafaf9",
+                    }}
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pagedProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: "16px 12px", color: "#a8a29e" }}>
+                    No products match your filter.
+                  </td>
+                </tr>
+              ) : (
+                pagedProducts.map((p, idx) => {
+                  const active = p.id === form.productId;
+                  const statusLabel = p.stock === 0 ? "OUT" : p.stock <= p.lowStock ? "LOW" : "OK";
+                  return (
+                    <tr
+                      key={p.id}
+                      onClick={() => set("productId", p.id)}
+                      style={{
+                        cursor: "pointer",
+                        borderBottom: "1px solid #f5f4f0",
+                        background: active ? "rgba(37,99,235,0.08)" : idx % 2 === 0 ? "#fff" : "#fafaf9",
+                      }}
+                    >
+                      <td style={{ padding: "8px 10px", fontFamily: "monospace", color: "#78716c" }}>{p.sku}</td>
+                      <td style={{ padding: "8px 10px", color: "#1c1917", fontWeight: 500 }}>{p.name}</td>
+                      <td style={{ padding: "8px 10px", color: "#78716c" }}>{p.category}</td>
+                      <td style={{ padding: "8px 10px", fontFamily: "monospace", color: "#78716c" }}>
+                        {fmt(p.price)}
+                      </td>
+                      <td style={{ padding: "8px 10px", fontFamily: "monospace", color: "#78716c" }}>
+                        {p.stock} {p.unit}
+                      </td>
+                      <td style={{ padding: "8px 10px", fontWeight: 700, fontSize: 11, color: statusLabel === "OUT" ? "#dc2626" : statusLabel === "LOW" ? "#d97706" : "#16a34a" }}>
+                        {statusLabel}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ padding: 12, borderTop: "1px solid #f0ece8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 12, color: "#78716c" }}>
+            Showing {filteredProducts.length === 0 ? 0 : (listPage - 1) * pageSize + 1}-
+            {Math.min(listPage * pageSize, filteredProducts.length)} of {filteredProducts.length}
+          </span>
           <div style={{ display: "flex", gap: 8 }}>
-            {adjTypes.map((t) => (
-              <button
-                key={t.value}
-                type="button"
-                onClick={() => set("type", t.value)}
-                style={{
-                  flex: 1,
-                  padding: "10px 6px",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  textAlign: "center",
-                  border:
-                    form.type === t.value
-                      ? "2px solid var(--accent)"
-                      : "1px solid #e7e5e4",
-                  background: form.type === t.value ? "rgba(37,99,235,0.08)" : "#fff",
-                  color: form.type === t.value ? "var(--accent)" : "#44403c",
-                  fontWeight: form.type === t.value ? 600 : 400,
-                  transition: "all 0.1s",
-                }}
-              >
-                <div style={{ fontSize: 14 }}>{t.label}</div>
-                <div
+            <button
+              type="button"
+              disabled={listPage <= 1}
+              onClick={() => setListPage((p) => Math.max(1, p - 1))}
+              style={{ height: 28, padding: "0 9px", borderRadius: 8, border: "1px solid #e7e5e4", background: "#fff", cursor: "pointer", fontSize: 12 }}
+            >
+              Prev
+            </button>
+            <span style={{ fontSize: 12, color: "#78716c", alignSelf: "center" }}>
+              {listPage}/{pageCount}
+            </span>
+            <button
+              type="button"
+              disabled={listPage >= pageCount}
+              onClick={() => setListPage((p) => Math.min(pageCount, p + 1))}
+              style={{ height: 28, padding: "0 9px", borderRadius: 8, border: "1px solid #e7e5e4", background: "#fff", cursor: "pointer", fontSize: 12 }}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ position: "sticky", top: 12 }}>
+        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e7e5e4", padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontWeight: 700, fontSize: 16, borderBottom: "1px solid #f0ece8", paddingBottom: 10 }}>
+            Stock Adjustment
+          </div>
+
+          <div style={{ background: "#fafaf9", border: "1px solid #ece8e1", borderRadius: 10, padding: 10 }}>
+            {selectedProduct ? (
+              <>
+                <div style={{ fontWeight: 600, color: "#1c1917" }}>{selectedProduct.name}</div>
+                <div style={{ marginTop: 4, fontSize: 12, color: "#78716c" }}>
+                  {selectedProduct.sku} · {selectedProduct.category}
+                </div>
+                <div style={{ marginTop: 6, fontSize: 12, color: "#44403c" }}>
+                  Current: <strong>{selectedProduct.stock} {selectedProduct.unit}</strong>
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: 12, color: "#a8a29e" }}>Select a product from the list.</div>
+            )}
+          </div>
+
+          <FieldWrap label="Adjustment Type *">
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {adjTypes.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => set("type", t.value)}
                   style={{
-                    fontSize: 11,
-                    color: form.type === t.value ? "var(--accent)" : "#a8a29e",
-                    marginTop: 3,
+                    flex: "1 1 110px",
+                    padding: "8px 7px",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    textAlign: "center",
+                    border: form.type === t.value ? "2px solid var(--accent)" : "1px solid #e7e5e4",
+                    background: form.type === t.value ? "rgba(37,99,235,0.08)" : "#fff",
+                    color: form.type === t.value ? "var(--accent)" : "#44403c",
+                    fontWeight: form.type === t.value ? 600 : 400,
+                    fontSize: 12,
                   }}
                 >
-                  {t.sub}
-                </div>
-              </button>
-            ))}
+                  <div style={{ fontSize: 12 }}>{t.label}</div>
+                  <div style={{ fontSize: 10, color: form.type === t.value ? "var(--accent)" : "#a8a29e", marginTop: 2 }}>
+                    {t.sub}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </FieldWrap>
+
+          <FieldWrap label="Quantity *" error={fieldErrors.quantity ?? fieldErrors.quantityAfter}>
+            <input
+              type="number"
+              min={0}
+              step="any"
+              placeholder="0"
+              value={form.quantity}
+              onChange={(e) => set("quantity", e.target.value)}
+              style={{
+                ...inputStyle,
+                borderColor: fieldErrors.quantity || fieldErrors.quantityAfter ? "#fca5a5" : "#e7e5e4",
+              }}
+            />
+            <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+              {[-5, -1, +1, +5, +10].map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => adjustQuantityBy(v)}
+                  style={{
+                    height: 26,
+                    padding: "0 9px",
+                    borderRadius: 8,
+                    border: "1px solid #e7e5e4",
+                    background: "#fff",
+                    color: "#44403c",
+                    fontSize: 11,
+                    cursor: "pointer",
+                  }}
+                >
+                  {v > 0 ? `+${v}` : v}
+                </button>
+              ))}
+            </div>
+          </FieldWrap>
+
+          <FieldWrap label="Reason *" error={fieldErrors.reason}>
+            <select
+              value={reasonPreset}
+              onChange={(e) => setReasonPreset(e.target.value)}
+              style={{ ...inputStyle, padding: "0 10px", cursor: "pointer" }}
+            >
+              {reasonOptions.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+            <input
+              placeholder={reasonPreset === "Other" ? "Enter reason..." : "Optional note"}
+              value={reasonNote}
+              onChange={(e) => setReasonNote(e.target.value)}
+              style={{ ...inputStyle, marginTop: 8 }}
+            />
+          </FieldWrap>
+
+          {selectedProduct && preview !== null && (
+            <div style={{ background: "#f5f4f0", borderRadius: 8, padding: "10px 14px", display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+              <span style={{ color: "#78716c" }}>Current → After adjustment</span>
+              <span style={{ fontFamily: "monospace", fontWeight: 600 }}>
+                {selectedProduct.stock} →{" "}
+                <span style={{ color: preview <= selectedProduct.lowStock ? (preview === 0 ? "#dc2626" : "#d97706") : "#16a34a" }}>
+                  {preview}
+                </span>{" "}
+                {selectedProduct.unit}
+              </span>
+            </div>
+          )}
+
+          <FormErrorBanner text={adjustmentFormBanner} />
+          <Toast status={status} />
+
+          <div style={{ paddingTop: 8, borderTop: "1px solid #f0ece8" }}>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading}
+              style={{
+                height: 40,
+                width: "100%",
+                background: "#1c1917",
+                color: "#fff",
+                border: "none",
+                borderRadius: 10,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {loading ? "Saving..." : "Save Adjustment"}
+            </button>
           </div>
-        </FieldWrap>
-
-        <FieldWrap
-          label="Quantity *"
-          error={fieldErrors.quantity ?? fieldErrors.quantityAfter}
-        >
-          <input
-            type="number"
-            min={0}
-            step="any"
-            placeholder="0"
-            value={form.quantity}
-            onChange={(e) => set("quantity", e.target.value)}
-            style={{
-              ...inputStyle,
-              borderColor:
-                fieldErrors.quantity || fieldErrors.quantityAfter
-                  ? "#fca5a5"
-                  : "#e7e5e4",
-            }}
-          />
-        </FieldWrap>
-
-        {selectedProduct && preview !== null && (
-          <div
-            style={{
-              background: "#f5f4f0",
-              borderRadius: 8,
-              padding: "10px 14px",
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: 13,
-            }}
-          >
-            <span style={{ color: "#78716c" }}>
-              Current → After adjustment
-            </span>
-            <span style={{ fontFamily: "monospace", fontWeight: 600 }}>
-              {selectedProduct.stock}
-              {" → "}
-              <span
-                style={{
-                  color:
-                    preview <= selectedProduct.lowStock
-                      ? preview === 0
-                        ? "#dc2626"
-                        : "#d97706"
-                      : "#16a34a",
-                }}
-              >
-                {preview}
-              </span>{" "}
-              {selectedProduct.unit}
-            </span>
-          </div>
-        )}
-
-        <FieldWrap label="Reason" error={fieldErrors.reason}>
-          <input
-            placeholder="e.g. Physical count, damaged goods, customer return..."
-            value={form.reason}
-            onChange={(e) => set("reason", e.target.value)}
-            style={{
-              ...inputStyle,
-              borderColor: fieldErrors.reason ? "#fca5a5" : "#e7e5e4",
-            }}
-          />
-        </FieldWrap>
-
-        <FormErrorBanner text={adjustmentFormBanner} />
-        <Toast status={status} />
-
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={loading}
-          style={{
-            height: 44,
-            background: "#1c1917",
-            color: "#fff",
-            border: "none",
-            borderRadius: 10,
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          {loading ? "Saving..." : "Save Adjustment"}
-        </button>
+        </div>
       </div>
     </div>
   );
