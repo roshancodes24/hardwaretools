@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { FEATURE_FLAGS } from "./featureFlags";
+import { COMPANY_NAME, COMPANY_SHORT_NAME } from "./lib/branding";
 
 export type Tab =
   | "home"
@@ -273,7 +274,7 @@ export function Sidebar({
       >
         <div style={{ minWidth: 0 }}>
           <div style={{ color: "#f5f4f0", fontWeight: 700, fontSize: 13 }}>
-            {iconOnly ? "SEW" : "Santosh Electricals Works"}
+            {iconOnly ? COMPANY_SHORT_NAME : COMPANY_NAME}
           </div>
           {!mobile && !iconOnly && (
             <div style={{ color: "var(--sidebar-muted)", marginTop: 2, fontSize: 10.5 }}>

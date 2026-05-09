@@ -41,6 +41,7 @@ import {
 import { mapApiProduct, type UiProduct } from "./lib/mapProduct";
 import { sanitizeGstinInput } from "./lib/gstinInput";
 import { sanitizePhoneDigits } from "./lib/phoneInput";
+import { COMPANY_NAME } from "./lib/branding";
 import { HomeView } from "./HomeView";
 import { ConfirmModal } from "./ConfirmModal";
 import { PromotionsPage } from "./pages/PromotionsPage";
@@ -1905,12 +1906,17 @@ function POSView({
               type="number"
               min={0}
               max={100}
-              value={discount}
+              value={discount === 0 ? "" : discount}
+              onFocus={(e) => e.currentTarget.select()}
+              onClick={(e) => e.currentTarget.select()}
               onChange={(e) =>
                 setDiscount(
-                  Math.max(0, Math.min(100, Number(e.target.value)))
+                  e.target.value.trim() === ""
+                    ? 0
+                    : Math.max(0, Math.min(100, Number(e.target.value)))
                 )
               }
+              placeholder="0"
               style={{
                 width: 58,
                 height: 30,
@@ -4619,7 +4625,7 @@ export default function App() {
           }}
         >
           <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 600 }}>
-            Santosh Electricals Works
+            {COMPANY_NAME}
           </span>
           <div
             style={{

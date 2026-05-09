@@ -291,6 +291,8 @@ function patchImportToDraft(patch: ProductImportPatch): ProductDraft {
     description: (patch.description ?? "").trim(),
     category: cat,
     brand: (patch.brand ?? "").trim(),
+    brandCode: (patch.brandCode ?? "").trim(),
+    color: (patch.color ?? "").trim(),
     baseUnitCode: bc,
     unitKind: uk,
     allowsFractional: patch.allowsFractional ?? false,

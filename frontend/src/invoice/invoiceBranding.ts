@@ -1,7 +1,9 @@
+import { COMPANY_NAME } from "../lib/branding";
+
 /** Shop identity shown on tax invoices (print + screen). */
-export const INVOICE_BUSINESS_NAME = "Santosh Electricals Works";
+export const INVOICE_BUSINESS_NAME = COMPANY_NAME;
 /** Shown below the Amounts table (right column). */
-export const INVOICE_AMOUNT_FOR_LABEL = "For SANTOSH ELECTRICALS WORKS";
+export const INVOICE_AMOUNT_FOR_LABEL = `For ${COMPANY_NAME.toUpperCase()}`;
 /** Registered shop address (header, above phone / email). */
 export const INVOICE_BUSINESS_ADDRESS =
   "Shop - 6, Hira Panna Complex, Opp. to HDFC Bank Karjat - Raigad, 410 201";

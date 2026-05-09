@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, setActingUserId, setAuthToken } from "../api/client";
 import { isApiError } from "../api/errors";
+import { COMPANY_NAME } from "../lib/branding";
 
 type LoginPageProps = {
   onLoggedIn: () => void;
@@ -93,7 +94,7 @@ export function LoginPage({ onLoggedIn }: LoginPageProps) {
             color: "var(--text)",
           }}
         >
-          Santosh Electricals Works
+          {COMPANY_NAME}
         </h1>
         <p style={{ margin: "0 0 22px", fontSize: 13, color: "var(--muted)" }}>
           Sign in to continue
