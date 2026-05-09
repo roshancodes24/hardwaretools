@@ -328,6 +328,6 @@ export async function parseProductImportFile(
 }
 
 /** CSV template for download (UTF-8 BOM added by caller if needed). */
-export const PRODUCT_IMPORT_TEMPLATE_CSV = `name,sku,category,brand,brandCode,color,baseUnitCode,unitKind,allowsFractional,sellingPrice,costPrice,percentage,mrp,cgstPercent,sgstPercent,igstPercent,currentStock,reorderLevel,hsnCode,description
-"Example MCB 16A",,Electrical,PowerLine,PL-16A,White,pc,PIECE,false,450,320,40.625,500,9,9,,5,10,8536,Optional notes
+export const PRODUCT_IMPORT_TEMPLATE_CSV = `name,sku,category,brand,brandCode,color,hsnCode,description,status,baseUnitCode,unitKind,allowsFractional,costPrice,percentage,sellingPrice,mrp,cgstPercent,sgstPercent,igstPercent,currentStock,reorderLevel
+"Example MCB 16A",,Electrical,PowerLine,PL-16A,White,8536,Optional notes,ACTIVE,pc,PIECE,false,320,40.625,450,500,9,9,,5,10
 `;
