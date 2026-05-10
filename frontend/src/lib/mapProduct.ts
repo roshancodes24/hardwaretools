@@ -4,6 +4,8 @@ export type UiProduct = {
   id: string;
   name: string;
   sku: string;
+  /** Business product identifier (catalog `brandCode`). */
+  brandCode: string | null;
   category: string;
   price: number;
   stock: number;
@@ -36,6 +38,7 @@ export function mapApiProduct(p: ApiProduct): UiProduct {
     id: p.id,
     name: p.name,
     sku: p.sku,
+    brandCode: p.brandCode?.trim() ? p.brandCode.trim() : null,
     category: p.category ?? "Uncategorized",
     price: Number(p.sellingPrice ?? 0),
     stock: Number(p.currentStock),

@@ -364,22 +364,8 @@ export const batchCreateProductsSchema = z
   })
   .superRefine((data, ctx) => {
     const seen = new Map<string, number>();
-    const seenNames = new Map<string, number>();
     const seenBrandCodes = new Map<string, number>();
     for (let i = 0; i < data.products.length; i++) {
-      const name = data.products[i]?.name?.trim().toLowerCase();
-      if (name) {
-        if (seenNames.has(name)) {
-          ctx.addIssue({
-            code: "custom",
-            path: ["products", i, "name"],
-            message: `Duplicate product name "${data.products[i]?.name}" in this batch (also row ${(seenNames.get(name) ?? 0) + 1}).`,
-          });
-        } else {
-          seenNames.set(name, i);
-        }
-      }
-
       const brandCode = data.products[i]?.brandCode?.trim().toLowerCase();
       if (brandCode) {
         if (seenBrandCodes.has(brandCode)) {

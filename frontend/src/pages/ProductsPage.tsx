@@ -605,7 +605,11 @@ function ProductModal({
               </MField>
             </div>
             <MField label="Brand Code" error={errors.brandCode}>
-              {inp("brandCode", "text", "e.g. PL-RED")}
+              {inp(
+                "brandCode",
+                "text",
+                "Your code, or leave blank for BC-00001 style"
+              )}
             </MField>
             <div style={two}>
               <MField label="Colour" error={errors.color}>
@@ -1535,7 +1539,7 @@ export function ProductsPage({
                           />
                         </td>
                         <td style={tdStyle}><BatchCell value={row.brand} onChange={(v) => updateBatchRow(i, "brand", v)} placeholder="Brand" /></td>
-                        <td style={tdStyle}><BatchCell value={row.brandCode} onChange={(v) => updateBatchRow(i, "brandCode", v)} error={errs.brandCode} placeholder="Code" /></td>
+                        <td style={tdStyle}><BatchCell value={row.brandCode} onChange={(v) => updateBatchRow(i, "brandCode", v)} error={errs.brandCode} placeholder="Auto if blank" /></td>
                         <td style={tdStyle}><BatchCell value={row.color} onChange={(v) => updateBatchRow(i, "color", v)} error={errs.color} placeholder="Colour" /></td>
                         <td style={tdStyle}><BatchCell value={row.hsnCode} onChange={(v) => updateBatchRow(i, "hsnCode", v)} error={errs.hsnCode} placeholder="8544" /></td>
                         <td style={tdStyle}>

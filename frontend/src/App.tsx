@@ -2446,6 +2446,7 @@ function newPurchaseLineRow(): {
   productId: string;
   quantity: string;
   unitCost: string;
+  lineNote: string;
 } {
   return {
     key:
@@ -2455,6 +2456,7 @@ function newPurchaseLineRow(): {
     productId: "",
     quantity: "",
     unitCost: "",
+    lineNote: "",
   };
 }
 
@@ -2591,6 +2593,7 @@ function PurchaseView({
       productId: string;
       quantity: string;
       unitCost: string;
+      lineNote: string;
     }>
   ) => {
     setForm((f) => ({
@@ -2658,7 +2661,7 @@ function PurchaseView({
               ? unresolved.map((u) => `Row ${u.row}: ${u.message}`).join("\n")
               : rowErrors.length > 0
                 ? rowErrors.map((r) => `Row ${r.row}: ${r.message}`).join("\n")
-                : "No valid lines. Check headers: sku and/or product name, quantity, unit cost.";
+                : "No valid lines. Check headers: brand code and/or product name, quantity, unit cost.";
         window.alert(msg);
         return;
       }
@@ -2674,6 +2677,7 @@ function PurchaseView({
           ...f,
           lines: nextLines,
           supplierId: resolvedSupplierId ?? f.supplierId,
+          purchaseDate: ymdInIndia(),
         };
       });
       const parts = [
@@ -2838,11 +2842,34 @@ function PurchaseView({
           unitCost: Number(ln.unitCost),
         };
       });
+      const headerNote = form.notes.trim();
+      const lineNoteParts = form.lines
+        .map((ln, i) => {
+          const t = ln.lineNote.trim();
+          if (!t) return null;
+          const p = products.find((x) => x.id === ln.productId);
+          return `${i + 1}. ${p?.name ?? "Line"}: ${t}`;
+        })
+        .filter((x): x is string => x != null);
+      let combinedNote: string | undefined;
+      if (headerNote && lineNoteParts.length > 0) {
+        combinedNote = `${headerNote}\n\n— Line notes —\n${lineNoteParts.join("\n")}`;
+      } else if (headerNote) {
+        combinedNote = headerNote;
+      } else if (lineNoteParts.length > 0) {
+        combinedNote = `— Line notes —\n${lineNoteParts.join("\n")}`;
+      } else {
+        combinedNote = undefined;
+      }
+      const NOTE_MAX = 5000;
+      if (combinedNote && combinedNote.length > NOTE_MAX) {
+        combinedNote = `${combinedNote.slice(0, NOTE_MAX - 20)}\n… (truncated)`;
+      }
       const purchase = await api.createPurchase({
         supplierId: form.supplierId,
         createdById: actingUserId,
         invoiceDate: form.purchaseDate || undefined,
-        note: form.notes || undefined,
+        note: combinedNote,
         lines: linesPayload,
       });
       setStatus({
@@ -3261,12 +3288,14 @@ function PurchaseView({
           Row 1 = headers. Required:{" "}
           <code style={{ fontSize: 11 }}>quantity</code>,{" "}
           <code style={{ fontSize: 11 }}>unit cost</code> (or rate / purchase price), and{" "}
-          <code style={{ fontSize: 11 }}>sku</code> and/or{" "}
+          <code style={{ fontSize: 11 }}>brand code</code> and/or{" "}
           <code style={{ fontSize: 11 }}>product name</code> to match your catalog. Optional:{" "}
           <code style={{ fontSize: 11 }}>supplier</code> / <code style={{ fontSize: 11 }}>vendor</code>{" "}
           (name or GST); all rows must be the same supplier. Leave a cell blank only if you
-          already selected that supplier above. Imported rows become line items you can edit
-          before recording.
+          already selected that supplier above. Optional:{" "}
+          <code style={{ fontSize: 11 }}>notes</code> (or <code style={{ fontSize: 11 }}>note</code>) per
+          line — saved with the purchase. Imported rows become line items you can edit before
+          recording. Purchase date is set to today when you import (you can change it).
         </p>
 
         {importBanner ? (
@@ -3406,6 +3435,15 @@ function PurchaseView({
                   />
                 </FieldWrap>
               </div>
+              <FieldWrap label="Line note (optional)">
+                <input
+                  type="text"
+                  placeholder="e.g. batch, shelf, supplier remarks"
+                  value={line.lineNote}
+                  onChange={(e) => setLine(idx, { lineNote: e.target.value })}
+                  style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }}
+                />
+              </FieldWrap>
             </div>
           );
         })}

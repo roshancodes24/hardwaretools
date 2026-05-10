@@ -4,7 +4,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { validateBody } from "../middleware/validateBody";
 import { requireAdmin } from "../middleware/requireRole";
-import { generateNextSku } from "../lib/generateSku";
+import { generateNextBrandCode, generateNextSku } from "../lib/generateSku";
 import { getProductStock } from "../services/inventory";
 import {
   batchCreateProductsSchema,
@@ -75,51 +75,35 @@ router.post(
       req.validatedBody as BatchCreateProductsValidated;
 
     try {
-      const requestedNames = items
-        .map((item) => item.name.trim())
-        .filter((name) => name.length > 0);
       const requestedBrandCodes = items
         .map((item) => item.brandCode?.trim() ?? "")
         .filter((brandCode) => brandCode.length > 0);
 
-      const existingByNameOrBrandCode =
-        requestedNames.length > 0 || requestedBrandCodes.length > 0
+      const existingByBrandCode =
+        requestedBrandCodes.length > 0
           ? await prisma.product.findMany({
               where: {
-                OR: [
-                  ...requestedNames.map((name) => ({
-                    name: { equals: name, mode: "insensitive" as const },
-                  })),
-                  ...requestedBrandCodes.map((brandCode) => ({
-                    brandCode: { equals: brandCode, mode: "insensitive" as const },
-                  })),
-                ],
+                OR: requestedBrandCodes.map((brandCode) => ({
+                  brandCode: { equals: brandCode, mode: "insensitive" as const },
+                })),
               },
-              select: { name: true, brandCode: true },
+              select: { brandCode: true },
             })
           : [];
 
-      const existingNames = new Set(
-        existingByNameOrBrandCode.map((p) => normalizeKey(p.name))
-      );
       const existingBrandCodes = new Set(
-        existingByNameOrBrandCode
+        existingByBrandCode
           .map((p) => p.brandCode)
           .filter((brandCode): brandCode is string => Boolean(brandCode))
           .map((brandCode) => normalizeKey(brandCode))
       );
 
       for (const item of items) {
-        const normalizedName = normalizeKey(item.name);
-        if (existingNames.has(normalizedName)) {
-          res.status(409).json({
-            error: `A product with name "${item.name}" already exists.`,
-          });
-          return;
-        }
-
         const trimmedBrandCode = item.brandCode?.trim();
-        if (trimmedBrandCode && existingBrandCodes.has(normalizeKey(trimmedBrandCode))) {
+        if (
+          trimmedBrandCode &&
+          existingBrandCodes.has(normalizeKey(trimmedBrandCode))
+        ) {
           res.status(409).json({
             error: `A product with brand code "${trimmedBrandCode}" already exists.`,
           });
@@ -218,22 +202,6 @@ router.patch(
         return;
       }
 
-      if (body.name !== undefined) {
-        const nameClash = await prisma.product.findFirst({
-          where: {
-            id: { not: id },
-            name: { equals: body.name, mode: "insensitive" },
-          },
-          select: { id: true },
-        });
-        if (nameClash) {
-          res.status(409).json({
-            error: `A product with name "${body.name}" already exists.`,
-          });
-          return;
-        }
-      }
-
       if (body.brandCode !== undefined && body.brandCode !== null) {
         const brandCode = body.brandCode.trim();
         if (brandCode.length > 0) {
@@ -258,7 +226,13 @@ router.patch(
       if (body.description !== undefined) data.description = body.description;
       if (body.category !== undefined) data.category = body.category;
       if (body.brand !== undefined) data.brand = body.brand;
-      if (body.brandCode !== undefined) data.brandCode = body.brandCode;
+      if (body.brandCode !== undefined) {
+        if (body.brandCode === null || body.brandCode.trim() === "") {
+          /* keep existing brand code — it is the unique identifier */
+        } else {
+          data.brandCode = body.brandCode.trim();
+        }
+      }
       if (body.color !== undefined) data.color = body.color;
       if (body.sellingPrice !== undefined) data.sellingPrice = body.sellingPrice;
       if (body.costPrice !== undefined) data.costPrice = body.costPrice;

@@ -5,12 +5,14 @@ import type { UiProduct } from "./mapProduct";
 
 /** One row from CSV/Excel before resolving against the product catalog. */
 export type PurchaseLineImportPatch = {
-  sku?: string;
+  brandCode?: string;
   productName?: string;
   quantity: string;
   unitCost: string;
   /** Supplier display string from file (name or GST number). */
   supplierName?: string;
+  /** Optional per-row note (stored on the line until submit; merged into purchase note). */
+  lineNote?: string;
 };
 
 export type ImportPurchaseLinesParseResult = {
@@ -37,12 +39,10 @@ function headerToField(h: string): keyof PurchaseLineImportPatch | null {
   const compact = s.replace(/[\s_-]/g, "");
 
   const direct: Record<string, keyof PurchaseLineImportPatch> = {
-    sku: "sku",
-    productsku: "sku",
-    itemcode: "sku",
-    itemno: "sku",
-    code: "sku",
-    productcode: "sku",
+    brandcode: "brandCode",
+    itemcode: "brandCode",
+    code: "brandCode",
+    productcode: "brandCode",
     supplier: "supplierName",
     suppliername: "supplierName",
     vendor: "supplierName",
@@ -62,11 +62,20 @@ function headerToField(h: string): keyof PurchaseLineImportPatch | null {
     netrate: "unitCost",
     rate: "unitCost",
     cost: "unitCost",
+    note: "lineNote",
+    notes: "lineNote",
+    remark: "lineNote",
+    remarks: "lineNote",
+    comments: "lineNote",
+    comment: "lineNote",
   };
 
   if (direct[compact]) return direct[compact];
 
   const spaced: Record<string, keyof PurchaseLineImportPatch> = {
+    "brand code": "brandCode",
+    "product code": "brandCode",
+    "item code": "brandCode",
     "product name": "productName",
     "item name": "productName",
     "supplier name": "supplierName",
@@ -75,6 +84,8 @@ function headerToField(h: string): keyof PurchaseLineImportPatch | null {
     "purchase price": "unitCost",
     "buy price": "unitCost",
     "net rate": "unitCost",
+    "line note": "lineNote",
+    "line notes": "lineNote",
   };
   if (spaced[s]) return spaced[s];
 
@@ -95,7 +106,7 @@ function parseNumCell(s: string): number | null {
 
 /**
  * Parse first sheet: row 1 = headers. Required columns: quantity, unit cost (or equivalent).
- * Each data row must identify a product via sku and/or product name.
+ * Each data row must identify a product via brand code and/or product name.
  */
 export function rowsToPurchaseLinePatches(
   matrix: string[][]
@@ -151,11 +162,11 @@ export function rowsToPurchaseLinePatches(
       hasSupplierColumn,
     };
   }
-  if (!fieldCol.has("sku") && !fieldCol.has("productName")) {
+  if (!fieldCol.has("brandCode") && !fieldCol.has("productName")) {
     rowErrors.push({
       row: 1,
       message:
-        'Need a product column: add "sku" and/or "product name" (or "product").',
+        'Need a product column: add "brand code" and/or "product name" (or "product").',
     });
     return {
       patches: [],
@@ -189,13 +200,14 @@ export function rowsToPurchaseLinePatches(
       }
     }
 
-    const sku = typeof patch.sku === "string" ? patch.sku.trim() : "";
+    const brandCode =
+      typeof patch.brandCode === "string" ? patch.brandCode.trim() : "";
     const productName =
       typeof patch.productName === "string" ? patch.productName.trim() : "";
-    if (!sku && !productName) {
+    if (!brandCode && !productName) {
       rowErrors.push({
         row: spreadsheetRow,
-        message: "Missing product: enter sku and/or product name.",
+        message: "Missing product: enter brand code and/or product name.",
       });
       continue;
     }
@@ -219,8 +231,11 @@ export function rowsToPurchaseLinePatches(
       continue;
     }
 
+    const lineNoteRaw =
+      typeof patch.lineNote === "string" ? patch.lineNote.trim() : "";
+
     patches.push({
-      sku: sku || undefined,
+      brandCode: brandCode || undefined,
       productName: productName || undefined,
       quantity: String(q),
       unitCost: String(c),
@@ -228,6 +243,7 @@ export function rowsToPurchaseLinePatches(
         typeof patch.supplierName === "string" && patch.supplierName.trim() !== ""
           ? patch.supplierName.trim()
           : undefined,
+      lineNote: lineNoteRaw !== "" ? lineNoteRaw : undefined,
     });
     patchSourceRows.push(spreadsheetRow);
   }
@@ -254,6 +270,7 @@ export type ResolvePurchaseLineResult = {
     productId: string;
     quantity: string;
     unitCost: string;
+    lineNote: string;
   }[];
   unresolved: { row: number; message: string }[];
   supplierUnresolved: { row: number; message: string }[];
@@ -301,7 +318,7 @@ function newLineKey(): string {
     : `ln-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-/** Match catalog: SKU (case-insensitive) first, then exact product name (case-insensitive). */
+/** Match catalog: brand code (case-insensitive) first, then exact product name (case-insensitive). */
 export function resolvePurchaseImportPatches(
   patches: PurchaseLineImportPatch[],
   products: UiProduct[],
@@ -387,13 +404,14 @@ export function resolvePurchaseImportPatches(
 
   patches.forEach((patch, i) => {
     const row = rowNumbers[i] ?? i + 2;
-    const sku = patch.sku?.trim() ?? "";
+    const bc = patch.brandCode?.trim() ?? "";
     const name = patch.productName?.trim().toLowerCase() ?? "";
 
     let p: UiProduct | undefined;
-    if (sku) {
+    if (bc) {
+      const lower = bc.toLowerCase();
       p = products.find(
-        (x) => x.sku.trim().toLowerCase() === sku.toLowerCase()
+        (x) => (x.brandCode ?? "").trim().toLowerCase() === lower
       );
     }
     if (!p && name) {
@@ -402,10 +420,10 @@ export function resolvePurchaseImportPatches(
 
     if (!p) {
       const hint =
-        sku && name
-          ? `sku "${sku}" / name "${patch.productName}"`
-          : sku
-            ? `sku "${sku}"`
+        bc && patch.productName?.trim()
+          ? `brand code "${bc}" / name "${patch.productName}"`
+          : bc
+            ? `brand code "${bc}"`
             : `name "${patch.productName}"`;
       unresolved.push({
         row,
@@ -419,6 +437,7 @@ export function resolvePurchaseImportPatches(
       productId: p.id,
       quantity: patch.quantity,
       unitCost: patch.unitCost,
+      lineNote: (patch.lineNote ?? "").trim(),
     });
   });
 
@@ -430,7 +449,7 @@ export function resolvePurchaseImportPatches(
   };
 }
 
-export const PURCHASE_IMPORT_TEMPLATE_CSV = `supplier,sku,product name,quantity,unit cost
-Example Supplier Ltd,EX-SKU-001,,10,125.50
-Example Supplier Ltd,,Example product display name,2,99
+export const PURCHASE_IMPORT_TEMPLATE_CSV = `supplier,brand code,product name,quantity,unit cost,notes
+Example Supplier Ltd,BC-00001,,10,125.50,Batch A / shelf 2
+Example Supplier Ltd,,Example product display name,2,99,
 `;
