@@ -172,7 +172,8 @@ function draftToUpdateBody(d: ProductDraft): UpdateProductBody {
     color: d.color.trim() || null,
     hsnCode: d.hsnCode.trim() ? d.hsnCode.trim() : null,
   };
-  if (d.sellingPrice !== "") o.sellingPrice = Number(d.sellingPrice);
+  const sellEff = effectiveSellingPriceString(d);
+  if (sellEff !== "") o.sellingPrice = Number(sellEff);
   if (d.costPrice !== "") o.costPrice = Number(d.costPrice);
   if (d.percentage !== "") o.percentage = Number(d.percentage);
   if (d.mrp !== "") o.mrp = Number(d.mrp);
@@ -285,7 +286,7 @@ function patchImportToDraft(patch: ProductImportPatch): ProductDraft {
   const cat = PRODUCT_CATEGORIES.includes(catRaw as ProductCategory)
     ? (catRaw as ProductCategory)
     : "Electrical";
-  return newDraft({
+  const draft = newDraft({
     sku: (patch.sku ?? "").trim(),
     name: patch.name.trim(),
     description: (patch.description ?? "").trim(),
@@ -335,6 +336,12 @@ function patchImportToDraft(patch: ProductImportPatch): ProductDraft {
     hsnCode: (patch.hsnCode ?? "").trim(),
     status: patch.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
   });
+  /** After CSV/Excel import: fill selling from cost + margin % when selling column was blank (same as manual entry). */
+  if (draft.sellingPrice.trim() === "") {
+    const derived = effectiveSellingPriceString(draft);
+    if (derived !== "") return { ...draft, sellingPrice: derived };
+  }
+  return draft;
 }
 
 function computedSellingPriceFromCostAndPercentage(costRaw: string, pctRaw: string): string {
@@ -345,8 +352,16 @@ function computedSellingPriceFromCostAndPercentage(costRaw: string, pctRaw: stri
   return selling.toFixed(2);
 }
 
+/** Selling shown or saved: explicit field, else cost × (1 + percentage/100) when both are set. */
+function effectiveSellingPriceString(d: ProductDraft): string {
+  const t = d.sellingPrice.trim();
+  if (t !== "") return t;
+  return computedSellingPriceFromCostAndPercentage(d.costPrice, d.percentage);
+}
+
 function draftToPayloadItem(d: ProductDraft) {
   const skuTrim = d.sku.trim();
+  const sellStr = effectiveSellingPriceString(d);
   return {
     name: d.name.trim(),
     ...(skuTrim !== "" ? { sku: skuTrim } : {}),
@@ -358,7 +373,7 @@ function draftToPayloadItem(d: ProductDraft) {
     baseUnitCode: d.baseUnitCode.trim(),
     unitKind: d.unitKind,
     allowsFractional: d.allowsFractional,
-    sellingPrice: d.sellingPrice !== "" ? Number(d.sellingPrice) : undefined,
+    sellingPrice: sellStr !== "" ? Number(sellStr) : undefined,
     costPrice: d.costPrice !== "" ? Number(d.costPrice) : undefined,
     percentage: d.percentage !== "" ? Number(d.percentage) : undefined,
     mrp: d.mrp !== "" ? Number(d.mrp) : undefined,

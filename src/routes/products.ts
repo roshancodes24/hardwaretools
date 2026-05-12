@@ -49,6 +49,35 @@ function normalizeKey(value: string): string {
   return value.trim().toLowerCase();
 }
 
+/** Same formula as the Products UI: selling = cost + (cost × percentage / 100). */
+function sellingPriceFromCostAndPercent(cost: number, pct: number): number {
+  const raw = cost + (cost * pct) / 100;
+  return Math.round(raw * 100) / 100;
+}
+
+function resolveSellingPriceForBatch(item: {
+  sellingPrice?: number;
+  costPrice?: number;
+  percentage?: number;
+}): number | null {
+  if (item.sellingPrice !== undefined && item.sellingPrice !== null) {
+    return item.sellingPrice;
+  }
+  if (
+    item.costPrice !== undefined &&
+    item.costPrice !== null &&
+    item.percentage !== undefined &&
+    item.percentage !== null
+  ) {
+    const c = Number(item.costPrice);
+    const p = Number(item.percentage);
+    if (Number.isFinite(c) && Number.isFinite(p) && c >= 0 && p >= 0) {
+      return sellingPriceFromCostAndPercent(c, p);
+    }
+  }
+  return null;
+}
+
 router.get("/", async (_req, res) => {
   try {
     const products = await prisma.product.findMany({
@@ -146,7 +175,7 @@ router.post(
               baseUnitCode: item.baseUnitCode,
               unitKind: item.unitKind as UnitKind,
               allowsFractional: item.allowsFractional,
-              sellingPrice: item.sellingPrice != null ? item.sellingPrice : null,
+              sellingPrice: resolveSellingPriceForBatch(item),
               costPrice: item.costPrice != null ? item.costPrice : null,
               percentage: item.percentage != null ? item.percentage : null,
               mrp: item.mrp != null ? item.mrp : null,
