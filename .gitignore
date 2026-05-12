@@ -7,3 +7,12 @@ New folder/
 frontend/dist/
 frontend/tsconfig.tsbuildinfo
 *.tsbuildinfo
+
+# User guide: local sources/exports (regenerate with scripts/export-user-guide.ps1)
+docs/USER_GUIDE.md
+docs/USER_GUIDE.pdf
+docs/USER_GUIDE.docx
+docs/README.md
+docs/assets/user-guide-flow-*.png
+docs/*_test.pdf
+**/~$*.docx
