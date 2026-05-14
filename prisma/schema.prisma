@@ -138,6 +138,8 @@ model Product {
   brand       String?
   brandCode   String?
   color       String?
+  /// Physical size / dimension label (e.g. 10mm, 500ml) — optional.
+  size        String?
   /// Harmonized System of Nomenclature (GST), e.g. 4/6/8 digit code
   hsnCode     String?
   status      ProductStatus @default(ACTIVE)

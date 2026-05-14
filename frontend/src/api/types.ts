@@ -27,6 +27,8 @@ export type ApiProduct = {
   brand: string | null;
   brandCode: string | null;
   color: string | null;
+  /** Physical size / dimension label (optional). */
+  size: string | null;
   /** GST HSN/SAC code (optional). */
   hsnCode: string | null;
   status: string;
@@ -53,6 +55,7 @@ export type UpdateProductBody = {
   brand?: string | null;
   brandCode?: string | null;
   color?: string | null;
+  size?: string | null;
   sellingPrice?: number;
   costPrice?: number;
   percentage?: number;
@@ -224,6 +227,7 @@ export type ProductCreateItem = {
   brand?: string;
   brandCode?: string;
   color?: string;
+  size?: string;
   percentage?: number | string;
   mrp?: number | string;
   baseUnitCode: string;

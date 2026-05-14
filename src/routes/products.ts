@@ -171,6 +171,7 @@ router.post(
               brand: item.brand ?? null,
               brandCode: item.brandCode ?? null,
               color: item.color ?? null,
+              size: item.size ?? null,
               status: ProductStatus.ACTIVE,
               baseUnitCode: item.baseUnitCode,
               unitKind: item.unitKind as UnitKind,
@@ -263,6 +264,7 @@ router.patch(
         }
       }
       if (body.color !== undefined) data.color = body.color;
+      if (body.size !== undefined) data.size = body.size;
       if (body.sellingPrice !== undefined) data.sellingPrice = body.sellingPrice;
       if (body.costPrice !== undefined) data.costPrice = body.costPrice;
       if (body.percentage !== undefined) data.percentage = body.percentage;

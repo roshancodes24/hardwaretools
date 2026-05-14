@@ -79,6 +79,7 @@ type ProductDraft = {
   brand: string;
   brandCode: string;
   color: string;
+  size: string;
   baseUnitCode: string;
   unitKind: UnitKindValue;
   allowsFractional: boolean;
@@ -109,6 +110,7 @@ function newDraft(overrides: Partial<ProductDraft> = {}): ProductDraft {
     brand: "",
     brandCode: "",
     color: "",
+    size: "",
     baseUnitCode: "pc",
     unitKind: "PIECE",
     allowsFractional: false,
@@ -143,6 +145,7 @@ function productToDraft(p: ApiProduct): ProductDraft {
     brand: p.brand ?? "",
     brandCode: p.brandCode ?? "",
     color: p.color ?? "",
+    size: p.size ?? "",
     baseUnitCode: p.baseUnitCode,
     unitKind: uk,
     allowsFractional: p.allowsFractional,
@@ -170,6 +173,7 @@ function draftToUpdateBody(d: ProductDraft): UpdateProductBody {
     brand: d.brand.trim() || null,
     brandCode: d.brandCode.trim() || null,
     color: d.color.trim() || null,
+    size: d.size.trim() || null,
     hsnCode: d.hsnCode.trim() ? d.hsnCode.trim() : null,
   };
   const sellEff = effectiveSellingPriceString(d);
@@ -239,6 +243,9 @@ function validateDraft(d: ProductDraft): RowErrors {
   if (d.color.trim().length > 100) {
     e.color = "Colour is too long (max 100 characters)";
   }
+  if (d.size.trim().length > 100) {
+    e.size = "Size is too long (max 100 characters)";
+  }
   if (d.hsnCode.trim().length > 16) {
     e.hsnCode = "HSN Code is too long (max 16 characters)";
   }
@@ -294,6 +301,7 @@ function patchImportToDraft(patch: ProductImportPatch): ProductDraft {
     brand: (patch.brand ?? "").trim(),
     brandCode: (patch.brandCode ?? "").trim(),
     color: (patch.color ?? "").trim(),
+    size: (patch.size ?? "").trim(),
     baseUnitCode: bc,
     unitKind: uk,
     allowsFractional: patch.allowsFractional ?? false,
@@ -370,6 +378,7 @@ function draftToPayloadItem(d: ProductDraft) {
     brand: d.brand.trim() || undefined,
     brandCode: d.brandCode.trim() || undefined,
     color: d.color.trim() || undefined,
+    size: d.size.trim() || undefined,
     baseUnitCode: d.baseUnitCode.trim(),
     unitKind: d.unitKind,
     allowsFractional: d.allowsFractional,
@@ -630,10 +639,13 @@ function ProductModal({
               <MField label="Colour" error={errors.color}>
                 {inp("color", "text", "e.g. Red")}
               </MField>
-              <MField label="HSN Code" error={errors.hsnCode}>
-                {inp("hsnCode", "text", "e.g. 8544 — optional (GST)")}
+              <MField label="Size" error={errors.size}>
+                {inp("size", "text", "e.g. 10mm, 500 ml — optional")}
               </MField>
             </div>
+            <MField label="HSN Code" error={errors.hsnCode}>
+              {inp("hsnCode", "text", "e.g. 8544 — optional (GST)")}
+            </MField>
             <MField label="Description" error={errors.description}>
               <textarea
                 value={draft.description}
@@ -930,6 +942,7 @@ export function ProductsPage({
         (p.brand ?? "").toLowerCase().includes(q) ||
         (p.brandCode ?? "").toLowerCase().includes(q) ||
         (p.color ?? "").toLowerCase().includes(q) ||
+        (p.size ?? "").toLowerCase().includes(q) ||
         (p.hsnCode ?? "").toLowerCase().includes(q)
     );
   }, [rawProducts, search]);
@@ -1522,6 +1535,7 @@ export function ProductsPage({
                       ["Brand", 110],
                       ["Brand Code", 98],
                       ["Colour", 92],
+                      ["Size", 88],
                       ["HSN Code", 88],
                       ["Unit *", 104], ["Kind *", 100], ["Frac.", 54],
                       ["Price ₹", 88], ["Cost ₹", 88], ["%", 72], ["MRP ₹", 88],
@@ -1556,6 +1570,7 @@ export function ProductsPage({
                         <td style={tdStyle}><BatchCell value={row.brand} onChange={(v) => updateBatchRow(i, "brand", v)} placeholder="Brand" /></td>
                         <td style={tdStyle}><BatchCell value={row.brandCode} onChange={(v) => updateBatchRow(i, "brandCode", v)} error={errs.brandCode} placeholder="Auto if blank" /></td>
                         <td style={tdStyle}><BatchCell value={row.color} onChange={(v) => updateBatchRow(i, "color", v)} error={errs.color} placeholder="Colour" /></td>
+                        <td style={tdStyle}><BatchCell value={row.size} onChange={(v) => updateBatchRow(i, "size", v)} error={errs.size} placeholder="Size" /></td>
                         <td style={tdStyle}><BatchCell value={row.hsnCode} onChange={(v) => updateBatchRow(i, "hsnCode", v)} error={errs.hsnCode} placeholder="8544" /></td>
                         <td style={tdStyle}>
                           <BatchSelectCell
@@ -1609,7 +1624,7 @@ export function ProductsPage({
         <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minHeight: 200 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <input
-            placeholder="Search by name, SKU, HSN Code, category, brand, brand code or colour…"
+            placeholder="Search by name, SKU, HSN Code, category, brand, brand code, colour, or size…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
@@ -1703,8 +1718,8 @@ export function ProductsPage({
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e7e5e4" }}>
                     {(allowMutations
-                      ? ["", "SKU", "Name", "Category", "Brand", "Brand Code", "Colour", "HSN Code", "Unit", "Price", "Cost", "%", "MRP", "Stock", "Status", "Actions"]
-                      : ["SKU", "Name", "Category", "Brand", "Brand Code", "Colour", "HSN Code", "Unit", "Price", "Cost", "%", "MRP", "Stock", "Status"]
+                      ? ["", "SKU", "Name", "Category", "Brand", "Brand Code", "Colour", "Size", "HSN Code", "Unit", "Price", "Cost", "%", "MRP", "Stock", "Status", "Actions"]
+                      : ["SKU", "Name", "Category", "Brand", "Brand Code", "Colour", "Size", "HSN Code", "Unit", "Price", "Cost", "%", "MRP", "Stock", "Status"]
                     ).map((h) => (
                       <th key={h} style={{
                         padding: "10px 14px", textAlign: "left", fontWeight: 600,
@@ -1750,6 +1765,7 @@ export function ProductsPage({
                         <td style={{ padding: "10px 14px", color: "#78716c" }}>{p.brand ?? "—"}</td>
                         <td style={{ padding: "10px 14px", color: "#78716c", fontFamily: "monospace", fontSize: 12 }}>{p.brandCode ?? "—"}</td>
                         <td style={{ padding: "10px 14px", color: "#78716c" }}>{p.color ?? "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "#78716c" }}>{p.size?.trim() || "—"}</td>
                         <td style={{ padding: "10px 14px", color: "#78716c", fontFamily: "monospace", fontSize: 12 }}>{p.hsnCode?.trim() || "—"}</td>
                         <td style={{ padding: "10px 14px", color: "#78716c", whiteSpace: "nowrap" }}>{p.baseUnitCode}</td>
                         <td style={{ padding: "10px 14px", fontFamily: "monospace", whiteSpace: "nowrap" }}>{fmtPrice(p.sellingPrice)}</td>

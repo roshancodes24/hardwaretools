@@ -10,6 +10,7 @@ export type ProductImportPatch = {
   brand?: string;
   brandCode?: string;
   color?: string;
+  size?: string;
   baseUnitCode?: string;
   unitKind?: string;
   allowsFractional?: boolean;
@@ -77,6 +78,8 @@ function headerToField(h: string): keyof ProductImportPatch | null {
     brandcode: "brandCode",
     color: "color",
     colour: "color",
+    size: "size",
+    dimensions: "size",
     baseunitcode: "baseUnitCode",
     unitcode: "baseUnitCode",
     unit: "baseUnitCode",
@@ -130,6 +133,9 @@ function headerToField(h: string): keyof ProductImportPatch | null {
     "brand code": "brandCode",
     "colour": "color",
     "color": "color",
+    "size": "size",
+    "dimension": "size",
+    "dimensions": "size",
     "base unit": "baseUnitCode",
     "base unit code": "baseUnitCode",
     "unit kind": "unitKind",
@@ -328,6 +334,6 @@ export async function parseProductImportFile(
 }
 
 /** CSV template for download (UTF-8 BOM added by caller if needed). */
-export const PRODUCT_IMPORT_TEMPLATE_CSV = `name,sku,category,brand,brandCode,color,hsnCode,description,status,baseUnitCode,unitKind,allowsFractional,costPrice,percentage,sellingPrice,mrp,cgstPercent,sgstPercent,igstPercent,currentStock,reorderLevel
-"Example MCB 16A",,Electrical,PowerLine,PL-16A,White,8536,Optional notes,ACTIVE,pc,PIECE,false,320,40.625,450,500,9,9,,5,10
+export const PRODUCT_IMPORT_TEMPLATE_CSV = `name,sku,category,brand,brandCode,color,size,hsnCode,description,status,baseUnitCode,unitKind,allowsFractional,costPrice,percentage,sellingPrice,mrp,cgstPercent,sgstPercent,igstPercent,currentStock,reorderLevel
+"Example MCB 16A",,Electrical,PowerLine,PL-16A,White,16A,8536,Optional notes,ACTIVE,pc,PIECE,false,320,40.625,450,500,9,9,,5,10
 `;

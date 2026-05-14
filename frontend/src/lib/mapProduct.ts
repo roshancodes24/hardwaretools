@@ -6,6 +6,9 @@ export type UiProduct = {
   sku: string;
   /** Business product identifier (catalog `brandCode`). */
   brandCode: string | null;
+  color: string | null;
+  /** Physical size / dimension label (optional). */
+  size: string | null;
   category: string;
   price: number;
   stock: number;
@@ -39,6 +42,8 @@ export function mapApiProduct(p: ApiProduct): UiProduct {
     name: p.name,
     sku: p.sku,
     brandCode: p.brandCode?.trim() ? p.brandCode.trim() : null,
+    color: p.color?.trim() ? p.color.trim() : null,
+    size: p.size?.trim() ? p.size.trim() : null,
     category: p.category ?? "Uncategorized",
     price: Number(p.sellingPrice ?? 0),
     stock: Number(p.currentStock),

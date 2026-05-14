@@ -334,6 +334,7 @@ export const productCreateItemSchema = z.object({
   brand: z.string().trim().max(200).optional(),
   brandCode: z.string().trim().max(100).optional(),
   color: z.string().trim().max(100).optional(),
+  size: z.string().trim().max(100).optional(),
   baseUnitCode: z
     .string()
     .trim()
@@ -423,6 +424,14 @@ export const updateProductBodySchema = z
       z.union([z.string().trim().max(100), z.null()]).optional()
     ),
     color: z.preprocess(
+      (v) => {
+        if (v === undefined || v === "") return undefined;
+        if (v === null) return null;
+        return v;
+      },
+      z.union([z.string().trim().max(100), z.null()]).optional()
+    ),
+    size: z.preprocess(
       (v) => {
         if (v === undefined || v === "") return undefined;
         if (v === null) return null;
