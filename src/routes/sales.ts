@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { Prisma } from "@prisma/client";
-import { PurchaseStatus, SaleStatus } from "@prisma/client";
+import { PurchaseStatus, SalePaymentMethod, SaleStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { hasAdminAccess } from "../middleware/actingUser";
 import { validateBody } from "../middleware/validateBody";
@@ -50,6 +50,7 @@ function decStr(v: Prisma.Decimal | null | undefined): string {
 function serializePayment(p: {
   id: string;
   amount: Prisma.Decimal;
+  method: SalePaymentMethod;
   note: string | null;
   createdAt: Date;
   createdById: string;
@@ -57,6 +58,7 @@ function serializePayment(p: {
   return {
     id: p.id,
     amount: decStr(p.amount),
+    method: p.method === SalePaymentMethod.ONLINE_BANKING ? "online_banking" : "cash",
     note: p.note,
     createdAt: p.createdAt.toISOString(),
     createdById: p.createdById,
@@ -107,6 +109,7 @@ function serializeSaleDetail(sale: {
   payments: Array<{
     id: string;
     amount: Prisma.Decimal;
+    method: SalePaymentMethod;
     note: string | null;
     createdAt: Date;
     createdById: string;
@@ -182,6 +185,8 @@ router.post(
         note: body.note,
         documentKind: body.documentKind,
         paidAmount: body.paidAmount,
+        paymentMethod: body.paymentMethod,
+        initialPayments: body.initialPayments,
         lines: body.lines,
       });
       if (!sale) {
@@ -508,6 +513,8 @@ router.post(
         saleId,
         amount: body.amount,
         createdById: body.createdById,
+        paymentMethod: body.paymentMethod,
+        payments: body.payments,
         note: body.note,
       });
       if (!sale) {

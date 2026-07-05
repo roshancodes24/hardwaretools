@@ -11,6 +11,8 @@ export type UiProduct = {
   size: string | null;
   category: string;
   price: number;
+  /** Moving weighted-average cost per base unit (for below-cost warnings); null if unknown. */
+  avgCost: number | null;
   stock: number;
   unit: string;
   lowStock: number;
@@ -46,6 +48,7 @@ export function mapApiProduct(p: ApiProduct): UiProduct {
     size: p.size?.trim() ? p.size.trim() : null,
     category: p.category ?? "Uncategorized",
     price: Number(p.sellingPrice ?? 0),
+    avgCost: numOrNull(p.avgCostPrice ?? p.costPrice),
     stock: Number(p.currentStock),
     unit: base.displayName || base.code || p.baseUnitCode,
     lowStock,

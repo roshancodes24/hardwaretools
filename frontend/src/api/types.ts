@@ -36,6 +36,8 @@ export type ApiProduct = {
   unitKind: string;
   allowsFractional: boolean;
   costPrice: string | null;
+  /** Moving weighted-average cost of stock on hand (for margin, not pricing). */
+  avgCostPrice: string | null;
   percentage: string | null;
   mrp: string | null;
   sellingPrice: string | null;
@@ -44,8 +46,29 @@ export type ApiProduct = {
   igstPercent: string | null;
   reorderLevel: string | null;
   currentStock: string;
+  /** True when a cheaper purchase left the selling price awaiting owner review. */
+  priceReviewNeeded?: boolean;
+  /** Suggested (lower) selling price awaiting approval. */
+  suggestedSellingPrice: string | null;
+  /** Reason for the pending price review. */
+  priceReviewNote: string | null;
   units: ApiProductUnit[];
   barcodes: ApiBarcode[];
+};
+
+export type ProductsListParams = {
+  page?: number;
+  limit?: number;
+  q?: string;
+  priceReviewOnly?: boolean;
+};
+
+export type ProductsListResponse = {
+  items: ApiProduct[];
+  total: number;
+  catalogTotal: number;
+  page: number;
+  limit: number;
 };
 
 export type UpdateProductBody = {
@@ -174,6 +197,11 @@ export type SaleLineBody = {
   lineTax?: string | number;
 };
 
+export type SaleInitialPaymentBody = {
+  method: "cash" | "online_banking";
+  amount: string | number;
+};
+
 export type CreateSaleBody = {
   createdById: string;
   customerId?: string;
@@ -189,6 +217,10 @@ export type CreateSaleBody = {
   /** Bill → BIL-* ; GST tax invoice → INV-* (server assigns next in series). */
   documentKind?: "bill" | "tax_invoice";
   paidAmount: string | number;
+  /** Used when initialPayments is omitted (single-method receipt). */
+  paymentMethod?: "cash" | "online_banking";
+  /** Split cash / online at checkout; sum must equal paidAmount. */
+  initialPayments?: SaleInitialPaymentBody[];
   lines: SaleLineBody[];
 };
 
@@ -287,6 +319,7 @@ export type OutstandingSaleSummary = {
 export type SalePaymentRecord = {
   id: string;
   amount: string;
+  method: "cash" | "online_banking";
   note: string | null;
   createdAt: string;
   createdById: string;
@@ -353,8 +386,10 @@ export type SaleSearchResult = {
 };
 
 export type RecordSalePaymentBody = {
-  amount: number;
+  amount?: number;
   createdById: string;
+  paymentMethod?: "cash" | "online_banking";
+  payments?: SaleInitialPaymentBody[];
   note?: string;
 };
 

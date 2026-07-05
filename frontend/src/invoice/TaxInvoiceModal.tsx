@@ -8,19 +8,27 @@ import "./taxInvoicePrint.css";
 
 export type InvoiceModalVariant = "tax" | "normal";
 
+/** Infer tax vs bill layout from the saved sale (not live POS checkbox state). */
+export function invoiceVariantFromSale(sale: SaleDetail): InvoiceModalVariant {
+  if (sale.saleNumber.startsWith("INV-")) return "tax";
+  if (sale.note?.includes("Tax invoice")) return "tax";
+  return "normal";
+}
+
 type Props = {
   sale: SaleDetail;
   onClose: () => void;
-  /** Locked at POS before Confirm Sale, or inferred when reprinting. Not changeable here. */
-  variant: InvoiceModalVariant;
+  /** When omitted, derived from sale number / note (recommended after checkout). */
+  variant?: InvoiceModalVariant;
 };
 
 export function TaxInvoiceModal({
   sale,
   onClose,
-  variant,
+  variant: variantProp,
 }: Props) {
   const headingId = useId();
+  const variant = variantProp ?? invoiceVariantFromSale(sale);
   const isTax = variant === "tax";
 
   const handlePrint = () => {

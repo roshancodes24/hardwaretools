@@ -1,11 +1,16 @@
-import type { Prisma } from "@prisma/client";
-import { ProductStatus, UnitKind } from "@prisma/client";
+import { Prisma, ProductStatus, UnitKind } from "@prisma/client";
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { validateBody } from "../middleware/validateBody";
 import { requireAdmin } from "../middleware/requireRole";
 import { generateNextBrandCode, generateNextSku } from "../lib/generateSku";
 import { getProductStock } from "../services/inventory";
+import {
+  parseProductListQuery,
+  productSearchWhere,
+  resolveProductListPaging,
+  wantsPaginatedProductList,
+} from "../lib/productListQuery";
 import {
   batchCreateProductsSchema,
   type BatchCreateProductsValidated,
@@ -49,11 +54,7 @@ function normalizeKey(value: string): string {
   return value.trim().toLowerCase();
 }
 
-/** Same formula as the Products UI: selling = cost + (cost × percentage / 100). */
-function sellingPriceFromCostAndPercent(cost: number, pct: number): number {
-  const raw = cost + (cost * pct) / 100;
-  return Math.round(raw * 100) / 100;
-}
+import { sellingPriceFromCostAndPercent } from "../lib/productPricing";
 
 function resolveSellingPriceForBatch(item: {
   sellingPrice?: number;
@@ -78,8 +79,155 @@ function resolveSellingPriceForBatch(item: {
   return null;
 }
 
-router.get("/", async (_req, res) => {
+const BATCH_CREATE_CHUNK = 100;
+const BATCH_CREATE_TX_OPTS = { timeout: 120_000, maxWait: 30_000 } as const;
+
+type BatchProductItem = BatchCreateProductsValidated["products"][number];
+
+function explicitSku(item: BatchProductItem): string | undefined {
+  const s = typeof item.sku === "string" ? item.sku.trim() : "";
+  return s !== "" ? s : undefined;
+}
+
+async function createProductBatchChunk(
+  tx: Prisma.TransactionClient,
+  items: BatchProductItem[]
+) {
+  const results = [];
+  const autoSkuSeq = new Map<
+    "Electrical" | "Hardware" | "Paint",
+    { prefix: string; next: number }
+  >();
+
+  for (const item of items) {
+    const trimmedSku = explicitSku(item);
+    let sku: string;
+    if (trimmedSku) {
+      sku = trimmedSku;
+    } else {
+      const cat = item.category;
+      let seq = autoSkuSeq.get(cat);
+      if (!seq) {
+        const first = await generateNextSku(tx, cat);
+        const m = /^([A-Z]{2})-(\d+)$/.exec(first);
+        if (!m) {
+          sku = first;
+        } else {
+          seq = { prefix: m[1], next: parseInt(m[2], 10) + 1 };
+          autoSkuSeq.set(cat, seq);
+          sku = first;
+        }
+      } else {
+        sku = `${seq.prefix}-${String(seq.next).padStart(5, "0")}`;
+        seq.next += 1;
+      }
+    }
+
+    const product = await tx.product.create({
+      data: {
+        sku,
+        name: item.name,
+        description: item.description ?? null,
+        category: item.category,
+        brand: item.brand ?? null,
+        brandCode: item.brandCode ?? null,
+        color: item.color ?? null,
+        size: item.size ?? null,
+        status: ProductStatus.ACTIVE,
+        baseUnitCode: item.baseUnitCode,
+        unitKind: item.unitKind as UnitKind,
+        allowsFractional: item.allowsFractional,
+        sellingPrice: resolveSellingPriceForBatch(item),
+        costPrice: item.costPrice != null ? item.costPrice : null,
+        avgCostPrice: item.costPrice != null ? item.costPrice : null,
+        percentage: item.percentage != null ? item.percentage : null,
+        mrp: item.mrp != null ? item.mrp : null,
+        cgstPercent: item.cgstPercent != null ? item.cgstPercent : null,
+        sgstPercent: item.sgstPercent != null ? item.sgstPercent : null,
+        igstPercent: item.igstPercent != null ? item.igstPercent : null,
+        reorderLevel: item.reorderLevel != null ? item.reorderLevel : null,
+        hsnCode: item.hsnCode != null ? item.hsnCode : null,
+        currentStock: item.currentStock,
+        units: {
+          create: {
+            code: item.baseUnitCode,
+            displayName: unitDisplayName(item.baseUnitCode),
+            isBaseUnit: true,
+            conversionToBase: 1,
+            allowsFractionalSale: item.allowsFractional,
+          },
+        },
+      },
+      include: { units: true, barcodes: true },
+    });
+    results.push(product);
+  }
+  return results;
+}
+
+async function createProductsInChunks(items: BatchProductItem[]) {
+  const created: Awaited<ReturnType<typeof createProductBatchChunk>> = [];
+  const createdIds: string[] = [];
+
   try {
+    for (let i = 0; i < items.length; i += BATCH_CREATE_CHUNK) {
+      const chunk = items.slice(i, i + BATCH_CREATE_CHUNK);
+      const chunkCreated = await prisma.$transaction(
+        (tx) => createProductBatchChunk(tx, chunk),
+        BATCH_CREATE_TX_OPTS
+      );
+      created.push(...chunkCreated);
+      createdIds.push(...chunkCreated.map((p) => p.id));
+    }
+    return created;
+  } catch (error) {
+    if (createdIds.length > 0) {
+      try {
+        await prisma.product.deleteMany({ where: { id: { in: createdIds } } });
+      } catch (rollbackError) {
+        console.error("Batch create rollback failed:", rollbackError);
+      }
+    }
+    throw error;
+  }
+}
+
+router.get("/", async (req, res) => {
+  try {
+    const listQuery = parseProductListQuery(
+      req.query as Record<string, unknown>
+    );
+
+    if (wantsPaginatedProductList(listQuery)) {
+      const { page, limit, skip } = resolveProductListPaging(listQuery);
+      const searchWhere = productSearchWhere(listQuery.q);
+      const where: Prisma.ProductWhereInput = {
+        ...searchWhere,
+        ...(listQuery.priceReviewOnly ? { priceReviewNeeded: true } : {}),
+      };
+      const catalogWhere: Prisma.ProductWhereInput = listQuery.priceReviewOnly
+        ? { priceReviewNeeded: true }
+        : {};
+
+      const [total, catalogTotal, items] = await prisma.$transaction([
+        prisma.product.count({ where }),
+        prisma.product.count({ where: catalogWhere }),
+        prisma.product.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+          include: {
+            units: true,
+            barcodes: true,
+          },
+        }),
+      ]);
+
+      res.status(200).json({ items, total, catalogTotal, page, limit });
+      return;
+    }
+
     const products = await prisma.product.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -140,72 +288,37 @@ router.post(
         }
       }
 
-      // Create products in a single transaction (explicit SKU when provided and unique; else category sequence)
-      const created = await prisma.$transaction(async (tx) => {
-        const results = [];
-        for (const item of items) {
-          const trimmedSku =
-            typeof item.sku === "string" && item.sku.trim() !== ""
-              ? item.sku.trim()
-              : undefined;
+      const explicitSkus = items
+        .map((item) => explicitSku(item))
+        .filter((sku): sku is string => sku != null);
 
-          let sku: string;
-          if (trimmedSku) {
-            const clash = await tx.product.findUnique({
-              where: { sku: trimmedSku },
-            });
-            if (clash) {
-              throw new Error(`SKU "${trimmedSku}" is already in use.`);
-            }
-            sku = trimmedSku;
-          } else {
-            sku = await generateNextSku(tx, item.category);
-          }
-
-          const product = await tx.product.create({
-            data: {
-              sku,
-              name: item.name,
-              description: item.description ?? null,
-              category: item.category,
-              brand: item.brand ?? null,
-              brandCode: item.brandCode ?? null,
-              color: item.color ?? null,
-              size: item.size ?? null,
-              status: ProductStatus.ACTIVE,
-              baseUnitCode: item.baseUnitCode,
-              unitKind: item.unitKind as UnitKind,
-              allowsFractional: item.allowsFractional,
-              sellingPrice: resolveSellingPriceForBatch(item),
-              costPrice: item.costPrice != null ? item.costPrice : null,
-              percentage: item.percentage != null ? item.percentage : null,
-              mrp: item.mrp != null ? item.mrp : null,
-              cgstPercent: item.cgstPercent != null ? item.cgstPercent : null,
-              sgstPercent: item.sgstPercent != null ? item.sgstPercent : null,
-              igstPercent: item.igstPercent != null ? item.igstPercent : null,
-              reorderLevel: item.reorderLevel != null ? item.reorderLevel : null,
-              hsnCode: item.hsnCode != null ? item.hsnCode : null,
-              currentStock: item.currentStock,
-              units: {
-                create: {
-                  code: item.baseUnitCode,
-                  displayName: unitDisplayName(item.baseUnitCode),
-                  isBaseUnit: true,
-                  conversionToBase: 1,
-                  allowsFractionalSale: item.allowsFractional,
-                },
-              },
-            },
-            include: { units: true, barcodes: true },
+      if (explicitSkus.length > 0) {
+        const skuClash = await prisma.product.findFirst({
+          where: { sku: { in: explicitSkus } },
+          select: { sku: true },
+        });
+        if (skuClash) {
+          res.status(409).json({
+            error: `SKU "${skuClash.sku}" is already in use.`,
           });
-          results.push(product);
+          return;
         }
-        return results;
-      });
+      }
+
+      const created = await createProductsInChunks(items);
 
       res.status(201).json({ created: created.length, products: created });
     } catch (error) {
       console.error("POST /products/batch failed:", error);
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        res.status(409).json({
+          error: "A product with this brand code or SKU already exists.",
+        });
+        return;
+      }
       res.status(400).json({
         error:
           error instanceof Error ? error.message : "Failed to create products",
@@ -266,8 +379,22 @@ router.patch(
       if (body.color !== undefined) data.color = body.color;
       if (body.size !== undefined) data.size = body.size;
       if (body.sellingPrice !== undefined) data.sellingPrice = body.sellingPrice;
-      if (body.costPrice !== undefined) data.costPrice = body.costPrice;
+      if (body.costPrice !== undefined) {
+        data.costPrice = body.costPrice;
+        // A manual cost correction resets the moving-average basis too.
+        data.avgCostPrice = body.costPrice;
+      }
       if (body.percentage !== undefined) data.percentage = body.percentage;
+      // A manual price/cost edit resolves any pending price review.
+      if (
+        body.sellingPrice !== undefined ||
+        body.costPrice !== undefined ||
+        body.percentage !== undefined
+      ) {
+        data.priceReviewNeeded = false;
+        data.suggestedSellingPrice = null;
+        data.priceReviewNote = null;
+      }
       if (body.mrp !== undefined) data.mrp = body.mrp;
       if (body.cgstPercent !== undefined) data.cgstPercent = body.cgstPercent;
       if (body.sgstPercent !== undefined) data.sgstPercent = body.sgstPercent;
@@ -300,6 +427,165 @@ router.patch(
     }
   }
 );
+
+/** Read an optional list of product ids from the request body (batch scope). */
+function parseBatchIds(body: unknown): string[] | null {
+  if (body && typeof body === "object" && Array.isArray((body as { ids?: unknown }).ids)) {
+    const ids = ((body as { ids: unknown[] }).ids).filter(
+      (x): x is string => typeof x === "string" && x.trim() !== ""
+    );
+    return ids.length > 0 ? ids : null;
+  }
+  return null;
+}
+
+/**
+ * Bulk approve: set sellingPrice = suggestedSellingPrice (where present) and clear the
+ * review flag for all currently-flagged products (optionally scoped to `ids`).
+ */
+router.post("/price-review/apply-all", requireAdmin, async (req, res) => {
+  try {
+    const ids = parseBatchIds(req.body);
+    const updated = await prisma.$transaction(async (tx) => {
+      if (ids) {
+        await tx.$executeRaw`
+          UPDATE "Product"
+          SET "sellingPrice" = "suggestedSellingPrice"
+          WHERE "priceReviewNeeded" = true
+            AND "suggestedSellingPrice" IS NOT NULL
+            AND "id" IN (${Prisma.join(ids)})
+        `;
+      } else {
+        await tx.$executeRaw`
+          UPDATE "Product"
+          SET "sellingPrice" = "suggestedSellingPrice"
+          WHERE "priceReviewNeeded" = true
+            AND "suggestedSellingPrice" IS NOT NULL
+        `;
+      }
+      const cleared = await tx.product.updateMany({
+        where: {
+          priceReviewNeeded: true,
+          ...(ids ? { id: { in: ids } } : {}),
+        },
+        data: {
+          priceReviewNeeded: false,
+          suggestedSellingPrice: null,
+          priceReviewNote: null,
+        },
+      });
+      return cleared.count;
+    });
+    res.status(200).json({ updated });
+  } catch (error) {
+    console.error("POST /products/price-review/apply-all failed:", error);
+    res.status(400).json({
+      error:
+        error instanceof Error ? error.message : "Failed to apply price reviews",
+    });
+  }
+});
+
+/**
+ * Bulk keep-current: clear the review flag without changing selling prices for all
+ * currently-flagged products (optionally scoped to `ids`).
+ */
+router.post("/price-review/dismiss-all", requireAdmin, async (req, res) => {
+  try {
+    const ids = parseBatchIds(req.body);
+    const cleared = await prisma.product.updateMany({
+      where: {
+        priceReviewNeeded: true,
+        ...(ids ? { id: { in: ids } } : {}),
+      },
+      data: {
+        priceReviewNeeded: false,
+        suggestedSellingPrice: null,
+        priceReviewNote: null,
+      },
+    });
+    res.status(200).json({ updated: cleared.count });
+  } catch (error) {
+    console.error("POST /products/price-review/dismiss-all failed:", error);
+    res.status(400).json({
+      error:
+        error instanceof Error ? error.message : "Failed to update price reviews",
+    });
+  }
+});
+
+/** Approve the suggested markdown: apply suggestedSellingPrice, clear the review. */
+router.post("/:id/price-review/apply", requireAdmin, async (req, res) => {
+  const id = paramStr(req.params.id);
+  if (!id) {
+    res.status(404).json({ error: "Product not found" });
+    return;
+  }
+  try {
+    const existing = await prisma.product.findUnique({
+      where: { id },
+      select: { id: true, suggestedSellingPrice: true },
+    });
+    if (!existing) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    const updated = await prisma.product.update({
+      where: { id },
+      data: {
+        ...(existing.suggestedSellingPrice != null
+          ? { sellingPrice: existing.suggestedSellingPrice }
+          : {}),
+        priceReviewNeeded: false,
+        suggestedSellingPrice: null,
+        priceReviewNote: null,
+      },
+      include: { units: true, barcodes: true },
+    });
+    res.status(200).json(updated);
+  } catch (error) {
+    console.error("POST /products/:id/price-review/apply failed:", error);
+    res.status(400).json({
+      error:
+        error instanceof Error ? error.message : "Failed to apply price review",
+    });
+  }
+});
+
+/** Dismiss the review: keep the current selling price, clear the flag. */
+router.post("/:id/price-review/dismiss", requireAdmin, async (req, res) => {
+  const id = paramStr(req.params.id);
+  if (!id) {
+    res.status(404).json({ error: "Product not found" });
+    return;
+  }
+  try {
+    const existing = await prisma.product.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!existing) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    const updated = await prisma.product.update({
+      where: { id },
+      data: {
+        priceReviewNeeded: false,
+        suggestedSellingPrice: null,
+        priceReviewNote: null,
+      },
+      include: { units: true, barcodes: true },
+    });
+    res.status(200).json(updated);
+  } catch (error) {
+    console.error("POST /products/:id/price-review/dismiss failed:", error);
+    res.status(400).json({
+      error:
+        error instanceof Error ? error.message : "Failed to dismiss price review",
+    });
+  }
+});
 
 router.delete("/:id", requireAdmin, async (req, res) => {
   const id = paramStr(req.params.id);

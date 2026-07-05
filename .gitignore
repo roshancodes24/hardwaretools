@@ -3,6 +3,7 @@ node_modules
 .env
 
 /generated/prisma
+backups/
 New folder/
 frontend/dist/
 frontend/tsconfig.tsbuildinfo

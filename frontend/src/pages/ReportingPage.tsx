@@ -494,7 +494,7 @@ export function ReportingPage() {
             borderRadius: 10,
             border: "none",
             background: loading ? "var(--border)" : "var(--accent)",
-            color: loading ? "var(--muted)" : "#fff",
+            color: loading ? "var(--muted)" : "var(--on-accent)",
             fontSize: 14,
             fontWeight: 600,
             cursor: loading ? "not-allowed" : "pointer",

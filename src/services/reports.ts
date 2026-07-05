@@ -602,6 +602,7 @@ export async function getGrossMarginReport(range: ReportDateRange) {
           sku: true,
           name: true,
           costPrice: true,
+          avgCostPrice: true,
         },
       },
     },
@@ -613,7 +614,8 @@ export async function getGrossMarginReport(range: ReportDateRange) {
 
   for (const line of lines) {
     revenue = revenue.plus(line.lineTotal);
-    const cp = line.product.costPrice;
+    // Prefer moving-average cost; fall back to last cost when average is unset.
+    const cp = line.product.avgCostPrice ?? line.product.costPrice;
     if (cp == null) {
       linesMissingCost += 1;
       continue;
@@ -630,7 +632,7 @@ export async function getGrossMarginReport(range: ReportDateRange) {
 
   return {
     disclaimer:
-      "Margin uses product cost price × quantity sold (base units). Missing cost is treated as zero.",
+      "Margin uses moving-average cost (falling back to last cost) × quantity sold (base units). Missing cost is treated as zero.",
     lineCount: lines.length,
     linesMissingCost,
     revenue: decStr(revenue),

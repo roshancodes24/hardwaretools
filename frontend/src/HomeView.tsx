@@ -190,9 +190,9 @@ export function HomeView({ onTabChange, isAdmin, products }: HomeViewProps) {
           {statCards.map((card) => {
             const valueColor =
               card.tone === "danger"
-                ? "#dc2626"
+                ? "var(--danger-strong)"
                 : card.tone === "warning"
-                  ? "#d97706"
+                  ? "var(--stock-low-text)"
                   : "var(--text)";
             return (
               <div
@@ -309,7 +309,7 @@ export function HomeView({ onTabChange, isAdmin, products }: HomeViewProps) {
             title="Sales revenue"
             subtitle={chartSubtitleFor(viewBy)}
             points={salesPoints}
-            color="#2563eb"
+            color="var(--accent)"
             formatY={fmtAxisRupee}
           />
         )}
@@ -384,8 +384,8 @@ export function HomeView({ onTabChange, isAdmin, products }: HomeViewProps) {
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
-                background: action.tone === "blue" ? "#eff6ff" : "var(--surface-subtle)",
-                color: action.tone === "blue" ? "#2563eb" : "var(--muted)",
+                background: action.tone === "blue" ? "var(--info-panel-bg)" : "var(--surface-subtle)",
+                color: action.tone === "blue" ? "var(--accent)" : "var(--muted)",
                 flexShrink: 0,
               }}
             >

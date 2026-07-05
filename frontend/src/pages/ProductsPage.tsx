@@ -7,6 +7,7 @@ import {
 import { api } from "../api/client";
 import { isApiError } from "../api/errors";
 import type { ApiProduct, UpdateProductBody } from "../api/types";
+import { BusyOverlay, paintBeforeWork } from "../components/BusyOverlay";
 import {
   PRODUCT_CATEGORIES,
   type ProductCategory,
@@ -36,7 +37,10 @@ const COMMON_UNIT_CODES = [
 const PRODUCTS_TABLE_PAGE_SIZE = 50;
 
 /** Max rows per file import (batch create limit safety). */
-const MAX_IMPORT_ROWS = 500;
+const MAX_IMPORT_ROWS = 1500;
+
+/** Cap how many price-review rows render at once; bulk actions handle the rest. */
+const PRICE_REVIEW_LIST_CAP = 50;
 
 function suggestUnitKind(code: string): UnitKindValue {
   const c = code.toLowerCase();
@@ -399,9 +403,9 @@ function draftToPayloadItem(d: ProductDraft) {
 
 function StatusBadge({ status }: { status: "ok" | "low" | "out" }) {
   const map = {
-    ok: { bg: "#dcfce7", color: "#16a34a", label: "In Stock" },
-    low: { bg: "#fef3c7", color: "#d97706", label: "Low Stock" },
-    out: { bg: "#fee2e2", color: "#dc2626", label: "Out of Stock" },
+    ok: { bg: "var(--stock-ok-bg)", color: "var(--stock-ok-text)", label: "In Stock" },
+    low: { bg: "var(--stock-low-bg)", color: "var(--stock-low-text)", label: "Low Stock" },
+    out: { bg: "var(--stock-out-bg)", color: "var(--danger-strong)", label: "Out of Stock" },
   };
   const s = map[status];
   return (
@@ -420,10 +424,10 @@ function StatusBadge({ status }: { status: "ok" | "low" | "out" }) {
 
 const mInput: React.CSSProperties = {
   height: 36, padding: "0 10px", width: "100%",
-  border: "1px solid #e7e5e4", borderRadius: 8,
-  fontSize: 13, outline: "none", background: "#fff", boxSizing: "border-box",
+  border: "1px solid var(--border)", borderRadius: 8,
+  fontSize: 13, outline: "none", background: "var(--surface)", boxSizing: "border-box",
 };
-const mInputErr: React.CSSProperties = { ...mInput, border: "1px solid #2563eb" };
+const mInputErr: React.CSSProperties = { ...mInput, border: "1px solid var(--accent)" };
 
 function MField({
   label, required, error, children,
@@ -432,13 +436,13 @@ function MField({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-      <label style={{ fontSize: 12, fontWeight: 600, color: "#44403c" }}>
+      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-strong)" }}>
         {label}
-        {required && <span style={{ color: "#2563eb", marginLeft: 2 }}>*</span>}
+        {required && <span style={{ color: "var(--accent)", marginLeft: 2 }}>*</span>}
       </label>
       {children}
       {error && (
-        <span style={{ fontSize: 11, color: "#2563eb", marginTop: -2 }}>{error}</span>
+        <span style={{ fontSize: 11, color: "var(--accent)", marginTop: -2 }}>{error}</span>
       )}
     </div>
   );
@@ -448,9 +452,9 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        fontSize: 11, fontWeight: 700, color: "#78716c",
+        fontSize: 11, fontWeight: 700, color: "var(--muted)",
         letterSpacing: "0.07em", textTransform: "uppercase",
-        borderBottom: "1px solid #f0efee", paddingBottom: 6, marginBottom: 2,
+        borderBottom: "1px solid var(--border)", paddingBottom: 6, marginBottom: 2,
       }}
     >
       {children}
@@ -532,7 +536,7 @@ function ProductModal({
     >
       <div
         style={{
-          background: "#fff", borderRadius: 14,
+          background: "var(--surface)", borderRadius: 14,
           width: "100%", maxWidth: 620,
           maxHeight: "92vh", overflowY: "auto",
           boxShadow: "0 24px 60px rgba(0,0,0,0.25)",
@@ -543,15 +547,15 @@ function ProductModal({
         <div
           style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "18px 24px 14px", borderBottom: "1px solid #f0efee",
+            padding: "18px 24px 14px", borderBottom: "1px solid var(--border)",
             flexShrink: 0,
           }}
         >
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#1c1917" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>
               {mode === "edit" ? "Edit product" : "Add Product"}
             </div>
-            <div style={{ fontSize: 12, color: "#78716c", marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
               {mode === "edit" && skuDisplay
                 ? `SKU ${skuDisplay} cannot be changed.`
                 : "Enter a custom SKU below or leave blank for auto codes (EL-/HW-/PT- by category)."}
@@ -561,8 +565,8 @@ function ProductModal({
             type="button" onClick={onClose}
             style={{
               width: 30, height: 30, borderRadius: "50%",
-              border: "1px solid #e7e5e4", background: "#fafaf9",
-              cursor: "pointer", fontSize: 16, color: "#78716c",
+              border: "1px solid var(--border)", background: "var(--surface-subtle)",
+              cursor: "pointer", fontSize: 16, color: "var(--muted)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}
           >
@@ -583,9 +587,9 @@ function ProductModal({
               style={{
                 padding: "10px 12px",
                 borderRadius: 8,
-                background: "rgba(37,99,235,0.08)",
+                background: "var(--accent-soft-bg)",
                 border: "1px solid rgba(37,99,235,0.25)",
-                color: "#1d4ed8",
+                color: "var(--accent-link)",
                 fontSize: 13,
               }}
             >
@@ -657,7 +661,7 @@ function ProductModal({
                   height: "auto", padding: "8px 10px",
                   resize: "vertical", lineHeight: 1.5,
                   fontFamily: "system-ui, -apple-system, sans-serif",
-                  ...(errors.description ? { border: "1px solid #2563eb" } : {}),
+                  ...(errors.description ? { border: "1px solid var(--accent)" } : {}),
                 }}
               />
             </MField>
@@ -717,7 +721,7 @@ function ProductModal({
             <label
               style={{
                 display: "flex", alignItems: "center", gap: 8,
-                fontSize: 13, color: "#44403c", cursor: "pointer",
+                fontSize: 13, color: "var(--text-strong)", cursor: "pointer",
               }}
             >
               <input
@@ -778,7 +782,7 @@ function ProductModal({
                   }}
                 />
                 {readOnlyUnits ? (
-                  <span style={{ fontSize: 11, color: "#78716c", marginTop: 4, display: "block" }}>
+                  <span style={{ fontSize: 11, color: "var(--muted)", marginTop: 4, display: "block" }}>
                     Use Stock Adjustments to change on-hand quantity.
                   </span>
                 ) : null}
@@ -794,15 +798,15 @@ function ProductModal({
         <div
           style={{
             display: "flex", justifyContent: "flex-end", gap: 10,
-            padding: "14px 24px", borderTop: "1px solid #f0efee", flexShrink: 0,
+            padding: "14px 24px", borderTop: "1px solid var(--border)", flexShrink: 0,
           }}
         >
           <button
             type="button" onClick={onClose} disabled={saving}
             style={{
               height: 38, padding: "0 20px",
-              background: "#fff", border: "1px solid #e7e5e4",
-              borderRadius: 8, fontSize: 13, color: "#44403c", cursor: "pointer",
+              background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: 8, fontSize: 13, color: "var(--text-strong)", cursor: "pointer",
             }}
           >
             Cancel
@@ -811,8 +815,8 @@ function ProductModal({
             type="button" onClick={onSave} disabled={saving}
             style={{
               height: 38, padding: "0 22px",
-              background: saving ? "#e7e5e4" : "#2563eb",
-              color: saving ? "#a8a29e" : "#fff",
+              background: saving ? "var(--border)" : "var(--accent)",
+              color: saving ? "var(--text-faint)" : "var(--on-accent)",
               border: "none", borderRadius: 8,
               fontSize: 13, fontWeight: 600,
               cursor: saving ? "not-allowed" : "pointer",
@@ -830,8 +834,8 @@ function ProductModal({
 
 const cellInput: React.CSSProperties = {
   height: 30, padding: "0 7px", width: "100%",
-  border: "1px solid #e7e5e4", borderRadius: 6,
-  fontSize: 12, outline: "none", background: "#fff", boxSizing: "border-box",
+  border: "1px solid var(--border)", borderRadius: 6,
+  fontSize: 12, outline: "none", background: "var(--surface)", boxSizing: "border-box",
 };
 
 function BatchCell({
@@ -841,7 +845,7 @@ function BatchCell({
   error?: string; type?: string; placeholder?: string;
 }) {
   const style = error
-    ? { ...cellInput, border: "1px solid #2563eb" }
+    ? { ...cellInput, border: "1px solid var(--accent)" }
     : cellInput;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -850,7 +854,7 @@ function BatchCell({
         type={type} placeholder={placeholder} style={style}
       />
       {error && (
-        <span style={{ fontSize: 10, color: "#2563eb", lineHeight: 1.2 }}>{error}</span>
+        <span style={{ fontSize: 10, color: "var(--accent)", lineHeight: 1.2 }}>{error}</span>
       )}
     </div>
   );
@@ -863,7 +867,7 @@ function BatchSelectCell({
   onChange: (v: string) => void; error?: string;
 }) {
   const style = error
-    ? { ...cellInput, border: "1px solid #2563eb" }
+    ? { ...cellInput, border: "1px solid var(--accent)" }
     : cellInput;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -873,7 +877,7 @@ function BatchSelectCell({
         ))}
       </select>
       {error && (
-        <span style={{ fontSize: 10, color: "#2563eb", lineHeight: 1.2 }}>{error}</span>
+        <span style={{ fontSize: 10, color: "var(--accent)", lineHeight: 1.2 }}>{error}</span>
       )}
     </div>
   );
@@ -891,11 +895,20 @@ export function ProductsPage({
   allowMutations?: boolean;
   confirm: (opts: ConfirmOptions) => Promise<boolean>;
 }) {
-  // Existing products
-  const [rawProducts, setRawProducts] = useState<ApiProduct[]>([]);
+  // Existing products (server-paginated table)
+  const [tableProducts, setTableProducts] = useState<ApiProduct[]>([]);
+  const [listTotal, setListTotal] = useState(0);
+  const [catalogTotal, setCatalogTotal] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [listPage, setListPage] = useState(1);
+  const [reviewProducts, setReviewProducts] = useState<ApiProduct[]>([]);
+  const [reviewTotal, setReviewTotal] = useState(0);
+  const [editProductSku, setEditProductSku] = useState<string | undefined>();
+  const lastFilterSelectIdsRef = useRef<string[]>([]);
+  const [filterSelectAll, setFilterSelectAll] = useState(false);
 
   // Modal (single product)
   const [modalOpen, setModalOpen] = useState(false);
@@ -909,6 +922,7 @@ export function ProductsPage({
   const [rowErrors, setRowErrors] = useState<RowErrors[]>([]);
   const [batchBannerError, setBatchBannerError] = useState<string | null>(null);
   const [batchSaving, setBatchSaving] = useState(false);
+  const [importBusy, setImportBusy] = useState(false);
 
   // Success feedback
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
@@ -921,7 +935,23 @@ export function ProductsPage({
     setLoadingProducts(true);
     setLoadError(null);
     try {
-      setRawProducts(await api.getProducts());
+      const [tableRes, reviewRes] = await Promise.all([
+        api.listProducts({
+          page: listPage,
+          limit: PRODUCTS_TABLE_PAGE_SIZE,
+          q: debouncedSearch.trim() || undefined,
+        }),
+        api.listProducts({
+          page: 1,
+          limit: PRICE_REVIEW_LIST_CAP,
+          priceReviewOnly: true,
+        }),
+      ]);
+      setTableProducts(tableRes.items);
+      setListTotal(tableRes.total);
+      setCatalogTotal(tableRes.catalogTotal);
+      setReviewProducts(reviewRes.items);
+      setReviewTotal(reviewRes.total);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Failed to load products");
     } finally {
@@ -929,55 +959,37 @@ export function ProductsPage({
     }
   };
 
-  useEffect(() => { void loadProducts(); }, []);
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    if (!q) return rawProducts;
-    return rawProducts.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.sku.toLowerCase().includes(q) ||
-        (p.category ?? "").toLowerCase().includes(q) ||
-        (p.brand ?? "").toLowerCase().includes(q) ||
-        (p.brandCode ?? "").toLowerCase().includes(q) ||
-        (p.color ?? "").toLowerCase().includes(q) ||
-        (p.size ?? "").toLowerCase().includes(q) ||
-        (p.hsnCode ?? "").toLowerCase().includes(q)
-    );
-  }, [rawProducts, search]);
-
-  const [listPage, setListPage] = useState(1);
-  const listPageCount = Math.max(1, Math.ceil(filtered.length / PRODUCTS_TABLE_PAGE_SIZE));
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     setListPage(1);
-  }, [search]);
+    setFilterSelectAll(false);
+    lastFilterSelectIdsRef.current = [];
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    void loadProducts();
+  }, [listPage, debouncedSearch]);
+
+  const listPageCount = Math.max(1, Math.ceil(listTotal / PRODUCTS_TABLE_PAGE_SIZE));
 
   useEffect(() => {
     if (listPage > listPageCount) setListPage(listPageCount);
   }, [listPage, listPageCount]);
 
-  const pagedProducts = useMemo(() => {
-    const start = (listPage - 1) * PRODUCTS_TABLE_PAGE_SIZE;
-    return filtered.slice(start, start + PRODUCTS_TABLE_PAGE_SIZE);
-  }, [filtered, listPage]);
+  const pagedProducts = tableProducts;
 
   const selectedIdSet = useMemo(() => new Set(selectedProductIds), [selectedProductIds]);
-  const filteredProductIds = useMemo(() => filtered.map((p) => p.id), [filtered]);
   const pagedProductIds = useMemo(() => pagedProducts.map((p) => p.id), [pagedProducts]);
   const selectedCountOnPage = useMemo(
     () => pagedProductIds.filter((id) => selectedIdSet.has(id)).length,
     [pagedProductIds, selectedIdSet]
   );
   const allPagedSelected = pagedProductIds.length > 0 && selectedCountOnPage === pagedProductIds.length;
-  const allFilteredSelected =
-    filteredProductIds.length > 0 && filteredProductIds.every((id) => selectedIdSet.has(id));
-
-  useEffect(() => {
-    const valid = new Set(rawProducts.map((p) => p.id));
-    setSelectedProductIds((prev) => prev.filter((id) => valid.has(id)));
-  }, [rawProducts]);
+  const allFilteredSelected = filterSelectAll && listTotal > 0;
 
   const categoryOptions = useMemo(
     () =>
@@ -992,11 +1004,13 @@ export function ProductsPage({
   const closeModal = () => {
     setModalOpen(false);
     setEditProductId(null);
+    setEditProductSku(undefined);
     setModalErrors({});
   };
 
   const openModal = () => {
     setEditProductId(null);
+    setEditProductSku(undefined);
     setModalDraft(newDraft());
     setModalErrors({});
     setSavedMsg(null);
@@ -1005,6 +1019,7 @@ export function ProductsPage({
 
   const openEditProduct = (p: ApiProduct) => {
     setEditProductId(p.id);
+    setEditProductSku(p.sku);
     setModalDraft(productToDraft(p));
     setModalErrors({});
     setSavedMsg(null);
@@ -1107,12 +1122,37 @@ export function ProductsPage({
     });
   };
 
+  const fetchAllMatchingProductIds = async (q: string): Promise<string[]> => {
+    const ids: string[] = [];
+    let page = 1;
+    const limit = 200;
+    for (;;) {
+      const res = await api.listProducts({
+        page,
+        limit,
+        q: q.trim() || undefined,
+      });
+      ids.push(...res.items.map((p) => p.id));
+      if (ids.length >= res.total) break;
+      page += 1;
+    }
+    return ids;
+  };
+
   const toggleSelectFiltered = (checked: boolean) => {
-    setSelectedProductIds((prev) => {
-      if (checked) return Array.from(new Set([...prev, ...filteredProductIds]));
-      const filteredSet = new Set(filteredProductIds);
-      return prev.filter((id) => !filteredSet.has(id));
-    });
+    void (async () => {
+      if (checked) {
+        const ids = await fetchAllMatchingProductIds(debouncedSearch);
+        lastFilterSelectIdsRef.current = ids;
+        setSelectedProductIds((prev) => Array.from(new Set([...prev, ...ids])));
+        setFilterSelectAll(true);
+      } else {
+        const idSet = new Set(lastFilterSelectIdsRef.current);
+        setSelectedProductIds((prev) => prev.filter((id) => !idSet.has(id)));
+        setFilterSelectAll(false);
+        lastFilterSelectIdsRef.current = [];
+      }
+    })();
   };
 
   const handleModalSave = async () => {
@@ -1215,7 +1255,9 @@ export function ProductsPage({
     e.target.value = "";
     if (!file) return;
     setImportBanner(null);
+    setImportBusy(true);
     try {
+      await paintBeforeWork();
       const { patches, rowErrors, skippedBlankRows, warnings } =
         await parseProductImportFile(file);
       const capped = patches.slice(0, MAX_IMPORT_ROWS);
@@ -1265,6 +1307,8 @@ export function ProductsPage({
       window.alert(
         err instanceof Error ? err.message : "Could not read that file."
       );
+    } finally {
+      setImportBusy(false);
     }
   };
 
@@ -1279,18 +1323,14 @@ export function ProductsPage({
     }
     setBatchSaving(true);
     try {
+      await paintBeforeWork();
       const result = await api.batchCreateProducts({
         products: pendingRows.map(draftToPayloadItem),
       });
       setPendingRows([]);
       setRowErrors([]);
-      const skus = result.products.map((p) => p.sku);
-      const skuPart =
-        skus.length <= 8
-          ? skus.join(", ")
-          : `${skus.slice(0, 8).join(", ")}… (+${skus.length - 8} more)`;
       setSavedMsg(
-        `${result.created} product${result.created !== 1 ? "s" : ""} created — ${skuPart}`
+        `${result.created} Product${result.created !== 1 ? "s" : ""} created successfully`
       );
       await loadProducts();
       await onProductsCreated();
@@ -1311,26 +1351,120 @@ export function ProductsPage({
     }
   };
 
+  const [reviewBusyId, setReviewBusyId] = useState<string | null>(null);
+  const [reviewBulkBusy, setReviewBulkBusy] = useState(false);
+
+  const handleApplyPriceReview = async (id: string) => {
+    setReviewBusyId(id);
+    setDeleteError(null);
+    try {
+      await api.applyPriceReview(id);
+      setSavedMsg("Price updated to the suggested value.");
+      await loadProducts();
+      await onProductsCreated();
+    } catch (e) {
+      setDeleteError(isApiError(e) ? e.message : "Could not apply price review.");
+    } finally {
+      setReviewBusyId(null);
+    }
+  };
+
+  const handleDismissPriceReview = async (id: string) => {
+    setReviewBusyId(id);
+    setDeleteError(null);
+    try {
+      await api.dismissPriceReview(id);
+      setSavedMsg("Kept the current price.");
+      await loadProducts();
+      await onProductsCreated();
+    } catch (e) {
+      setDeleteError(isApiError(e) ? e.message : "Could not update price review.");
+    } finally {
+      setReviewBusyId(null);
+    }
+  };
+
+  const handleApplyAllPriceReviews = async () => {
+    const count = reviewTotal;
+    const withSuggestion = reviewProducts.filter(
+      (p) => p.suggestedSellingPrice != null && String(p.suggestedSellingPrice).trim() !== ""
+    ).length;
+    const ok = await confirm({
+      title: `Apply suggested prices to ${count} product${count === 1 ? "" : "s"}?`,
+      message:
+        `${withSuggestion} product${withSuggestion === 1 ? "" : "s"} will be marked down to the suggested selling price (cost + markup %). ` +
+        "This clears the price review for all flagged products.",
+      confirmLabel: `Apply ${count}`,
+    });
+    if (!ok) return;
+    setReviewBulkBusy(true);
+    setDeleteError(null);
+    try {
+      const { updated } = await api.applyAllPriceReviews();
+      setSavedMsg(`Applied suggested prices to ${updated} product${updated === 1 ? "" : "s"}.`);
+      await loadProducts();
+      await onProductsCreated();
+    } catch (e) {
+      setDeleteError(isApiError(e) ? e.message : "Could not apply price reviews.");
+    } finally {
+      setReviewBulkBusy(false);
+    }
+  };
+
+  const handleKeepAllPriceReviews = async () => {
+    const count = reviewTotal;
+    const ok = await confirm({
+      title: `Keep current prices for ${count} product${count === 1 ? "" : "s"}?`,
+      message:
+        "Selling prices stay unchanged and the price review is cleared for all flagged products.",
+      confirmLabel: `Keep ${count}`,
+    });
+    if (!ok) return;
+    setReviewBulkBusy(true);
+    setDeleteError(null);
+    try {
+      const { updated } = await api.dismissAllPriceReviews();
+      setSavedMsg(`Kept current prices for ${updated} product${updated === 1 ? "" : "s"}.`);
+      await loadProducts();
+      await onProductsCreated();
+    } catch (e) {
+      setDeleteError(isApiError(e) ? e.message : "Could not update price reviews.");
+    } finally {
+      setReviewBulkBusy(false);
+    }
+  };
+
   const unitKindOptions = UNIT_KINDS.map((k) => ({ value: k, label: UNIT_KIND_LABELS[k] }));
 
   const thStyle: React.CSSProperties = {
     padding: "9px 10px", textAlign: "left", fontWeight: 600,
-    color: "#78716c", fontSize: 11, background: "#fafaf9",
-    whiteSpace: "nowrap", borderBottom: "1px solid #e7e5e4",
+    color: "var(--muted)", fontSize: 11, background: "var(--surface-subtle)",
+    whiteSpace: "nowrap", borderBottom: "1px solid var(--border)",
   };
   const tdStyle: React.CSSProperties = { padding: "7px 10px", verticalAlign: "top" };
 
   return (
     <>
+      <BusyOverlay
+        open={importBusy}
+        title="Reading import file…"
+        subtitle="Parsing rows from your spreadsheet. Large files may take a moment."
+      />
+      <BusyOverlay
+        open={batchSaving}
+        title="Saving products…"
+        subtitle={
+          pendingRows.length > 0
+            ? `Creating ${pendingRows.length} product${pendingRows.length !== 1 ? "s" : ""} — please keep this tab open.`
+            : "Please keep this tab open."
+        }
+      />
+
       {/* ── Modal ── */}
       <ProductModal
         open={modalOpen}
         mode={editProductId ? "edit" : "add"}
-        skuDisplay={
-          editProductId
-            ? rawProducts.find((p) => p.id === editProductId)?.sku
-            : undefined
-        }
+        skuDisplay={editProductSku}
         readOnlyUnits={!!editProductId}
         draft={modalDraft}
         errors={modalErrors}
@@ -1345,15 +1479,15 @@ export function ProductsPage({
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <h1 style={{ fontSize: 18, fontWeight: 600, color: "#1c1917", margin: 0 }}>
+            <h1 style={{ fontSize: 18, fontWeight: 600, color: "var(--text)", margin: 0 }}>
               Products
             </h1>
             {!loadingProducts && (
               <span style={{
-                fontSize: 12, color: "#78716c", background: "#f5f4f0",
-                border: "1px solid #e7e5e4", borderRadius: 12, padding: "1px 8px",
+                fontSize: 12, color: "var(--muted)", background: "var(--input-disabled)",
+                border: "1px solid var(--border)", borderRadius: 12, padding: "1px 8px",
               }}>
-                {rawProducts.length}
+                {search.trim() ? `${listTotal} matches` : catalogTotal}
               </span>
             )}
           </div>
@@ -1369,19 +1503,20 @@ export function ProductsPage({
               <button
                 type="button"
                 onClick={() => importFileRef.current?.click()}
+                disabled={importBusy || batchSaving}
                 style={{
                   height: 36,
                   padding: "0 14px",
-                  background: "#fff",
-                  border: "1px solid #e7e5e4",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
                   borderRadius: 8,
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#44403c",
-                  cursor: "pointer",
+                  color: importBusy || batchSaving ? "var(--text-faint)" : "var(--text-strong)",
+                  cursor: importBusy || batchSaving ? "not-allowed" : "pointer",
                 }}
               >
-                Import CSV / Excel
+                {importBusy ? "Importing…" : "Import CSV / Excel"}
               </button>
               <button
                 type="button"
@@ -1389,12 +1524,12 @@ export function ProductsPage({
                 style={{
                   height: 36,
                   padding: "0 14px",
-                  background: "#fafaf9",
-                  border: "1px solid #e7e5e4",
+                  background: "var(--surface-subtle)",
+                  border: "1px solid var(--border)",
                   borderRadius: 8,
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#78716c",
+                  color: "var(--muted)",
                   cursor: "pointer",
                 }}
               >
@@ -1404,9 +1539,9 @@ export function ProductsPage({
                 type="button" onClick={openModal}
                 style={{
                   height: 36, padding: "0 16px",
-                  background: "#2563eb", border: "none",
+                  background: "var(--accent)", border: "none",
                   borderRadius: 8, fontSize: 13, fontWeight: 600,
-                  color: "#fff", cursor: "pointer",
+                  color: "var(--on-accent)", cursor: "pointer",
                 }}
               >
                 + Add Product
@@ -1419,9 +1554,9 @@ export function ProductsPage({
         {deleteError && (
           <div
             style={{
-              background: "rgba(220, 38, 38, 0.12)",
-              border: "1px solid rgba(220, 38, 38, 0.35)",
-              color: "#b91c1c",
+              background: "var(--danger-soft)",
+              border: "1px solid var(--danger-border)",
+              color: "var(--danger-text)",
               padding: "10px 14px",
               borderRadius: 8,
               fontSize: 13,
@@ -1432,18 +1567,168 @@ export function ProductsPage({
         )}
         {savedMsg && (
           <div style={{
-            background: "rgba(37,99,235,0.10)", color: "#2563eb",
+            background: "var(--info-soft)", color: "var(--accent)",
             padding: "10px 14px", borderRadius: 8, fontSize: 13,
           }}>
             {savedMsg}
           </div>
         )}
+        {allowMutations && reviewTotal > 0 && (
+          <div
+            style={{
+              background: "var(--warning-soft)",
+              border: "1px solid var(--warning-border)",
+              borderRadius: 10,
+              padding: "12px 14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--warning-text)" }}>
+                Price review — {reviewTotal} product
+                {reviewTotal === 1 ? "" : "s"} bought cheaper
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  disabled={reviewBulkBusy || reviewBusyId != null}
+                  onClick={() => void handleApplyAllPriceReviews()}
+                  style={{
+                    height: 32,
+                    padding: "0 12px",
+                    background: "var(--accent)",
+                    border: "none",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--on-accent)",
+                    cursor: reviewBulkBusy ? "wait" : "pointer",
+                    opacity: reviewBulkBusy || reviewBusyId != null ? 0.7 : 1,
+                  }}
+                >
+                  {reviewBulkBusy ? "Working…" : "Apply all suggested"}
+                </button>
+                <button
+                  type="button"
+                  disabled={reviewBulkBusy || reviewBusyId != null}
+                  onClick={() => void handleKeepAllPriceReviews()}
+                  style={{
+                    height: 32,
+                    padding: "0 12px",
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--text-strong)",
+                    cursor: reviewBulkBusy ? "wait" : "pointer",
+                    opacity: reviewBulkBusy || reviewBusyId != null ? 0.7 : 1,
+                  }}
+                >
+                  {reviewBulkBusy ? "Working…" : "Keep all current"}
+                </button>
+              </div>
+            </div>
+            {reviewTotal > PRICE_REVIEW_LIST_CAP && (
+              <div style={{ fontSize: 12, color: "var(--warning-text)" }}>
+                Showing the first {PRICE_REVIEW_LIST_CAP}. Use the bulk actions above to
+                clear all {reviewTotal}, or handle the rest individually after.
+              </div>
+            )}
+            {reviewProducts.slice(0, PRICE_REVIEW_LIST_CAP).map((p) => {
+              const busy = reviewBusyId === p.id;
+              const hasSuggestion =
+                p.suggestedSellingPrice != null &&
+                String(p.suggestedSellingPrice).trim() !== "";
+              return (
+                <div
+                  key={p.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    flexWrap: "wrap",
+                    background: "var(--surface)",
+                    border: "1px solid var(--warning-border-light)",
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+                      {p.name}{" "}
+                      <span style={{ color: "var(--muted)", fontWeight: 400 }}>({p.sku})</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--warning-text)", marginTop: 2 }}>
+                      {p.priceReviewNote ?? "Cost changed — review the selling price."}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                      Current selling {fmtPrice(p.sellingPrice)}
+                      {hasSuggestion ? ` · Suggested ${fmtPrice(p.suggestedSellingPrice)}` : ""}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {hasSuggestion && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void handleApplyPriceReview(p.id)}
+                        style={{
+                          height: 32,
+                          padding: "0 12px",
+                          background: "var(--accent)",
+                          border: "none",
+                          borderRadius: 8,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: "var(--on-accent)",
+                          cursor: busy ? "wait" : "pointer",
+                        }}
+                      >
+                        {busy ? "…" : `Apply ${fmtPrice(p.suggestedSellingPrice)}`}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void handleDismissPriceReview(p.id)}
+                      style={{
+                        height: 32,
+                        padding: "0 12px",
+                        background: "var(--surface)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 8,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "var(--text-strong)",
+                        cursor: busy ? "wait" : "pointer",
+                      }}
+                    >
+                      {busy ? "…" : "Keep current"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
         {importBanner && (
           <div
             style={{
-              background: "#fefce8",
-              border: "1px solid #fde047",
-              color: "#854d0e",
+              background: "var(--caution-soft)",
+              border: "1px solid var(--caution-border)",
+              color: "var(--caution-text)",
               padding: "10px 14px",
               borderRadius: 8,
               fontSize: 13,
@@ -1454,7 +1739,7 @@ export function ProductsPage({
           </div>
         )}
         {allowMutations && (
-          <p style={{ margin: 0, fontSize: 12, color: "#78716c", maxWidth: 720 }}>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--muted)", maxWidth: 720 }}>
             <strong>Import:</strong> First row must be column headers. Required:{" "}
             <code style={{ fontSize: 11 }}>name</code>. Include{" "}
             <code style={{ fontSize: 11 }}>sku</code>,{" "}
@@ -1471,45 +1756,45 @@ export function ProductsPage({
         {/* ── Batch rows ─────────────────────────────────────────────────── */}
         {allowMutations && pendingRows.length > 0 && (
           <div style={{
-            background: "#fff", border: "1px solid #e7e5e4",
+            background: "var(--surface)", border: "1px solid var(--border)",
             borderRadius: 12, overflow: "hidden",
           }}>
             {/* Batch header */}
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "12px 16px", borderBottom: "1px solid #e7e5e4", background: "#fafaf9",
+              padding: "12px 16px", borderBottom: "1px solid var(--border)", background: "var(--surface-subtle)",
               flexWrap: "wrap", gap: 8,
             }}>
               <div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#1c1917" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
                   Batch entry
                 </span>
-                <span style={{ fontSize: 12, color: "#78716c", marginLeft: 6 }}>
+                <span style={{ fontSize: 12, color: "var(--muted)", marginLeft: 6 }}>
                   {pendingRows.length} row{pendingRows.length !== 1 ? "s" : ""} · leave SKU blank
                   to auto-assign on save
                 </span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 {batchBannerError && (
-                  <span style={{ fontSize: 12, color: "#2563eb" }}>{batchBannerError}</span>
+                  <span style={{ fontSize: 12, color: "var(--accent)" }}>{batchBannerError}</span>
                 )}
                 <button
                   type="button"
                   onClick={() => { setPendingRows([]); setRowErrors([]); setBatchBannerError(null); }}
                   style={{
                     height: 30, padding: "0 12px", background: "transparent",
-                    border: "1px solid #e7e5e4", borderRadius: 6,
-                    fontSize: 12, color: "#78716c", cursor: "pointer",
+                    border: "1px solid var(--border)", borderRadius: 6,
+                    fontSize: 12, color: "var(--muted)", cursor: "pointer",
                   }}
                 >
                   Clear all
                 </button>
                 <button
-                  type="button" onClick={handleBatchSaveAll} disabled={batchSaving}
+                  type="button" onClick={handleBatchSaveAll} disabled={batchSaving || importBusy}
                   style={{
                     height: 30, padding: "0 16px",
-                    background: batchSaving ? "#e7e5e4" : "#2563eb",
-                    color: batchSaving ? "#a8a29e" : "#fff",
+                    background: batchSaving ? "var(--border)" : "var(--accent)",
+                    color: batchSaving ? "var(--text-faint)" : "var(--on-accent)",
                     border: "none", borderRadius: 6,
                     fontSize: 12, fontWeight: 600,
                     cursor: batchSaving ? "not-allowed" : "pointer",
@@ -1549,7 +1834,7 @@ export function ProductsPage({
                   {pendingRows.map((row, i) => {
                     const errs = rowErrors[i] ?? {};
                     return (
-                      <tr key={row._id} style={{ borderBottom: "1px solid #f5f4f0" }}>
+                      <tr key={row._id} style={{ borderBottom: "1px solid var(--border)" }}>
                         <td style={tdStyle}><BatchCell value={row.name} onChange={(v) => updateBatchRow(i, "name", v)} error={errs.name} placeholder="Product name" /></td>
                         <td style={tdStyle}>
                           <BatchCell
@@ -1595,18 +1880,18 @@ export function ProductsPage({
                               type="button" onClick={() => duplicateBatchRow(i)}
                               title="Duplicate row"
                               style={{
-                                height: 28, padding: "0 9px", background: "#f5f4f0",
-                                border: "1px solid #e7e5e4", borderRadius: 6,
-                                fontSize: 11, cursor: "pointer", color: "#44403c",
+                                height: 28, padding: "0 9px", background: "var(--input-disabled)",
+                                border: "1px solid var(--border)", borderRadius: 6,
+                                fontSize: 11, cursor: "pointer", color: "var(--text-strong)",
                               }}
                             >Dupe</button>
                             <button
                               type="button" onClick={() => removeBatchRow(i)}
                               title="Remove row"
                               style={{
-                                height: 28, padding: "0 9px", background: "#f3f4f6",
-                                border: "1px solid #d1d5db", borderRadius: 6,
-                                fontSize: 11, cursor: "pointer", color: "#111827",
+                                height: 28, padding: "0 9px", background: "var(--neutral-soft)",
+                                border: "1px solid var(--neutral-border)", borderRadius: 6,
+                                fontSize: 11, cursor: "pointer", color: "var(--neutral-text)",
                               }}
                             >✕</button>
                           </div>
@@ -1628,15 +1913,15 @@ export function ProductsPage({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
-                height: 36, padding: "0 12px", border: "1px solid #e7e5e4",
+                height: 36, padding: "0 12px", border: "1px solid var(--border)",
                 borderRadius: 8, fontSize: 13, outline: "none",
-                background: "#fff", maxWidth: 380, width: "100%",
+                background: "var(--surface)", maxWidth: 380, width: "100%",
               }}
             />
-            {allowMutations && filtered.length > 0 ? (
+            {allowMutations && listTotal > 0 ? (
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 12, color: "#78716c" }}>
-                  Selected: <strong style={{ color: "#44403c" }}>{selectedProductIds.length}</strong>
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                  Selected: <strong style={{ color: "var(--text-strong)" }}>{selectedProductIds.length}</strong>
                 </span>
                 <button
                   type="button"
@@ -1645,9 +1930,9 @@ export function ProductsPage({
                     height: 30,
                     padding: "0 10px",
                     borderRadius: 8,
-                    border: "1px solid #e7e5e4",
-                    background: "#fff",
-                    color: "#44403c",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    color: "var(--text-strong)",
                     fontSize: 12,
                     cursor: "pointer",
                   }}
@@ -1661,9 +1946,9 @@ export function ProductsPage({
                     height: 30,
                     padding: "0 10px",
                     borderRadius: 8,
-                    border: "1px solid #e7e5e4",
-                    background: "#fff",
-                    color: "#44403c",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    color: "var(--text-strong)",
                     fontSize: 12,
                     cursor: "pointer",
                   }}
@@ -1678,9 +1963,9 @@ export function ProductsPage({
                     height: 30,
                     padding: "0 12px",
                     borderRadius: 8,
-                    border: "1px solid #fecaca",
-                    background: selectedProductIds.length ? "#fff" : "#f5f4f0",
-                    color: selectedProductIds.length ? "#b91c1c" : "#a8a29e",
+                    border: "1px solid var(--danger-border-solid)",
+                    background: selectedProductIds.length ? "var(--surface)" : "var(--input-disabled)",
+                    color: selectedProductIds.length ? "var(--danger-text)" : "var(--text-faint)",
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: selectedProductIds.length ? "pointer" : "not-allowed",
@@ -1693,21 +1978,21 @@ export function ProductsPage({
           </div>
 
           <div style={{
-            flex: 1, background: "#fff", borderRadius: 12,
-            border: "1px solid #e7e5e4", display: "flex", flexDirection: "column", minHeight: 0,
+            flex: 1, background: "var(--surface)", borderRadius: 12,
+            border: "1px solid var(--border)", display: "flex", flexDirection: "column", minHeight: 0,
           }}>
             <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
             {loadError ? (
-              <div style={{ padding: "40px 24px", color: "#111827", fontSize: 13, textAlign: "center" }}>
+              <div style={{ padding: "40px 24px", color: "var(--neutral-text)", fontSize: 13, textAlign: "center" }}>
                 {loadError}
               </div>
             ) : loadingProducts ? (
-              <div style={{ padding: 60, color: "#78716c", fontSize: 13, textAlign: "center" }}>
+              <div style={{ padding: 60, color: "var(--muted)", fontSize: 13, textAlign: "center" }}>
                 Loading…
               </div>
-            ) : filtered.length === 0 ? (
-              <div style={{ padding: 60, color: "#a8a29e", fontSize: 13, textAlign: "center" }}>
-                {search
+            ) : listTotal === 0 ? (
+              <div style={{ padding: 60, color: "var(--text-faint)", fontSize: 13, textAlign: "center" }}>
+                {debouncedSearch.trim()
                   ? "No products match your search."
                   : allowMutations
                     ? "No products yet — click + Add Product to begin."
@@ -1716,14 +2001,14 @@ export function ProductsPage({
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid #e7e5e4" }}>
+                  <tr style={{ borderBottom: "1px solid var(--border)" }}>
                     {(allowMutations
-                      ? ["", "SKU", "Name", "Category", "Brand", "Brand Code", "Colour", "Size", "HSN Code", "Unit", "Price", "Cost", "%", "MRP", "Stock", "Status", "Actions"]
-                      : ["SKU", "Name", "Category", "Brand", "Brand Code", "Colour", "Size", "HSN Code", "Unit", "Price", "Cost", "%", "MRP", "Stock", "Status"]
+                      ? ["", "SKU", "Name", "Category", "Brand", "Colour", "Size", "Price", "Cost", "MRP", "Stock", "Status", "Actions"]
+                      : ["SKU", "Name", "Category", "Brand", "Colour", "Size", "Price", "Cost", "MRP", "Stock", "Status"]
                     ).map((h) => (
                       <th key={h} style={{
                         padding: "10px 14px", textAlign: "left", fontWeight: 600,
-                        color: "#78716c", fontSize: 12, background: "#fafaf9",
+                        color: "var(--muted)", fontSize: 12, background: "var(--surface-subtle)",
                         whiteSpace: "nowrap", position: "sticky", top: 0,
                       }}>
                         {allowMutations && h === "" ? (
@@ -1745,8 +2030,8 @@ export function ProductsPage({
                     const globalIdx = (listPage - 1) * PRODUCTS_TABLE_PAGE_SIZE + i;
                     return (
                       <tr key={p.id} style={{
-                        borderBottom: "1px solid #f5f4f0",
-                        background: globalIdx % 2 === 0 ? "#fff" : "#fafaf9",
+                        borderBottom: "1px solid var(--border)",
+                        background: globalIdx % 2 === 0 ? "var(--surface)" : "var(--surface-subtle)",
                       }}>
                         {allowMutations ? (
                           <td style={{ padding: "10px 14px" }}>
@@ -1759,31 +2044,27 @@ export function ProductsPage({
                             />
                           </td>
                         ) : null}
-                        <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "#78716c", fontSize: 12, whiteSpace: "nowrap" }}>{p.sku}</td>
-                        <td style={{ padding: "10px 14px", fontWeight: 500, color: "#1c1917", maxWidth: 240 }}>{p.name}</td>
-                        <td style={{ padding: "10px 14px", color: "#78716c" }}>{p.category ?? "—"}</td>
-                        <td style={{ padding: "10px 14px", color: "#78716c" }}>{p.brand ?? "—"}</td>
-                        <td style={{ padding: "10px 14px", color: "#78716c", fontFamily: "monospace", fontSize: 12 }}>{p.brandCode ?? "—"}</td>
-                        <td style={{ padding: "10px 14px", color: "#78716c" }}>{p.color ?? "—"}</td>
-                        <td style={{ padding: "10px 14px", color: "#78716c" }}>{p.size?.trim() || "—"}</td>
-                        <td style={{ padding: "10px 14px", color: "#78716c", fontFamily: "monospace", fontSize: 12 }}>{p.hsnCode?.trim() || "—"}</td>
-                        <td style={{ padding: "10px 14px", color: "#78716c", whiteSpace: "nowrap" }}>{p.baseUnitCode}</td>
+                        <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "var(--muted)", fontSize: 12, whiteSpace: "nowrap" }}>{p.sku}</td>
+                        <td style={{ padding: "10px 14px", fontWeight: 500, color: "var(--text)", maxWidth: 240 }}>{p.name}</td>
+                        <td style={{ padding: "10px 14px", color: "var(--muted)" }}>{p.category ?? "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "var(--muted)" }}>{p.brand ?? "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "var(--muted)" }}>{p.color ?? "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "var(--muted)" }}>{p.size?.trim() || "—"}</td>
                         <td style={{ padding: "10px 14px", fontFamily: "monospace", whiteSpace: "nowrap" }}>{fmtPrice(p.sellingPrice)}</td>
-                        <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "#78716c", whiteSpace: "nowrap" }}>{fmtPrice(p.costPrice)}</td>
-                        <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "#78716c", whiteSpace: "nowrap" }}>{p.percentage != null ? `${Number(p.percentage).toFixed(2)}%` : "—"}</td>
-                        <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "#78716c", whiteSpace: "nowrap" }}>{fmtPrice(p.mrp)}</td>
+                        <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "var(--muted)", whiteSpace: "nowrap" }}>{fmtPrice(p.costPrice)}</td>
+                        <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "var(--muted)", whiteSpace: "nowrap" }}>{fmtPrice(p.mrp)}</td>
                         <td style={{
                           padding: "10px 14px", fontFamily: "monospace", fontWeight: 700,
                           whiteSpace: "nowrap",
-                          color: st === "out" ? "#dc2626" : st === "low" ? "#d97706" : "#1c1917",
+                          color: st === "out" ? "var(--danger-strong)" : st === "low" ? "var(--stock-low-text)" : "var(--text)",
                         }}>
                           {Number(p.currentStock).toLocaleString("en-IN")}
-                          <span style={{ fontWeight: 400, color: "#a8a29e", fontSize: 11, marginLeft: 3 }}>{p.baseUnitCode}</span>
+                          <span style={{ fontWeight: 400, color: "var(--text-faint)", fontSize: 11, marginLeft: 3 }}>{p.baseUnitCode}</span>
                         </td>
                         <td style={{ padding: "10px 14px" }}>
                           <StatusBadge status={st} />
                           {p.status === "INACTIVE" ? (
-                            <div style={{ fontSize: 10, color: "#a8a29e", marginTop: 4 }}>
+                            <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 4 }}>
                               Inactive listing
                             </div>
                           ) : null}
@@ -1797,11 +2078,11 @@ export function ProductsPage({
                                 style={{
                                   padding: "6px 12px",
                                   borderRadius: 8,
-                                  border: "1px solid #e7e5e4",
-                                  background: "#fff",
+                                  border: "1px solid var(--border)",
+                                  background: "var(--surface)",
                                   fontSize: 12,
                                   fontWeight: 600,
-                                  color: "#2563eb",
+                                  color: "var(--accent)",
                                   cursor: "pointer",
                                 }}
                               >
@@ -1813,11 +2094,11 @@ export function ProductsPage({
                                 style={{
                                   padding: "6px 12px",
                                   borderRadius: 8,
-                                  border: "1px solid #fecaca",
-                                  background: "#fff",
+                                  border: "1px solid var(--danger-border-solid)",
+                                  background: "var(--surface)",
                                   fontSize: 12,
                                   fontWeight: 600,
-                                  color: "#b91c1c",
+                                  color: "var(--danger-text)",
                                   cursor: "pointer",
                                 }}
                               >
@@ -1833,28 +2114,28 @@ export function ProductsPage({
               </table>
             )}
             </div>
-            {!loadError && !loadingProducts && filtered.length > 0 ? (
+            {!loadError && !loadingProducts && listTotal > 0 ? (
               <div style={{
                 flexShrink: 0,
-                borderTop: "1px solid #e7e5e4",
+                borderTop: "1px solid var(--border)",
                 padding: "10px 14px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: 10,
                 flexWrap: "wrap",
-                background: "#fafaf9",
+                background: "var(--surface-subtle)",
               }}>
-                <div style={{ fontSize: 12, color: "#78716c" }}>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>
                   Showing{" "}
-                  <strong style={{ color: "#44403c" }}>
+                  <strong style={{ color: "var(--text-strong)" }}>
                     {(listPage - 1) * PRODUCTS_TABLE_PAGE_SIZE + 1}
                     –
-                    {Math.min(listPage * PRODUCTS_TABLE_PAGE_SIZE, filtered.length)}
+                    {Math.min(listPage * PRODUCTS_TABLE_PAGE_SIZE, listTotal)}
                   </strong>
                   {" "}of{" "}
-                  <strong style={{ color: "#44403c" }}>{filtered.length}</strong>
-                  {" "}product{filtered.length !== 1 ? "s" : ""}
+                  <strong style={{ color: "var(--text-strong)" }}>{listTotal}</strong>
+                  {" "}product{listTotal !== 1 ? "s" : ""}
                   {" "}· {PRODUCTS_TABLE_PAGE_SIZE} per page
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1867,16 +2148,16 @@ export function ProductsPage({
                       minWidth: 64,
                       padding: "0 10px",
                       borderRadius: 8,
-                      border: "1px solid #e7e5e4",
-                      background: listPage <= 1 ? "#f5f4f0" : "#fff",
-                      color: listPage <= 1 ? "#a8a29e" : "#44403c",
+                      border: "1px solid var(--border)",
+                      background: listPage <= 1 ? "var(--input-disabled)" : "var(--surface)",
+                      color: listPage <= 1 ? "var(--text-faint)" : "var(--text-strong)",
                       fontSize: 12,
                       cursor: listPage <= 1 ? "not-allowed" : "pointer",
                     }}
                   >
                     Prev
                   </button>
-                  <span style={{ fontSize: 12, color: "#78716c", minWidth: 72, textAlign: "center" }}>
+                  <span style={{ fontSize: 12, color: "var(--muted)", minWidth: 72, textAlign: "center" }}>
                     Page {listPage}/{listPageCount}
                   </span>
                   <button
@@ -1888,9 +2169,9 @@ export function ProductsPage({
                       minWidth: 64,
                       padding: "0 10px",
                       borderRadius: 8,
-                      border: "1px solid #e7e5e4",
-                      background: listPage >= listPageCount ? "#f5f4f0" : "#fff",
-                      color: listPage >= listPageCount ? "#a8a29e" : "#44403c",
+                      border: "1px solid var(--border)",
+                      background: listPage >= listPageCount ? "var(--input-disabled)" : "var(--surface)",
+                      color: listPage >= listPageCount ? "var(--text-faint)" : "var(--text-strong)",
                       fontSize: 12,
                       cursor: listPage >= listPageCount ? "not-allowed" : "pointer",
                     }}

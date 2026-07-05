@@ -104,6 +104,22 @@ describe("R2 — Session & reference data (seeded DB)", () => {
     expect(res.body[0]).toHaveProperty("sku");
   });
 
+  it("GET /api/products?page=1&limit=10 returns paginated envelope", async () => {
+    const res = await request(app)
+      .get("/api/products")
+      .query({ page: 1, limit: 10 })
+      .set(authAdmin());
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.items)).toBe(true);
+    expect(res.body.items.length).toBeLessThanOrEqual(10);
+    expect(typeof res.body.total).toBe("number");
+    expect(typeof res.body.catalogTotal).toBe("number");
+    expect(res.body.page).toBe(1);
+    expect(res.body.limit).toBe(10);
+    expect(res.body.total).toBeGreaterThanOrEqual(res.body.items.length);
+    expect(res.body.catalogTotal).toBeGreaterThanOrEqual(res.body.total);
+  });
+
   it("GET /api/suppliers returns array", async () => {
     const res = await request(app).get("/api/suppliers").set(authAdmin());
     expect(res.status).toBe(200);
@@ -179,23 +195,26 @@ describe("R3b — Product update/delete", () => {
 
   it("PATCH /api/products/:id updates product", async () => {
     const list = await request(app).get("/api/products").set(authAdmin());
-    const p = list.body[0];
+    const p =
+      (list.body as Array<{ id: string; sku?: string; name: string }>).find(
+        (row) => row.sku === "NAILS-001"
+      ) ?? list.body[0];
     expect(p?.id).toBeTruthy();
-    const suffix = ` · ${Date.now()}`;
-    const newName = String(p.name).slice(0, 480) + suffix;
-    const res = await request(app)
-      .patch(`/api/products/${p.id}`)
-      .set(authAdmin())
-      .send({
-        name: newName,
-        category: p.category ?? "Electrical",
-        allowsFractional: p.allowsFractional,
-        status: p.status ?? "ACTIVE",
-        description: p.description,
-        brand: p.brand,
-      });
-    expect(res.status).toBe(200);
-    expect(res.body.name).toBe(newName);
+    const originalName = String(p.name);
+    const tempName = `${originalName} (QA patch)`;
+    try {
+      const res = await request(app)
+        .patch(`/api/products/${p.id}`)
+        .set(authAdmin())
+        .send({ name: tempName });
+      expect(res.status).toBe(200);
+      expect(res.body.name).toBe(tempName);
+    } finally {
+      await request(app)
+        .patch(`/api/products/${p.id}`)
+        .set(authAdmin())
+        .send({ name: originalName });
+    }
   });
 
   it("DELETE /api/products/:id returns 404 for missing id", async () => {
@@ -411,6 +430,7 @@ describe.runIf(runWrites)("R6 — Write path: POS sale (opt-in REGRESSION_WRITES
       customerName: "Regression QA",
       customerPhone: "9876543210",
       paidAmount: 30,
+      paymentMethod: "cash",
       note: `REGRESSION_WRITES sale ${Date.now()}`,
       lines: [
         {
@@ -432,6 +452,7 @@ describe.runIf(runWrites)("R6 — Write path: POS sale (opt-in REGRESSION_WRITES
     expect(create.body.saleNumber).toMatch(/^BIL-\d+$/);
     expect(create.body.totalAmount).toBe("30.00");
     expect(create.body.payments?.length).toBeGreaterThanOrEqual(1);
+    expect(create.body.payments[0].method).toBe("cash");
 
     const id = create.body.id as string;
     const get = await request(app).get(`/api/sales/${id}`).set(writerAuth);
@@ -447,5 +468,70 @@ describe.runIf(runWrites)("R6 — Write path: POS sale (opt-in REGRESSION_WRITES
     expect(byNum.status).toBe(200);
     expect(byNum.body.id).toBe(id);
     expect(byNum.body.saleNumber).toBe(create.body.saleNumber);
+  });
+
+  it("creates a split payment sale with separate cash and online rows", async () => {
+    const nails = await prisma.product.findFirst({
+      where: { sku: "NAILS-001" },
+      include: { units: true },
+    });
+    const kg = nails?.units.find((u) => u.code === "kg");
+    if (!nails || !kg) {
+      throw new Error("Seed product NAILS-001 with kg unit not found");
+    }
+
+    const payload = {
+      createdById: adminId,
+      customerName: "Split Pay QA",
+      customerPhone: "9876543211",
+      paidAmount: 20,
+      initialPayments: [
+        { method: "cash", amount: 15 },
+        { method: "online_banking", amount: 5 },
+      ],
+      note: `REGRESSION_WRITES split sale ${Date.now()}`,
+      lines: [
+        {
+          productId: nails.id,
+          productUnitId: kg.id,
+          quantity: 0.2,
+          unitPrice: 150,
+        },
+      ],
+    };
+
+    const create = await request(app)
+      .post("/api/sales")
+      .set(writerAuth)
+      .send(payload);
+    expect(create.status, create.body?.error ?? JSON.stringify(create.body)).toBe(
+      201
+    );
+    expect(create.body.totalAmount).toBe("30.00");
+    expect(create.body.paidAmount).toBe("20.00");
+    expect(create.body.balanceAmount).toBe("10.00");
+    expect(create.body.payments).toHaveLength(2);
+    expect(create.body.payments[0].method).toBe("cash");
+    expect(create.body.payments[0].amount).toBe("15.00");
+    expect(create.body.payments[1].method).toBe("online_banking");
+    expect(create.body.payments[1].amount).toBe("5.00");
+
+    const settle = await request(app)
+      .post(`/api/sales/${create.body.id}/payments`)
+      .set(writerAuth)
+      .send({
+        createdById: adminId,
+        amount: 10,
+        payments: [
+          { method: "cash", amount: 6 },
+          { method: "online_banking", amount: 4 },
+        ],
+      });
+    expect(settle.status, settle.body?.error ?? JSON.stringify(settle.body)).toBe(
+      200
+    );
+    expect(settle.body.balanceAmount).toBe("0.00");
+    expect(settle.body.paidAmount).toBe("30.00");
+    expect(settle.body.payments).toHaveLength(4);
   });
 });

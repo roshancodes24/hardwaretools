@@ -318,26 +318,58 @@ function newLineKey(): string {
     : `ln-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-/** Match catalog: brand code (case-insensitive) first, then exact product name (case-insensitive). */
-export function resolvePurchaseImportPatches(
+export type ProductCatalogIndex = {
+  byBrandCode: Map<string, UiProduct>;
+  byName: Map<string, UiProduct>;
+};
+
+/** O(n) catalog indexes for bulk purchase-line matching. */
+export function buildProductCatalogIndex(
+  products: UiProduct[]
+): ProductCatalogIndex {
+  const byBrandCode = new Map<string, UiProduct>();
+  const byName = new Map<string, UiProduct>();
+  for (const p of products) {
+    const bc = (p.brandCode ?? "").trim().toLowerCase();
+    if (bc && !byBrandCode.has(bc)) byBrandCode.set(bc, p);
+    const name = p.name.trim().toLowerCase();
+    if (name && !byName.has(name)) byName.set(name, p);
+  }
+  return { byBrandCode, byName };
+}
+
+function matchProductFromPatch(
+  patch: PurchaseLineImportPatch,
+  catalog: ProductCatalogIndex
+): UiProduct | undefined {
+  const bc = patch.brandCode?.trim() ?? "";
+  if (bc) {
+    const byCode = catalog.byBrandCode.get(bc.toLowerCase());
+    if (byCode) return byCode;
+  }
+  const name = patch.productName?.trim().toLowerCase() ?? "";
+  if (name) return catalog.byName.get(name);
+  return undefined;
+}
+
+const RESOLVE_PATCH_CHUNK = 200;
+
+function resolveSupplierColumn(
   patches: PurchaseLineImportPatch[],
-  products: UiProduct[],
-  /** 1-based row numbers for patches (same order as patches array). */
   rowNumbers: number[],
-  supplierOpts?: ResolvePurchaseImportSupplierOpts
-): ResolvePurchaseLineResult {
-  const lines: ResolvePurchaseLineResult["lines"] = [];
-  const unresolved: { row: number; message: string }[] = [];
+  supplierOpts: ResolvePurchaseImportSupplierOpts
+): {
+  supplierUnresolved: { row: number; message: string }[];
+  resolvedSupplierId: string | null;
+} {
   const supplierUnresolved: { row: number; message: string }[] = [];
   let resolvedSupplierId: string | null = null;
 
   if (
-    supplierOpts?.hasSupplierColumn &&
+    supplierOpts.hasSupplierColumn &&
     (!supplierOpts.suppliers || supplierOpts.suppliers.length === 0)
   ) {
     return {
-      lines: [],
-      unresolved: [],
       supplierUnresolved: [
         {
           row: 1,
@@ -349,76 +381,73 @@ export function resolvePurchaseImportPatches(
     };
   }
 
-  if (supplierOpts?.hasSupplierColumn && supplierOpts.suppliers.length > 0) {
-    const { suppliers, defaultSupplierId } = supplierOpts;
-    const effectiveIds: string[] = [];
+  if (!supplierOpts.hasSupplierColumn || supplierOpts.suppliers.length === 0) {
+    return { supplierUnresolved, resolvedSupplierId };
+  }
 
-    for (let i = 0; i < patches.length; i++) {
-      const patch = patches[i]!;
-      const row = rowNumbers[i] ?? i + 2;
-      const raw = patch.supplierName?.trim() ?? "";
+  const { suppliers, defaultSupplierId } = supplierOpts;
+  const effectiveIds: string[] = [];
 
-      if (raw) {
-        const sup = matchSupplierImportRef(raw, suppliers);
-        if (!sup) {
-          supplierUnresolved.push({
-            row,
-            message: `Unknown supplier "${raw}". Use the exact name or GST number from Suppliers.`,
-          });
-          continue;
-        }
-        effectiveIds.push(sup.id);
-      } else if (defaultSupplierId) {
-        effectiveIds.push(defaultSupplierId);
-      } else {
+  for (let i = 0; i < patches.length; i++) {
+    const patch = patches[i]!;
+    const row = rowNumbers[i] ?? i + 2;
+    const raw = patch.supplierName?.trim() ?? "";
+
+    if (raw) {
+      const sup = matchSupplierImportRef(raw, suppliers);
+      if (!sup) {
         supplierUnresolved.push({
           row,
-          message:
-            "Enter supplier on this row or choose a supplier in the form before importing.",
+          message: `Unknown supplier "${raw}". Use the exact name or GST number from Suppliers.`,
         });
+        continue;
       }
-    }
-
-    if (supplierUnresolved.length === 0 && effectiveIds.length === patches.length) {
-      const unique = new Set(effectiveIds);
-      if (unique.size > 1) {
-        supplierUnresolved.push({
-          row: rowNumbers[0] ?? 2,
-          message:
-            "All rows must be for the same supplier when you use a supplier column. Split into separate imports if needed.",
-        });
-      } else {
-        resolvedSupplierId = effectiveIds[0]!;
-      }
+      effectiveIds.push(sup.id);
+    } else if (defaultSupplierId) {
+      effectiveIds.push(defaultSupplierId);
+    } else {
+      supplierUnresolved.push({
+        row,
+        message:
+          "Enter supplier on this row or choose a supplier in the form before importing.",
+      });
     }
   }
 
-  if (supplierOpts?.hasSupplierColumn && supplierUnresolved.length > 0) {
-    return {
-      lines: [],
-      unresolved: [],
-      supplierUnresolved,
-      resolvedSupplierId: null,
-    };
+  if (supplierUnresolved.length === 0 && effectiveIds.length === patches.length) {
+    const unique = new Set(effectiveIds);
+    if (unique.size > 1) {
+      supplierUnresolved.push({
+        row: rowNumbers[0] ?? 2,
+        message:
+          "All rows must be for the same supplier when you use a supplier column. Split into separate imports if needed.",
+      });
+    } else {
+      resolvedSupplierId = effectiveIds[0]!;
+    }
   }
 
-  patches.forEach((patch, i) => {
+  return { supplierUnresolved, resolvedSupplierId };
+}
+
+function resolveProductLinesFromPatches(
+  patches: PurchaseLineImportPatch[],
+  rowNumbers: number[],
+  catalog: ProductCatalogIndex
+): {
+  lines: ResolvePurchaseLineResult["lines"];
+  unresolved: { row: number; message: string }[];
+} {
+  const lines: ResolvePurchaseLineResult["lines"] = [];
+  const unresolved: { row: number; message: string }[] = [];
+
+  for (let i = 0; i < patches.length; i++) {
+    const patch = patches[i]!;
     const row = rowNumbers[i] ?? i + 2;
-    const bc = patch.brandCode?.trim() ?? "";
-    const name = patch.productName?.trim().toLowerCase() ?? "";
-
-    let p: UiProduct | undefined;
-    if (bc) {
-      const lower = bc.toLowerCase();
-      p = products.find(
-        (x) => (x.brandCode ?? "").trim().toLowerCase() === lower
-      );
-    }
-    if (!p && name) {
-      p = products.find((x) => x.name.trim().toLowerCase() === name);
-    }
+    const p = matchProductFromPatch(patch, catalog);
 
     if (!p) {
+      const bc = patch.brandCode?.trim() ?? "";
       const hint =
         bc && patch.productName?.trim()
           ? `brand code "${bc}" / name "${patch.productName}"`
@@ -429,7 +458,7 @@ export function resolvePurchaseImportPatches(
         row,
         message: `No product found for ${hint}.`,
       });
-      return;
+      continue;
     }
 
     lines.push({
@@ -439,13 +468,125 @@ export function resolvePurchaseImportPatches(
       unitCost: patch.unitCost,
       lineNote: (patch.lineNote ?? "").trim(),
     });
-  });
+  }
+
+  return { lines, unresolved };
+}
+
+/** Match catalog: brand code (case-insensitive) first, then exact product name (case-insensitive). */
+export function resolvePurchaseImportPatches(
+  patches: PurchaseLineImportPatch[],
+  products: UiProduct[],
+  /** 1-based row numbers for patches (same order as patches array). */
+  rowNumbers: number[],
+  supplierOpts?: ResolvePurchaseImportSupplierOpts
+): ResolvePurchaseLineResult {
+  if (supplierOpts?.hasSupplierColumn) {
+    const { supplierUnresolved, resolvedSupplierId } = resolveSupplierColumn(
+      patches,
+      rowNumbers,
+      supplierOpts
+    );
+    if (supplierUnresolved.length > 0) {
+      return {
+        lines: [],
+        unresolved: [],
+        supplierUnresolved,
+        resolvedSupplierId: null,
+      };
+    }
+    const catalog = buildProductCatalogIndex(products);
+    const { lines, unresolved } = resolveProductLinesFromPatches(
+      patches,
+      rowNumbers,
+      catalog
+    );
+    return { lines, unresolved, supplierUnresolved, resolvedSupplierId };
+  }
+
+  const catalog = buildProductCatalogIndex(products);
+  const { lines, unresolved } = resolveProductLinesFromPatches(
+    patches,
+    rowNumbers,
+    catalog
+  );
+  return {
+    lines,
+    unresolved,
+    supplierUnresolved: [],
+    resolvedSupplierId: null,
+  };
+}
+
+/** Async resolver — yields between chunks so large imports do not freeze the tab. */
+export async function resolvePurchaseImportPatchesAsync(
+  patches: PurchaseLineImportPatch[],
+  products: UiProduct[],
+  rowNumbers: number[],
+  supplierOpts?: ResolvePurchaseImportSupplierOpts,
+  onProgress?: (matched: number, total: number) => void
+): Promise<ResolvePurchaseLineResult> {
+  if (supplierOpts?.hasSupplierColumn) {
+    const { supplierUnresolved, resolvedSupplierId } = resolveSupplierColumn(
+      patches,
+      rowNumbers,
+      supplierOpts
+    );
+    if (supplierUnresolved.length > 0) {
+      return {
+        lines: [],
+        unresolved: [],
+        supplierUnresolved,
+        resolvedSupplierId: null,
+      };
+    }
+
+    const catalog = buildProductCatalogIndex(products);
+    const lines: ResolvePurchaseLineResult["lines"] = [];
+    const unresolved: { row: number; message: string }[] = [];
+
+    for (let start = 0; start < patches.length; start += RESOLVE_PATCH_CHUNK) {
+      const end = Math.min(start + RESOLVE_PATCH_CHUNK, patches.length);
+      const chunk = resolveProductLinesFromPatches(
+        patches.slice(start, end),
+        rowNumbers.slice(start, end),
+        catalog
+      );
+      lines.push(...chunk.lines);
+      unresolved.push(...chunk.unresolved);
+      onProgress?.(end, patches.length);
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 0);
+      });
+    }
+
+    return { lines, unresolved, supplierUnresolved, resolvedSupplierId };
+  }
+
+  const catalog = buildProductCatalogIndex(products);
+  const lines: ResolvePurchaseLineResult["lines"] = [];
+  const unresolved: { row: number; message: string }[] = [];
+
+  for (let start = 0; start < patches.length; start += RESOLVE_PATCH_CHUNK) {
+    const end = Math.min(start + RESOLVE_PATCH_CHUNK, patches.length);
+    const chunk = resolveProductLinesFromPatches(
+      patches.slice(start, end),
+      rowNumbers.slice(start, end),
+      catalog
+    );
+    lines.push(...chunk.lines);
+    unresolved.push(...chunk.unresolved);
+    onProgress?.(end, patches.length);
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+  }
 
   return {
     lines,
     unresolved,
-    supplierUnresolved,
-    resolvedSupplierId,
+    supplierUnresolved: [],
+    resolvedSupplierId: null,
   };
 }
 

@@ -1,9 +1,16 @@
 import {
   Prisma,
   PurchaseStatus,
+  SalePaymentMethod,
   SaleStatus,
   StockMovementType,
 } from "@prisma/client";
+import { computePurchasePricingUpdate } from "../lib/productPricing";
+import {
+  allocateSaleNumber,
+  isUniqueConstraintError,
+  nextPurchaseNumber,
+} from "../lib/documentNumbers";
 import { prisma } from "../lib/prisma";
 
 type PurchaseLineInput = {
@@ -33,6 +40,11 @@ type SaleLineInput = {
   lineTax?: string | number;
 };
 
+type SaleInitialPaymentInput = {
+  method: "cash" | "online_banking";
+  amount: string | number;
+};
+
 type CreateSaleInput = {
   createdById: string;
   customerId?: string;
@@ -49,6 +61,9 @@ type CreateSaleInput = {
    * uses SALE_NUMBER_BILL_START / SALE_NUMBER_TAX_START (default 1000).
    */
   documentKind?: "bill" | "tax_invoice";
+  paymentMethod?: "cash" | "online_banking";
+  /** One row per method/amount collected at checkout (split payment). */
+  initialPayments?: SaleInitialPaymentInput[];
   lines: SaleLineInput[];
 };
 
@@ -74,8 +89,12 @@ function qty(value: Prisma.Decimal) {
   return value.toDecimalPlaces(4);
 }
 
-function makePurchaseNumber() {
-  return `PUR-${Date.now()}`;
+function salePaymentMethodFromInput(
+  method?: "cash" | "online_banking"
+): SalePaymentMethod {
+  return method === "online_banking"
+    ? SalePaymentMethod.ONLINE_BANKING
+    : SalePaymentMethod.CASH;
 }
 
 const SALE_NUMBER_BILL_START = Number.parseInt(
@@ -86,47 +105,6 @@ const SALE_NUMBER_TAX_START = Number.parseInt(
   process.env.SALE_NUMBER_TAX_START ?? "1000",
   10
 );
-
-/** Next unique sale number: BIL-1000, BIL-1001, … or INV-1000, … */
-async function allocateSaleNumber(
-  tx: Prisma.TransactionClient,
-  kind: "bill" | "tax_invoice"
-): Promise<string> {
-  const prefix = kind === "tax_invoice" ? "INV" : "BIL";
-  const start =
-    kind === "tax_invoice" ? SALE_NUMBER_TAX_START : SALE_NUMBER_BILL_START;
-  if (!Number.isFinite(start) || start < 0) {
-    throw new Error("Invalid sale number series start (check env vars).");
-  }
-
-  const rows = await tx.sale.findMany({
-    where: { saleNumber: { startsWith: `${prefix}-` } },
-    select: { saleNumber: true },
-  });
-
-  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const re = new RegExp(`^${escaped}-(\\d+)$`);
-  let maxNum = start - 1;
-  for (const { saleNumber } of rows) {
-    const m = saleNumber.match(re);
-    if (m) {
-      const n = parseInt(m[1], 10);
-      if (!Number.isNaN(n)) maxNum = Math.max(maxNum, n);
-    }
-  }
-
-  let next = maxNum + 1;
-  for (let guard = 0; guard < 200; guard++) {
-    const candidate = `${prefix}-${next}`;
-    const clash = await tx.sale.findUnique({
-      where: { saleNumber: candidate },
-      select: { id: true },
-    });
-    if (!clash) return candidate;
-    next++;
-  }
-  throw new Error("Could not allocate a unique sale number.");
-}
 
 async function getUnitOrThrow(
   tx: Prisma.TransactionClient,
@@ -144,144 +122,309 @@ async function getUnitOrThrow(
   return unit;
 }
 
-export async function createPurchase(input: CreatePurchaseInput) {
-  return prisma.$transaction(async (tx) => {
-    if (!input.lines.length) {
-      throw new Error("Purchase must contain at least one line.");
+/** Lock product rows for update (sorted by id to reduce deadlock risk). */
+async function lockProductsForStockUpdate(
+  tx: Prisma.TransactionClient,
+  productIds: string[]
+): Promise<Map<string, { currentStock: Prisma.Decimal; name: string }>> {
+  const unique = [...new Set(productIds)].sort();
+  if (unique.length === 0) return new Map();
+
+  const rows = await tx.$queryRaw<
+    Array<{ id: string; currentStock: Prisma.Decimal; name: string }>
+  >`
+    SELECT id, "currentStock", name
+    FROM "Product"
+    WHERE id IN (${Prisma.join(unique)})
+    ORDER BY id
+    FOR UPDATE
+  `;
+
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      { currentStock: row.currentStock, name: row.name },
+    ])
+  );
+}
+
+const LARGE_TX_OPTS = { timeout: 120_000, maxWait: 30_000 } as const;
+const CREATE_MANY_CHUNK = 500;
+
+type NormalizedPurchaseLine = {
+  productId: string;
+  productUnitId: string;
+  quantity: Prisma.Decimal;
+  quantityInBase: Prisma.Decimal;
+  unitCost: Prisma.Decimal;
+  conversionToBase: Prisma.Decimal;
+  lineDiscount: Prisma.Decimal;
+  lineTax: Prisma.Decimal;
+  lineTotal: Prisma.Decimal;
+};
+
+type ProductPricingState = {
+  currentStock: Prisma.Decimal;
+  percentage: Prisma.Decimal | null;
+  sellingPrice: Prisma.Decimal | null;
+  mrp: Prisma.Decimal | null;
+  avgCostPrice: Prisma.Decimal | null;
+  costPrice: Prisma.Decimal | null;
+  priceReviewNeeded: boolean;
+  suggestedSellingPrice: Prisma.Decimal | null;
+  priceReviewNote: string | null;
+};
+
+async function createManyInChunks<T extends object>(
+  tx: Prisma.TransactionClient,
+  model: {
+    createMany: (args: { data: T[] }) => Promise<{ count: number }>;
+  },
+  rows: T[]
+) {
+  for (let i = 0; i < rows.length; i += CREATE_MANY_CHUNK) {
+    const chunk = rows.slice(i, i + CREATE_MANY_CHUNK);
+    if (chunk.length > 0) {
+      await model.createMany({ data: chunk });
     }
+  }
+}
 
-    const purchaseNumber = makePurchaseNumber();
+async function executeCreatePurchase(
+  tx: Prisma.TransactionClient,
+  input: CreatePurchaseInput
+) {
+  if (!input.lines.length) {
+    throw new Error("Purchase must contain at least one line.");
+  }
 
-    let subtotal = dec(0);
-    let discountAmount = dec(0);
-    let taxAmount = dec(0);
-
-    const normalizedLines: Array<{
-      productId: string;
-      productUnitId: string;
-      quantity: Prisma.Decimal;
-      quantityInBase: Prisma.Decimal;
-      unitCost: Prisma.Decimal;
-      lineDiscount: Prisma.Decimal;
-      lineTax: Prisma.Decimal;
-      lineTotal: Prisma.Decimal;
-    }> = [];
-
-    for (const line of input.lines) {
-      const unit = await getUnitOrThrow(tx, line.productUnitId);
-
-      if (unit.productId !== line.productId) {
-        throw new Error("Product and product unit do not match.");
-      }
-
-      const quantityValue = qty(dec(line.quantity));
-      const unitCostValue = dec(line.unitCost);
-      const lineDiscountValue = money(dec(line.lineDiscount ?? 0));
-      const lineTaxValue = money(dec(line.lineTax ?? 0));
-      const quantityInBase = qty(quantityValue.mul(unit.conversionToBase));
-      const lineTotal = money(
-        quantityValue.mul(unitCostValue).minus(lineDiscountValue).plus(lineTaxValue)
-      );
-
-      subtotal = subtotal.plus(quantityValue.mul(unitCostValue));
-      discountAmount = discountAmount.plus(lineDiscountValue);
-      taxAmount = taxAmount.plus(lineTaxValue);
-
-      normalizedLines.push({
-        productId: line.productId,
-        productUnitId: line.productUnitId,
-        quantity: quantityValue,
-        quantityInBase,
-        unitCost: unitCostValue,
-        lineDiscount: lineDiscountValue,
-        lineTax: lineTaxValue,
-        lineTotal,
-      });
-    }
-
-    const totalAmount = money(subtotal.minus(discountAmount).plus(taxAmount));
-
-    const purchase = await tx.purchase.create({
-      data: {
-        purchaseNumber,
-        supplierId: input.supplierId,
-        status: PurchaseStatus.RECEIVED,
-        invoiceNumber: input.invoiceNumber,
-        invoiceDate: input.invoiceDate,
-        note: input.note,
-        subtotal: money(subtotal),
-        discountAmount,
-        taxAmount,
-        totalAmount,
-        paidAmount: money(dec(0)),
-        balanceAmount: totalAmount,
-        createdById: input.createdById,
-      },
-    });
-
-    for (const line of normalizedLines) {
-      await tx.purchaseLine.create({
-        data: {
-          purchaseId: purchase.id,
-          productId: line.productId,
-          productUnitId: line.productUnitId,
-          quantity: line.quantity,
-          quantityInBase: line.quantityInBase,
-          unitCost: line.unitCost,
-          lineDiscount: line.lineDiscount,
-          lineTax: line.lineTax,
-          lineTotal: line.lineTotal,
-        },
-      });
-
-      await tx.stockMovement.create({
-        data: {
-          type: StockMovementType.PURCHASE_IN,
-          productId: line.productId,
-          productUnitId: line.productUnitId,
-          quantity: line.quantity,
-          quantityInBase: line.quantityInBase,
-          note: `Purchase ${purchase.purchaseNumber}`,
-          purchaseId: purchase.id,
-          createdById: input.createdById,
-        },
-      });
-
-      const product = await tx.product.findUnique({
-        where: { id: line.productId },
-        select: { currentStock: true },
-      });
-
-      if (!product) {
-        throw new Error(`Product not found: ${line.productId}`);
-      }
-
-      await tx.product.update({
-        where: { id: line.productId },
-        data: {
-          currentStock: qty(dec(product.currentStock).plus(line.quantityInBase)),
-        },
-      });
-    }
-
-    return tx.purchase.findUnique({
-      where: { id: purchase.id },
-      include: {
-        supplier: true,
-        createdBy: { select: { fullName: true } },
-        lines: {
-          include: {
-            product: true,
-            productUnit: true,
-          },
-        },
-        payments: {
-          orderBy: { paidAt: "asc" },
-          include: { createdBy: { select: { fullName: true } } },
-        },
-      },
-    });
+  const unitIds = [...new Set(input.lines.map((line) => line.productUnitId))];
+  const units = await tx.productUnit.findMany({
+    where: { id: { in: unitIds } },
   });
+  const unitById = new Map(units.map((unit) => [unit.id, unit]));
+
+  const purchaseNumber = nextPurchaseNumber();
+
+  let subtotal = dec(0);
+  let discountAmount = dec(0);
+  let taxAmount = dec(0);
+
+  const normalizedLines: NormalizedPurchaseLine[] = [];
+
+  for (const line of input.lines) {
+    const unit = unitById.get(line.productUnitId);
+    if (!unit) {
+      throw new Error(`Product unit not found: ${line.productUnitId}`);
+    }
+    if (unit.productId !== line.productId) {
+      throw new Error("Product and product unit do not match.");
+    }
+
+    const quantityValue = qty(dec(line.quantity));
+    const unitCostValue = dec(line.unitCost);
+    const lineDiscountValue = money(dec(line.lineDiscount ?? 0));
+    const lineTaxValue = money(dec(line.lineTax ?? 0));
+    const quantityInBase = qty(quantityValue.mul(unit.conversionToBase));
+    const lineTotal = money(
+      quantityValue.mul(unitCostValue).minus(lineDiscountValue).plus(lineTaxValue)
+    );
+
+    subtotal = subtotal.plus(quantityValue.mul(unitCostValue));
+    discountAmount = discountAmount.plus(lineDiscountValue);
+    taxAmount = taxAmount.plus(lineTaxValue);
+
+    normalizedLines.push({
+      productId: line.productId,
+      productUnitId: line.productUnitId,
+      quantity: quantityValue,
+      quantityInBase,
+      unitCost: unitCostValue,
+      conversionToBase: unit.conversionToBase,
+      lineDiscount: lineDiscountValue,
+      lineTax: lineTaxValue,
+      lineTotal,
+    });
+  }
+
+  const totalAmount = money(subtotal.minus(discountAmount).plus(taxAmount));
+
+  const purchase = await tx.purchase.create({
+    data: {
+      purchaseNumber,
+      supplierId: input.supplierId,
+      status: PurchaseStatus.RECEIVED,
+      invoiceNumber: input.invoiceNumber,
+      invoiceDate: input.invoiceDate,
+      note: input.note,
+      subtotal: money(subtotal),
+      discountAmount,
+      taxAmount,
+      totalAmount,
+      paidAmount: money(dec(0)),
+      balanceAmount: totalAmount,
+      createdById: input.createdById,
+    },
+  });
+
+  await createManyInChunks(
+    tx,
+    tx.purchaseLine,
+    normalizedLines.map((line) => ({
+      purchaseId: purchase.id,
+      productId: line.productId,
+      productUnitId: line.productUnitId,
+      quantity: line.quantity,
+      quantityInBase: line.quantityInBase,
+      unitCost: line.unitCost,
+      lineDiscount: line.lineDiscount,
+      lineTax: line.lineTax,
+      lineTotal: line.lineTotal,
+    }))
+  );
+
+  await createManyInChunks(
+    tx,
+    tx.stockMovement,
+    normalizedLines.map((line) => ({
+      type: StockMovementType.PURCHASE_IN,
+      productId: line.productId,
+      productUnitId: line.productUnitId,
+      quantity: line.quantity,
+      quantityInBase: line.quantityInBase,
+      note: `Purchase ${purchase.purchaseNumber}`,
+      purchaseId: purchase.id,
+      createdById: input.createdById,
+    }))
+  );
+
+  const linesByProduct = new Map<string, NormalizedPurchaseLine[]>();
+  for (const line of normalizedLines) {
+    const group = linesByProduct.get(line.productId) ?? [];
+    group.push(line);
+    linesByProduct.set(line.productId, group);
+  }
+
+  const productIds = [...linesByProduct.keys()];
+  const products = await tx.product.findMany({
+    where: { id: { in: productIds } },
+    select: {
+      id: true,
+      currentStock: true,
+      percentage: true,
+      sellingPrice: true,
+      mrp: true,
+      avgCostPrice: true,
+      costPrice: true,
+      priceReviewNeeded: true,
+      suggestedSellingPrice: true,
+      priceReviewNote: true,
+    },
+  });
+  const productState = new Map<string, ProductPricingState>(
+    products.map((product) => [
+      product.id,
+      {
+        currentStock: dec(product.currentStock),
+        percentage: product.percentage,
+        sellingPrice: product.sellingPrice,
+        mrp: product.mrp,
+        avgCostPrice: product.avgCostPrice,
+        costPrice: product.costPrice,
+        priceReviewNeeded: product.priceReviewNeeded,
+        suggestedSellingPrice: product.suggestedSellingPrice,
+        priceReviewNote: product.priceReviewNote,
+      },
+    ])
+  );
+
+  for (const [productId, lines] of linesByProduct) {
+    const state = productState.get(productId);
+    if (!state) {
+      throw new Error(`Product not found: ${productId}`);
+    }
+
+    let nextStock = state.currentStock;
+    let nextCostPrice = state.costPrice;
+    let nextAvgCostPrice = state.avgCostPrice;
+    let nextSellingPrice = state.sellingPrice;
+    let nextPriceReviewNeeded = state.priceReviewNeeded;
+    let nextSuggestedSellingPrice = state.suggestedSellingPrice;
+    let nextPriceReviewNote = state.priceReviewNote;
+
+    for (const line of lines) {
+      const pricing = computePurchasePricingUpdate({
+        currentStockBase: nextStock,
+        receivedQtyBase: line.quantityInBase,
+        unitCost: line.unitCost,
+        conversionToBase: line.conversionToBase,
+        currentAvgCost: nextAvgCostPrice,
+        currentCostPrice: nextCostPrice,
+        currentSellingPrice: nextSellingPrice,
+        percentage: state.percentage,
+        mrp: state.mrp,
+      });
+
+      nextStock = qty(nextStock.plus(line.quantityInBase));
+      nextCostPrice = pricing.costPrice;
+      nextAvgCostPrice = pricing.avgCostPrice;
+      if (pricing.sellingPrice != null) {
+        nextSellingPrice = pricing.sellingPrice;
+      }
+      nextPriceReviewNeeded = pricing.priceReviewNeeded;
+      nextSuggestedSellingPrice = pricing.suggestedSellingPrice;
+      nextPriceReviewNote = pricing.priceReviewNote;
+    }
+
+    await tx.product.update({
+      where: { id: productId },
+      data: {
+        currentStock: nextStock,
+        costPrice: nextCostPrice,
+        avgCostPrice: nextAvgCostPrice,
+        ...(nextSellingPrice != null ? { sellingPrice: nextSellingPrice } : {}),
+        priceReviewNeeded: nextPriceReviewNeeded,
+        suggestedSellingPrice: nextSuggestedSellingPrice,
+        priceReviewNote: nextPriceReviewNote,
+      },
+    });
+  }
+
+  return tx.purchase.findUnique({
+    where: { id: purchase.id },
+    include: {
+      supplier: true,
+      createdBy: { select: { fullName: true } },
+      lines: {
+        include: {
+          product: true,
+          productUnit: true,
+        },
+      },
+      payments: {
+        orderBy: { paidAt: "asc" },
+        include: { createdBy: { select: { fullName: true } } },
+      },
+    },
+  });
+}
+
+export async function createPurchase(input: CreatePurchaseInput) {
+  const maxAttempts = 5;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await prisma.$transaction(
+        (tx) => executeCreatePurchase(tx, input),
+        LARGE_TX_OPTS
+      );
+    } catch (error) {
+      if (isUniqueConstraintError(error) && attempt < maxAttempts - 1) {
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error("Could not create purchase after multiple attempts.");
 }
 
 export type RecordPurchasePaymentInput = {
@@ -363,7 +506,9 @@ export async function createSale(input: CreateSaleInput) {
 
     const saleNumber = await allocateSaleNumber(
       tx,
-      input.documentKind === "tax_invoice" ? "tax_invoice" : "bill"
+      input.documentKind === "tax_invoice" ? "tax_invoice" : "bill",
+      SALE_NUMBER_BILL_START,
+      SALE_NUMBER_TAX_START
     );
 
     let subtotal = dec(0);
@@ -406,19 +551,6 @@ export async function createSale(input: CreateSaleInput) {
       const lineTaxValue = money(dec(line.lineTax ?? 0));
       const quantityInBase = qty(quantityValue.mul(unit.conversionToBase));
 
-      const product = await tx.product.findUnique({
-        where: { id: line.productId },
-        select: { currentStock: true, name: true },
-      });
-
-      if (!product) {
-        throw new Error(`Product not found: ${line.productId}`);
-      }
-
-      if (dec(product.currentStock).lessThan(quantityInBase)) {
-        throw new Error(`Insufficient stock for ${product.name}`);
-      }
-
       const lineTotal = money(
         quantityValue.mul(unitPriceValue).minus(lineDiscountValue).plus(lineTaxValue)
       );
@@ -437,6 +569,27 @@ export async function createSale(input: CreateSaleInput) {
         lineTax: lineTaxValue,
         lineTotal,
       });
+    }
+
+    const deductByProduct = new Map<string, Prisma.Decimal>();
+    for (const line of normalizedLines) {
+      const prev = deductByProduct.get(line.productId) ?? dec(0);
+      deductByProduct.set(line.productId, qty(prev.plus(line.quantityInBase)));
+    }
+
+    const lockedProducts = await lockProductsForStockUpdate(
+      tx,
+      [...deductByProduct.keys()]
+    );
+
+    for (const [productId, needed] of deductByProduct) {
+      const product = lockedProducts.get(productId);
+      if (!product) {
+        throw new Error(`Product not found: ${productId}`);
+      }
+      if (dec(product.currentStock).lessThan(needed)) {
+        throw new Error(`Insufficient stock for ${product.name}`);
+      }
     }
 
     const transportRaw = dec(input.transportAmount ?? 0);
@@ -582,33 +735,59 @@ export async function createSale(input: CreateSaleInput) {
           createdById: input.createdById,
         },
       });
+    }
 
-      const product = await tx.product.findUnique({
-        where: { id: line.productId },
-        select: { currentStock: true },
-      });
-
+    for (const [productId, deductQty] of deductByProduct) {
+      const product = lockedProducts.get(productId);
       if (!product) {
-        throw new Error(`Product not found: ${line.productId}`);
+        throw new Error(`Product not found: ${productId}`);
       }
-
       await tx.product.update({
-        where: { id: line.productId },
+        where: { id: productId },
         data: {
-          currentStock: qty(dec(product.currentStock).minus(line.quantityInBase)),
+          currentStock: qty(dec(product.currentStock).minus(deductQty)),
         },
       });
     }
 
     if (paidAmount.greaterThan(0)) {
-      await tx.salePayment.create({
-        data: {
-          saleId: sale.id,
-          amount: paidAmount,
-          note: "Initial payment",
-          createdById: input.createdById,
-        },
-      });
+      const splitPayments =
+        input.initialPayments?.filter((p) => money(dec(p.amount)).greaterThan(0)) ??
+        [];
+      const paymentRows =
+        splitPayments.length > 0
+          ? splitPayments.map((p) => ({
+              method: salePaymentMethodFromInput(p.method),
+              amount: money(dec(p.amount)),
+            }))
+          : [
+              {
+                method: salePaymentMethodFromInput(input.paymentMethod),
+                amount: paidAmount,
+              },
+            ];
+
+      let paymentSum = dec(0);
+      for (const row of paymentRows) {
+        paymentSum = paymentSum.plus(row.amount);
+      }
+      if (!money(paymentSum).equals(paidAmount)) {
+        throw new Error("Payment total does not match amount received.");
+      }
+
+      const paymentNote =
+        paymentRows.length > 1 ? "Split payment" : "Initial payment";
+      for (const row of paymentRows) {
+        await tx.salePayment.create({
+          data: {
+            saleId: sale.id,
+            amount: row.amount,
+            method: row.method,
+            note: paymentNote,
+            createdById: input.createdById,
+          },
+        });
+      }
     }
 
     return tx.sale.findUnique({
@@ -629,8 +808,10 @@ export async function createSale(input: CreateSaleInput) {
 
 export type RecordSalePaymentInput = {
   saleId: string;
-  amount: string | number;
+  amount?: string | number;
   createdById: string;
+  paymentMethod?: "cash" | "online_banking";
+  payments?: SaleInitialPaymentInput[];
   note?: string;
 };
 
@@ -646,7 +827,27 @@ export async function recordSalePayment(input: RecordSalePaymentInput) {
       throw new Error("Only completed sales can receive payments.");
     }
     const balance = dec(sale.balanceAmount);
-    const pay = money(dec(input.amount));
+
+    const splitPayments =
+      input.payments?.filter((p) => money(dec(p.amount)).greaterThan(0)) ?? [];
+    const paymentRows =
+      splitPayments.length > 0
+        ? splitPayments.map((p) => ({
+            method: salePaymentMethodFromInput(p.method),
+            amount: money(dec(p.amount)),
+          }))
+        : [
+            {
+              method: salePaymentMethodFromInput(input.paymentMethod),
+              amount: money(dec(input.amount ?? 0)),
+            },
+          ];
+
+    let totalPay = dec(0);
+    for (const row of paymentRows) {
+      totalPay = totalPay.plus(row.amount);
+    }
+    const pay = money(totalPay);
     if (!pay.gt(0)) {
       throw new Error("Payment amount must be greater than zero.");
     }
@@ -665,14 +866,23 @@ export async function recordSalePayment(input: RecordSalePaymentInput) {
       },
     });
 
-    await tx.salePayment.create({
-      data: {
-        saleId: sale.id,
-        amount: pay,
-        note: input.note?.trim() || null,
-        createdById: input.createdById,
-      },
-    });
+    const paymentNote = input.note?.trim() || null;
+    const rowNote =
+      paymentRows.length > 1
+        ? paymentNote ?? "Split payment"
+        : paymentNote;
+
+    for (const row of paymentRows) {
+      await tx.salePayment.create({
+        data: {
+          saleId: sale.id,
+          amount: row.amount,
+          method: row.method,
+          note: rowNote,
+          createdById: input.createdById,
+        },
+      });
+    }
 
     return tx.sale.findUnique({
       where: { id: sale.id },

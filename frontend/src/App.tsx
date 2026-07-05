@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 import { api, getAuthToken, logoutAuth, setActingUserId } from "./api/client";
@@ -16,7 +15,6 @@ import type {
   ApiPromotion,
   ApiSupplier,
   CreateSaleBody,
-  OutstandingSaleSummary,
   PurchaseListRow,
   SaleDetail,
   SessionUserRow,
@@ -25,7 +23,6 @@ import { TaxInvoiceModal } from "./invoice/TaxInvoiceModal";
 import { allocateLineDiscounts } from "./lib/allocateLineDiscounts";
 import {
   lineErrorsFromDetails,
-  mapAdjustmentDetailField,
   recordFieldErrors,
 } from "./lib/formErrors";
 import {
@@ -36,148 +33,52 @@ import {
 import {
   parsePurchaseLinesImportFile,
   PURCHASE_IMPORT_TEMPLATE_CSV,
-  resolvePurchaseImportPatches,
+  resolvePurchaseImportPatchesAsync,
 } from "./lib/importPurchaseLines";
 import { mapApiProduct, type UiProduct } from "./lib/mapProduct";
+import { fmt, parseMoneyField } from "./lib/formatMoney";
+import { computePosTotals } from "./lib/posCartTotals";
+import { resolveSplitPayment } from "./lib/splitPayment";
+import { stockStatus } from "./lib/inventoryTable";
+import { inputStyle } from "./styles/formStyles";
+import { AdjustmentView } from "./views/AdjustmentView";
+import { InventoryView } from "./views/InventoryView";
+import { OutstandingView } from "./views/OutstandingView";
 import { sanitizeGstinInput } from "./lib/gstinInput";
 import { sanitizePhoneDigits } from "./lib/phoneInput";
 import { COMPANY_NAME } from "./lib/branding";
 import { HomeView } from "./HomeView";
 import { ConfirmModal } from "./ConfirmModal";
+import { BusyOverlay, paintBeforeWork } from "./components/BusyOverlay";
+import { StockBadge } from "./components/StockBadge";
+import { Toast } from "./components/Toast";
 import { PromotionsPage } from "./pages/PromotionsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { ReportingPage } from "./pages/ReportingPage";
 import { ReprintInvoicePage } from "./pages/ReprintInvoicePage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { FEATURE_FLAGS } from "./featureFlags";
 import { Sidebar, type Tab } from "./Sidebar";
 import { useConfirm } from "./useConfirm";
-
-// ═══════════════════════════════════════════════════════════════════
-// UTILITIES
-// ═══════════════════════════════════════════════════════════════════
-const fmt = (n: number) =>
-  `₹${Number(n).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-
-const stockStatus = (p: UiProduct): "ok" | "low" | "out" =>
-  p.stock === 0 ? "out" : p.stock <= p.lowStock ? "low" : "ok";
-
-type InventorySortKey =
-  | "sku"
-  | "name"
-  | "category"
-  | "price"
-  | "stock"
-  | "unit"
-  | "status";
-
-function statusSortRank(p: UiProduct): number {
-  const st = stockStatus(p);
-  if (st === "out") return 0;
-  if (st === "low") return 1;
-  return 2;
-}
-
-function compareInventoryRows(
-  a: UiProduct,
-  b: UiProduct,
-  key: InventorySortKey,
-  dir: "asc" | "desc"
-): number {
-  const sign = dir === "asc" ? 1 : -1;
-  let cmp = 0;
-  switch (key) {
-    case "sku":
-      cmp = a.sku.localeCompare(b.sku, undefined, { sensitivity: "base" });
-      break;
-    case "name":
-      cmp = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-      break;
-    case "category":
-      cmp = a.category.localeCompare(b.category, undefined, {
-        sensitivity: "base",
-      });
-      break;
-    case "price":
-      cmp = a.price - b.price;
-      break;
-    case "stock":
-      cmp = a.stock - b.stock;
-      break;
-    case "unit":
-      cmp = a.unit.localeCompare(b.unit, undefined, { sensitivity: "base" });
-      break;
-    case "status":
-      cmp = statusSortRank(a) - statusSortRank(b);
-      break;
-  }
-  if (cmp !== 0) return sign * cmp;
-  return a.sku.localeCompare(b.sku, undefined, { sensitivity: "base" });
-}
+import type { ConfirmOptions } from "./useConfirm";
 
 // ═══════════════════════════════════════════════════════════════════
 // SHARED COMPONENTS
 // ═══════════════════════════════════════════════════════════════════
-function Badge({ status }: { status: "ok" | "low" | "out" }) {
-  const map = {
-    ok: { bg: "#dcfce7", color: "#16a34a", label: "In Stock" },
-    low: { bg: "#fef3c7", color: "#d97706", label: "Low Stock" },
-    out: { bg: "#fee2e2", color: "#dc2626", label: "Out of Stock" },
-  };
-  const s = map[status];
-  return (
-    <span
-      style={{
-        background: s.bg,
-        color: s.color,
-        fontSize: 11,
-        fontWeight: 600,
-        padding: "2px 8px",
-        borderRadius: 4,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {s.label}
-    </span>
-  );
-}
-
-function Toast({
-  status,
-}: {
-  status: { type: "success" | "error"; msg: string } | null;
-}) {
-  if (!status) return null;
-  return (
-    <div
-      style={{
-        padding: "10px 14px",
-        borderRadius: 8,
-        fontSize: 13,
-        background: status.type === "success" ? "#dcfce7" : "#fee2e2",
-        color: status.type === "success" ? "var(--accent)" : "var(--danger)",
-      }}
-    >
-      {status.msg}
-    </div>
-  );
-}
 
 function FormErrorBanner({ text }: { text?: string }) {
   if (!text) return null;
   return (
     <div
       style={{
-        background: "#fef2f2",
-        color: "#b91c1c",
+        background: "var(--danger-soft-solid)",
+        color: "var(--danger-text)",
         padding: "8px 10px",
         borderRadius: 8,
         fontSize: 12,
         lineHeight: 1.45,
-        border: "1px solid #fecaca",
+        border: "1px solid var(--danger-border-solid)",
       }}
     >
       {text}
@@ -198,12 +99,12 @@ function FieldWrap({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label style={{ fontSize: 13, fontWeight: 500, color: "#44403c" }}>
+      <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-strong)" }}>
         {label}
       </label>
       {children}
       {error ? (
-        <span id={errorId} style={{ fontSize: 12, color: "var(--danger)" }}>
+        <span id={errorId} style={{ fontSize: 12, color: "var(--danger-text)" }}>
           {error}
         </span>
       ) : null}
@@ -211,394 +112,9 @@ function FieldWrap({
   );
 }
 
-const inputStyle: CSSProperties = {
-  height: 38,
-  padding: "0 12px",
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  fontSize: 14,
-  outline: "none",
-  background: "var(--surface)",
-  color: "var(--text)",
-};
 
 type CartLine = UiProduct & { qty: number };
 
-function OutstandingView({ actingUserId }: { actingUserId: string }) {
-  const recordedById = actingUserId;
-  const [rows, setRows] = useState<OutstandingSaleSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [payFor, setPayFor] = useState<OutstandingSaleSummary | null>(null);
-  const [payAmount, setPayAmount] = useState("");
-  const [payNote, setPayNote] = useState("");
-  const [payLoading, setPayLoading] = useState(false);
-  const [payMsg, setPayMsg] = useState<{
-    type: "ok" | "err";
-    text: string;
-  } | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api.getOutstandingSales();
-      setRows(data);
-    } catch (e) {
-      setError(isApiError(e) ? e.message : "Failed to load outstanding sales");
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  useEffect(() => {
-    if (payFor) {
-      setPayAmount(Number(payFor.balanceAmount).toFixed(2));
-      setPayNote("");
-      setPayMsg(null);
-    }
-  }, [payFor]);
-
-  const submitPayment = async () => {
-    if (!payFor || !recordedById) return;
-    const amt = Number.parseFloat(payAmount.replace(/,/g, ""));
-    if (!Number.isFinite(amt) || amt <= 0) {
-      setPayMsg({ type: "err", text: "Enter a valid payment amount." });
-      return;
-    }
-    const maxBal = Number(payFor.balanceAmount);
-    if (amt > maxBal + 1e-6) {
-      setPayMsg({ type: "err", text: "Amount cannot exceed balance due." });
-      return;
-    }
-    setPayLoading(true);
-    setPayMsg(null);
-    try {
-      await api.recordSalePayment(payFor.id, {
-        amount: amt,
-        createdById: recordedById,
-        note: payNote.trim() || undefined,
-      });
-      setPayFor(null);
-      await load();
-    } catch (e) {
-      setPayMsg({
-        type: "err",
-        text: isApiError(e) ? e.message : "Payment failed",
-      });
-    } finally {
-      setPayLoading(false);
-    }
-  };
-
-  if (!recordedById) {
-    return (
-      <div style={{ padding: 24, color: "var(--muted)", fontSize: 14 }}>
-        Session user IDs are missing, so payments cannot be recorded. Reload the
-        app after the API is running.
-      </div>
-    );
-  }
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-        maxWidth: 960,
-        width: "100%",
-      }}
-    >
-      <div>
-        <h2 style={{ margin: 0, fontSize: 20, color: "var(--text)" }}>
-          Outstanding balances
-        </h2>
-        <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--muted)" }}>
-          Completed sales with an unpaid balance. Goods already left inventory;
-          record payments here when the customer settles up.
-        </p>
-      </div>
-
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-        <button
-          type="button"
-          onClick={() => void load()}
-          disabled={loading}
-          style={{
-            height: 36,
-            padding: "0 14px",
-            borderRadius: 8,
-            border: "1px solid var(--border)",
-            background: "var(--surface)",
-            color: "var(--text)",
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: loading ? "not-allowed" : "pointer",
-          }}
-        >
-          Refresh
-        </button>
-        {loading ? (
-          <span style={{ fontSize: 13, color: "var(--muted)" }}>Loading…</span>
-        ) : null}
-      </div>
-
-      {error ? (
-        <div
-          style={{
-            padding: "12px 14px",
-            borderRadius: 10,
-            background: "var(--surface)",
-            color: "var(--danger)",
-            fontSize: 14,
-          }}
-        >
-          {error}
-        </div>
-      ) : null}
-
-      {!loading && !error && rows.length === 0 ? (
-        <div style={{ fontSize: 14, color: "var(--muted)" }}>
-          No outstanding balances.
-        </div>
-      ) : null}
-
-      {!loading && rows.length > 0 ? (
-        <div
-          style={{
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            overflow: "hidden",
-            background: "var(--surface)",
-          }}
-        >
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: 13,
-            }}
-          >
-            <thead>
-              <tr style={{ background: "var(--surface-subtle)", color: "var(--muted)" }}>
-                <th style={{ textAlign: "left", padding: "10px 12px" }}>Sale</th>
-                <th style={{ textAlign: "left", padding: "10px 12px" }}>Date</th>
-                <th style={{ textAlign: "left", padding: "10px 12px" }}>Customer</th>
-                <th style={{ textAlign: "right", padding: "10px 12px" }}>Total</th>
-                <th style={{ textAlign: "right", padding: "10px 12px" }}>Paid</th>
-                <th style={{ textAlign: "right", padding: "10px 12px" }}>Balance</th>
-                <th style={{ textAlign: "right", padding: "10px 12px" }} />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => {
-                const cust =
-                  r.customerName?.trim() ||
-                  (r.customerPhone ? `Phone ${r.customerPhone}` : "—");
-                const dt = new Date(r.createdAt);
-                return (
-                  <tr
-                    key={r.id}
-                    style={{ borderTop: "1px solid var(--border)" }}
-                  >
-                    <td style={{ padding: "10px 12px", fontWeight: 600 }}>
-                      {r.saleNumber}
-                    </td>
-                    <td style={{ padding: "10px 12px", color: "var(--muted)" }}>
-                      {Number.isNaN(dt.getTime())
-                        ? r.createdAt
-                        : formatIndiaDateTime(dt)}
-                    </td>
-                    <td style={{ padding: "10px 12px" }}>{cust}</td>
-                    <td
-                      style={{
-                        padding: "10px 12px",
-                        textAlign: "right",
-                        fontFamily: "monospace",
-                      }}
-                    >
-                      {fmt(Number(r.totalAmount))}
-                    </td>
-                    <td
-                      style={{
-                        padding: "10px 12px",
-                        textAlign: "right",
-                        fontFamily: "monospace",
-                        color: "var(--muted)",
-                      }}
-                    >
-                      {fmt(Number(r.paidAmount))}
-                    </td>
-                    <td
-                      style={{
-                        padding: "10px 12px",
-                        textAlign: "right",
-                        fontFamily: "monospace",
-                        fontWeight: 600,
-                        color: "var(--accent)",
-                      }}
-                    >
-                      {fmt(Number(r.balanceAmount))}
-                    </td>
-                    <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                      <button
-                        type="button"
-                        onClick={() => setPayFor(r)}
-                        style={{
-                          height: 32,
-                          padding: "0 12px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: "var(--accent)",
-                          color: "#fff",
-                          fontSize: 12,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Pay
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-
-      {payFor ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="pay-modal-title"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: 16,
-          }}
-          onClick={() => !payLoading && setPayFor(null)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape" && !payLoading) setPayFor(null);
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 400,
-              background: "var(--surface)",
-              borderRadius: 12,
-              border: "1px solid var(--border)",
-              padding: 20,
-              boxShadow: "0 20px 50px rgba(0,0,0,0.15)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          >
-            <h3
-              id="pay-modal-title"
-              style={{ margin: "0 0 4px", fontSize: 17, color: "var(--text)" }}
-            >
-              Record payment
-            </h3>
-            <p style={{ margin: "0 0 16px", fontSize: 12, color: "var(--muted)" }}>
-              {payFor.saleNumber} · Balance {fmt(Number(payFor.balanceAmount))}
-            </p>
-            <label
-              style={{
-                display: "block",
-                fontSize: 12,
-                fontWeight: 600,
-                color: "var(--muted)",
-                marginBottom: 6,
-              }}
-            >
-              Amount
-            </label>
-            <input
-              type="number"
-              min={0.01}
-              step={0.01}
-              value={payAmount}
-              onChange={(e) => setPayAmount(e.target.value)}
-              style={{ ...inputStyle, width: "100%", boxSizing: "border-box", marginBottom: 12 }}
-            />
-            <label
-              style={{
-                display: "block",
-                fontSize: 12,
-                fontWeight: 600,
-                color: "var(--muted)",
-                marginBottom: 6,
-              }}
-            >
-              Note (optional)
-            </label>
-            <input
-              value={payNote}
-              onChange={(e) => setPayNote(e.target.value)}
-              placeholder="e.g. UPI ref"
-              style={{ ...inputStyle, width: "100%", boxSizing: "border-box", marginBottom: 12 }}
-            />
-            {payMsg?.type === "err" ? (
-              <div style={{ fontSize: 13, color: "var(--danger)", marginBottom: 12 }}>
-                {payMsg.text}
-              </div>
-            ) : null}
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                disabled={payLoading}
-                onClick={() => setPayFor(null)}
-                style={{
-                  height: 40,
-                  padding: "0 16px",
-                  borderRadius: 8,
-                  border: "1px solid var(--border)",
-                  background: "var(--surface-subtle)",
-                  color: "var(--text)",
-                  fontSize: 14,
-                  cursor: payLoading ? "not-allowed" : "pointer",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={payLoading}
-                onClick={() => void submitPayment()}
-                style={{
-                  height: 40,
-                  padding: "0 16px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: "var(--accent)",
-                  color: "#fff",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: payLoading ? "not-allowed" : "pointer",
-                }}
-              >
-                {payLoading ? "Saving…" : "Apply payment"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 // ═══════════════════════════════════════════════════════════════════
 // POS VIEW
@@ -610,6 +126,7 @@ function POSView({
   customers,
   refreshCustomers,
   onSaleComplete,
+  confirm,
 }: {
   products: UiProduct[];
   promotions: ApiPromotion[];
@@ -617,6 +134,7 @@ function POSView({
   customers: ApiCustomer[];
   refreshCustomers: () => Promise<void>;
   onSaleComplete: () => Promise<void>;
+  confirm: (opts: ConfirmOptions) => Promise<boolean>;
 }) {
   const promotionsUi = FEATURE_FLAGS.catalogPromotions;
   const [search, setSearch] = useState("");
@@ -649,6 +167,12 @@ function POSView({
   const [customerSuggestOpen, setCustomerSuggestOpen] = useState(false);
   const [savingCustomer, setSavingCustomer] = useState(false);
   const [amountPaidStr, setAmountPaidStr] = useState("");
+  const [posSplitPayment, setPosSplitPayment] = useState(false);
+  const [posCashStr, setPosCashStr] = useState("");
+  const [posOnlineStr, setPosOnlineStr] = useState("");
+  const [posPaymentMethod, setPosPaymentMethod] = useState<
+    "cash" | "online_banking"
+  >("cash");
   /** Freight / transport (added to charged total). */
   const [transportStr, setTransportStr] = useState("");
   const [taxInvoiceSale, setTaxInvoiceSale] = useState<SaleDetail | null>(null);
@@ -791,51 +315,53 @@ function POSView({
     );
   };
 
-  const lineSubtotals = useMemo(
-    () => cart.map((x) => x.price * x.qty),
-    [cart]
-  );
-  const linePromotionDiscounts = useMemo(
-    () =>
-      cart.map((line) => {
-        const productPct = productPromotionPctById.get(line.id) ?? 0;
-        const categoryPct = categoryPromotionPctByName.get(line.category) ?? 0;
-        const pct = Math.max(productPct, categoryPct);
-        return (line.price * line.qty * pct) / 100;
-      }),
-    [cart, productPromotionPctById, categoryPromotionPctByName]
-  );
-  const subtotal = lineSubtotals.reduce((s, x) => s + x, 0);
-  const productCategoryPromoAmt = linePromotionDiscounts.reduce((s, x) => s + x, 0);
-  const subtotalAfterLinePromos = subtotal - productCategoryPromoAmt;
-  const discountAmt = subtotal * (discount / 100);
-  const cartPromoPercent = cartPromotion ? Number(cartPromotion.percentage) : 0;
-  const cartPromoAmt = subtotalAfterLinePromos * (cartPromoPercent / 100);
-  const total = subtotalAfterLinePromos - discountAmt - cartPromoAmt;
+  const transportAmount = useMemo(() => {
+    const t = Number.parseFloat(String(transportStr).replace(/,/g, "").trim());
+    if (!Number.isFinite(t) || t < 0) return 0;
+    return Math.round(t * 100) / 100;
+  }, [transportStr]);
 
-  /** Same per-line discounts as checkout (for GST on taxable value). */
-  const lineDiscountsForPos = useMemo(() => {
-    if (cart.length === 0) return [];
-    const orderLevelDiscountAmt = discountAmt + cartPromoAmt;
-    const orderLevelDiscountPercent =
-      subtotalAfterLinePromos > 0
-        ? (orderLevelDiscountAmt / subtotalAfterLinePromos) * 100
-        : 0;
-    const orderLevelLineDiscounts = allocateLineDiscounts(
-      lineSubtotals.map((v, i) => Math.max(0, v - linePromotionDiscounts[i])),
-      orderLevelDiscountPercent
-    );
-    return linePromotionDiscounts.map(
-      (v, i) => v + (orderLevelLineDiscounts[i] ?? 0)
-    );
-  }, [
-    cart.length,
+  const cartPromoPercent = cartPromotion ? Number(cartPromotion.percentage) : 0;
+
+  const {
     lineSubtotals,
     linePromotionDiscounts,
+    subtotal,
+    productCategoryPromoAmt,
     subtotalAfterLinePromos,
     discountAmt,
     cartPromoAmt,
-  ]);
+    lineDiscountsForPos,
+    grandTotal,
+  } = useMemo(
+    () =>
+      computePosTotals({
+        cart: cart.map((line) => ({
+          id: line.id,
+          price: line.price,
+          qty: line.qty,
+          category: line.category,
+          cgstPercent: line.cgstPercent ?? undefined,
+          sgstPercent: line.sgstPercent ?? undefined,
+          igstPercent: line.igstPercent ?? undefined,
+        })),
+        discountPercent: discount,
+        cartPromoPercent,
+        productPromotionPctById,
+        categoryPromotionPctByName,
+        posTaxInvoice,
+        transportAmount,
+      }),
+    [
+      cart,
+      discount,
+      cartPromoPercent,
+      productPromotionPctById,
+      categoryPromotionPctByName,
+      posTaxInvoice,
+      transportAmount,
+    ]
+  );
 
   const posGstTotals = useMemo(() => {
     if (!posTaxInvoice || cart.length === 0) return null;
@@ -859,43 +385,6 @@ function POSView({
       igst: Math.round(igst * 100) / 100,
     };
   }, [posTaxInvoice, cart, lineDiscountsForPos]);
-
-  /**
-   * Sum of per-line GST exactly as sent to POST /sales (rounded per line).
-   * Must match server taxAmount — do not use bucket-rounded posGstTotals here or
-   * grandTotal vs paidAmount can drift by cents vs server total (+ transport).
-   */
-  const posLineTaxSum = useMemo(() => {
-    if (!posTaxInvoice || cart.length === 0) return 0;
-    let sum = 0;
-    for (let i = 0; i < cart.length; i++) {
-      const line = cart[i];
-      const disc = lineDiscountsForPos[i] ?? 0;
-      const taxable = Math.max(0, line.price * line.qty - disc);
-      const rateSum =
-        (line.cgstPercent ?? 0) +
-        (line.sgstPercent ?? 0) +
-        (line.igstPercent ?? 0);
-      const lineTaxRaw = rateSum > 0 ? (taxable * rateSum) / 100 : 0;
-      sum += Math.round(lineTaxRaw * 100) / 100;
-    }
-    return Math.round(sum * 100) / 100;
-  }, [posTaxInvoice, cart, lineDiscountsForPos]);
-
-  const transportAmount = useMemo(() => {
-    const t = Number.parseFloat(String(transportStr).replace(/,/g, "").trim());
-    if (!Number.isFinite(t) || t < 0) return 0;
-    return Math.round(t * 100) / 100;
-  }, [transportStr]);
-
-  /** Charged total: net + line taxes (same formula as API) + transport. */
-  const grandTotal = useMemo(() => {
-    const base =
-      !posTaxInvoice || cart.length === 0
-        ? total
-        : Math.round((total + posLineTaxSum) * 100) / 100;
-    return Math.round((base + transportAmount) * 100) / 100;
-  }, [total, posTaxInvoice, cart.length, posLineTaxSum, transportAmount]);
 
   const hasPosSaleDraft = useMemo(
     () =>
@@ -924,8 +413,10 @@ function POSView({
   );
 
   useEffect(() => {
-    setAmountPaidStr(grandTotal > 0 ? grandTotal.toFixed(2) : "0.00");
-  }, [grandTotal]);
+    if (!posSplitPayment) {
+      setAmountPaidStr(grandTotal > 0 ? grandTotal.toFixed(2) : "0.00");
+    }
+  }, [grandTotal, posSplitPayment]);
 
   const pickRegisteredCustomer = (c: ApiCustomer) => {
     setPosCustomerId(c.id);
@@ -944,7 +435,7 @@ function POSView({
   };
 
   /** Reset cart + customer + discounts + transport + tax toggle + validation. */
-  const resetPosSaleForm = useCallback((clearStatus: boolean) => {
+    const resetPosSaleForm = useCallback((clearStatus: boolean) => {
     setCart([]);
     setDiscount(0);
     setPromotionCode("");
@@ -955,6 +446,11 @@ function POSView({
     setWalkInPartyState("");
     setTransportStr("");
     setPosTaxInvoice(false);
+    setPosSplitPayment(false);
+    setPosCashStr("");
+    setPosOnlineStr("");
+    setPosPaymentMethod("cash");
+    setAmountPaidStr("");
     setCustomerPhoneError(null);
     setCustomerSuggestOpen(false);
     setFieldErrors({});
@@ -1012,7 +508,7 @@ function POSView({
     }
   };
 
-  const handleCheckout = async () => {
+    const handleCheckout = async () => {
     if (!cart.length || loading) return;
     setLoading(true);
     setStatus(null);
@@ -1040,18 +536,32 @@ function POSView({
         (v, i) => v + (orderLevelLineDiscounts[i] ?? 0)
       );
 
-      const parsedPaid = Number.parseFloat(
-        String(amountPaidStr).replace(/,/g, "").trim()
-      );
-      if (!Number.isFinite(parsedPaid) || parsedPaid < 0) {
-        setStatus({
-          type: "error",
-          msg: "Enter a valid amount received.",
-        });
-        return;
+      let clampedPaid: number;
+      let initialPayments:
+        | Array<{ method: "cash" | "online_banking"; amount: number }>
+        | undefined;
+
+      if (posSplitPayment) {
+        const split = resolveSplitPayment(posCashStr, posOnlineStr, grandTotal);
+        if (!split.ok) {
+          setStatus({ type: "error", msg: split.error });
+          return;
+        }
+        clampedPaid = split.clampedPaid;
+        initialPayments = split.initialPayments;
+      } else {
+        const parsedPaid = parseMoneyField(amountPaidStr);
+        if (parsedPaid == null || parsedPaid < 0) {
+          setStatus({
+            type: "error",
+            msg: "Enter a valid amount received.",
+          });
+          return;
+        }
+        clampedPaid =
+          Math.round(Math.min(grandTotal, Math.max(0, parsedPaid)) * 100) / 100;
       }
-      const clampedPaid =
-        Math.round(Math.min(grandTotal, Math.max(0, parsedPaid)) * 100) / 100;
+
       const hasBalance = grandTotal - clampedPaid > 0.005;
       const walkPhoneDigits = sanitizePhoneDigits(walkInPhone);
       if (
@@ -1095,6 +605,9 @@ function POSView({
           .filter(Boolean)
           .join(" | ") || undefined,
         paidAmount: clampedPaid,
+        ...(posSplitPayment && initialPayments?.length
+          ? { initialPayments }
+          : { paymentMethod: posPaymentMethod }),
         transportAmount,
         lines: cart.map((x, i) => {
           const disc = lineDiscounts[i] ?? 0;
@@ -1145,6 +658,33 @@ function POSView({
         }
       }
 
+      // Warn (but allow) when any line sells below its average cost.
+      const belowCost = cart.filter(
+        (x) => x.avgCost != null && x.avgCost > 0 && x.price < x.avgCost
+      );
+      if (belowCost.length > 0) {
+        const lines = belowCost
+          .map(
+            (x) =>
+              `• ${x.name}: selling ${fmt(x.price)} vs avg cost ${fmt(
+                x.avgCost ?? 0
+              )}`
+          )
+          .join("\n");
+        const proceed = await confirm({
+          title: "Selling below cost",
+          message: `${belowCost.length} item${
+            belowCost.length === 1 ? "" : "s"
+          } priced below average cost:\n\n${lines}\n\nComplete this sale anyway?`,
+          confirmLabel: "Sell anyway",
+          cancelLabel: "Go back",
+          variant: "warning",
+        });
+        if (!proceed) {
+          return;
+        }
+      }
+
       const sale = await api.createSale(saleBody);
 
       const bal = Number(sale.balanceAmount ?? 0);
@@ -1182,6 +722,7 @@ function POSView({
       setLoading(false);
     }
   };
+
 
   const lineErrDetail = (index: number, key: string) =>
     lineErrors.get(index)?.[key];
@@ -1311,7 +852,7 @@ function POSView({
                 >
                   /{p.unit}
                 </div>
-                <Badge status={st} />
+                <StockBadge status={st} />
                 {inCart && (
                   <div
                     style={{
@@ -1319,7 +860,7 @@ function POSView({
                       top: 8,
                       right: 8,
                       background: "var(--accent)",
-                      color: "#fff",
+                      color: "var(--on-accent)",
                       width: 17,
                       height: 17,
                       borderRadius: "50%",
@@ -1489,6 +1030,13 @@ function POSView({
                       <div style={{ fontSize: 11, color: "var(--muted)" }}>
                         {fmt(item.price)}/{item.unit}
                       </div>
+                      {item.avgCost != null &&
+                        item.avgCost > 0 &&
+                        item.price < item.avgCost && (
+                          <div className="pos-cart-line__warn">
+                            Below cost ({fmt(item.avgCost)})
+                          </div>
+                        )}
                     </div>
                     <div
                       style={{ display: "flex", alignItems: "center", gap: 5 }}
@@ -1526,7 +1074,7 @@ function POSView({
                           height: 22,
                           textAlign: "center",
                           border: lineErrDetail(lineIndex, "quantity")
-                            ? "1px solid #fca5a5"
+                            ? "1px solid var(--input-error-border)"
                             : "1px solid var(--border)",
                           borderRadius: 6,
                           fontSize: 12,
@@ -1623,7 +1171,7 @@ function POSView({
                     style={{
                       fontSize: 14,
                       fontWeight: 600,
-                      color: "#1c1917",
+                      color: "var(--text)",
                       lineHeight: 1.3,
                     }}
                   >
@@ -1639,21 +1187,21 @@ function POSView({
                       <>
                         {ph ? (
                           <div
-                            style={{ fontSize: 12, color: "#78716c", marginTop: 2 }}
+                            style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}
                           >
                             {ph}
                           </div>
                         ) : null}
                         {posTaxInvoice && gst ? (
                           <div
-                            style={{ fontSize: 12, color: "#78716c", marginTop: 2 }}
+                            style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}
                           >
                             Party GST No: {gst}
                           </div>
                         ) : null}
                         {posTaxInvoice && pst ? (
                           <div
-                            style={{ fontSize: 12, color: "#78716c", marginTop: 2 }}
+                            style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}
                           >
                             State: {pst}
                           </div>
@@ -1715,8 +1263,8 @@ function POSView({
                         left: 0,
                         right: 0,
                         marginTop: 4,
-                        background: "#fff",
-                        border: "1px solid #e7e5e4",
+                        background: "var(--surface)",
+                        border: "1px solid var(--border)",
                         borderRadius: 8,
                         boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
                         maxHeight: 220,
@@ -1736,17 +1284,17 @@ function POSView({
                             textAlign: "left",
                             padding: "10px 12px",
                             border: "none",
-                            borderBottom: "1px solid #fafaf9",
-                            background: "#fff",
+                            borderBottom: "1px solid var(--surface-subtle)",
+                            background: "var(--surface)",
                             cursor: "pointer",
                             fontSize: 13,
                           }}
                         >
-                          <div style={{ fontWeight: 600, color: "#1c1917" }}>
+                          <div style={{ fontWeight: 600, color: "var(--text)" }}>
                             {c.name}
                           </div>
                           {c.phone ? (
-                            <div style={{ fontSize: 11, color: "#78716c" }}>
+                            <div style={{ fontSize: 11, color: "var(--muted)" }}>
                               {c.phone}
                             </div>
                           ) : null}
@@ -1844,12 +1392,12 @@ function POSView({
                       width: "100%",
                       height: 36,
                       borderRadius: 8,
-                      border: "1px solid #e7e5e4",
+                      border: "1px solid var(--border)",
                       fontSize: 13,
                       fontWeight: 600,
                       cursor: savingCustomer ? "not-allowed" : "pointer",
-                      background: savingCustomer ? "#f5f5f4" : "#fafaf9",
-                      color: savingCustomer ? "#a8a29e" : "#44403c",
+                      background: savingCustomer ? "var(--input-disabled)" : "var(--surface-subtle)",
+                      color: savingCustomer ? "var(--text-faint)" : "var(--text-strong)",
                     }}
                   >
                     {savingCustomer ? "Saving…" : "Save customer"}
@@ -1864,7 +1412,7 @@ function POSView({
               display: "flex",
               justifyContent: "space-between",
               fontSize: 13,
-              color: "#78716c",
+              color: "var(--muted)",
             }}
           >
             <span>Subtotal</span>
@@ -1899,7 +1447,7 @@ function POSView({
             <span>Tax invoice</span>
           </label>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <label style={{ fontSize: 13, color: "#78716c", flex: 1 }}>
+            <label style={{ fontSize: 13, color: "var(--muted)", flex: 1 }}>
               Discount %
             </label>
             <input
@@ -1921,7 +1469,7 @@ function POSView({
                 width: 58,
                 height: 30,
                 textAlign: "center",
-                border: "1px solid #e7e5e4",
+                border: "1px solid var(--border)",
                 borderRadius: 6,
                 fontSize: 13,
                 outline: "none",
@@ -1942,7 +1490,7 @@ function POSView({
           {promotionsUi ? (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <label style={{ fontSize: 13, color: "#78716c", flex: 1 }}>
+                <label style={{ fontSize: 13, color: "var(--muted)", flex: 1 }}>
                   Promotion code
                 </label>
                 <input
@@ -1953,7 +1501,7 @@ function POSView({
                     width: 120,
                     height: 30,
                     textAlign: "center",
-                    border: "1px solid #e7e5e4",
+                    border: "1px solid var(--border)",
                     borderRadius: 6,
                     fontSize: 12,
                     outline: "none",
@@ -1976,7 +1524,7 @@ function POSView({
                   display: "flex",
                   justifyContent: "space-between",
                   fontSize: 12,
-                  color: "#78716c",
+                  color: "var(--muted)",
                 }}
               >
                 <span>Product/category promotions</span>
@@ -2044,7 +1592,7 @@ function POSView({
             </div>
           ) : null}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <label style={{ fontSize: 13, color: "#78716c", flex: 1 }}>
+            <label style={{ fontSize: 13, color: "var(--muted)", flex: 1 }}>
               Transport (₹)
             </label>
             <input
@@ -2081,46 +1629,145 @@ function POSView({
               {fmt(grandTotal)}
             </span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <label
-              style={{ fontSize: 12, color: "#78716c", fontWeight: 600 }}
-            >
-              Amount received
-            </label>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>
+              Payment method
+            </span>
+            <div style={{ display: "flex", gap: 8 }}>
+              {(
+                [
+                  ["cash", "Cash"],
+                  ["online_banking", "Online banking"],
+                ] as const
+              ).map(([value, label]) => {
+                const selected = posPaymentMethod === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => setPosPaymentMethod(value)}
+                    style={{
+                      flex: 1,
+                      height: 38,
+                      borderRadius: 8,
+                      border: selected
+                        ? "1px solid var(--accent)"
+                        : "1px solid var(--border)",
+                      background: selected ? "var(--accent)" : "var(--surface)",
+                      color: selected ? "var(--surface)" : "var(--text-strong)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: loading ? "not-allowed" : "pointer",
+                      opacity: loading ? 0.7 : 1,
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 8,
+              cursor: loading ? "not-allowed" : "pointer",
+              userSelect: "none",
+              fontSize: 12,
+              color: "var(--text)",
+              lineHeight: 1.35,
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
             <input
-              type="number"
-              min={0}
-              step={0.01}
-              value={amountPaidStr}
-              onChange={(e) => setAmountPaidStr(e.target.value)}
+              type="checkbox"
+              checked={posSplitPayment}
+              disabled={loading}
+              onChange={(e) => {
+                const on = e.target.checked;
+                if (on) {
+                  const received = parseMoneyField(amountPaidStr);
+                  if (received != null && received > 0) {
+                    if (posPaymentMethod === "cash") {
+                      setPosCashStr(received.toFixed(2));
+                      setPosOnlineStr("");
+                    } else {
+                      setPosCashStr("");
+                      setPosOnlineStr(received.toFixed(2));
+                    }
+                  } else {
+                    setPosCashStr("");
+                    setPosOnlineStr("");
+                  }
+                } else {
+                  const cash = parseMoneyField(posCashStr) ?? 0;
+                  const online = parseMoneyField(posOnlineStr) ?? 0;
+                  const sum = Math.max(0, cash) + Math.max(0, online);
+                  setAmountPaidStr(
+                    sum > 0 ? sum.toFixed(2) : grandTotal > 0 ? grandTotal.toFixed(2) : "0.00"
+                  );
+                }
+                setPosSplitPayment(on);
+              }}
               style={{
-                ...inputStyle,
-                width: "100%",
-                boxSizing: "border-box",
-                fontSize: 14,
-                height: 40,
+                width: 16,
+                height: 16,
+                marginTop: 2,
+                cursor: loading ? "not-allowed" : "pointer",
+                flexShrink: 0,
               }}
             />
-            {(() => {
-              const p = Number.parseFloat(
-                String(amountPaidStr).replace(/,/g, "").trim()
-              );
-              if (!Number.isFinite(p) || p < 0) return null;
-              const due = Math.max(0, grandTotal - Math.min(grandTotal, p));
-              if (due < 0.005) return null;
-              return (
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: "var(--accent)",
-                    fontWeight: 600,
-                  }}
-                >
-                  Balance due: {fmt(due)}
-                </div>
-              );
-            })()}
-          </div>
+            <span>Split payment (cash + online banking)</span>
+          </label>
+          {posSplitPayment ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--muted)", lineHeight: 1.4 }}>
+                Enter only what is collected now. Any shortfall stays as balance due.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Cash (₹)</label>
+                <input type="number" min={0} step={0.01} value={posCashStr} onChange={(e) => setPosCashStr(e.target.value)} placeholder="0" disabled={loading} style={{ ...inputStyle, width: "100%", boxSizing: "border-box", fontSize: 14, height: 40 }} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Online banking (₹)</label>
+                <input type="number" min={0} step={0.01} value={posOnlineStr} onChange={(e) => setPosOnlineStr(e.target.value)} placeholder="0" disabled={loading} style={{ ...inputStyle, width: "100%", boxSizing: "border-box", fontSize: 14, height: 40 }} />
+              </div>
+              {(() => {
+                const cash = parseMoneyField(posCashStr);
+                const online = parseMoneyField(posOnlineStr);
+                if (cash == null || online == null || cash < 0 || online < 0) return null;
+                const received = Math.round((Math.max(0, cash) + Math.max(0, online)) * 100) / 100;
+                const due = Math.max(0, grandTotal - received);
+                return (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--muted)" }}>
+                      <span>Total received</span>
+                      <span style={{ fontFamily: "monospace", fontWeight: 600 }}>{fmt(received)}</span>
+                    </div>
+                    {due >= 0.005 ? (
+                      <div style={{ fontSize: 13, color: "var(--accent)", fontWeight: 600 }}>Balance due: {fmt(due)}</div>
+                    ) : null}
+                  </>
+                );
+              })()}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Amount received</label>
+              <input type="number" min={0} step={0.01} value={amountPaidStr} onChange={(e) => setAmountPaidStr(e.target.value)} style={{ ...inputStyle, width: "100%", boxSizing: "border-box", fontSize: 14, height: 40 }} />
+              {(() => {
+                const p = parseMoneyField(amountPaidStr);
+                if (p == null || p < 0) return null;
+                const due = Math.max(0, grandTotal - Math.min(grandTotal, p));
+                if (due < 0.005) return null;
+                return (
+                  <div style={{ fontSize: 13, color: "var(--accent)", fontWeight: 600 }}>Balance due: {fmt(due)}</div>
+                );
+              })()}
+            </div>
+          )}
           {fieldErrors.paidAmount ? (
             <div style={{ fontSize: 12, color: "var(--danger)" }}>
               paidAmount: {fieldErrors.paidAmount}
@@ -2142,7 +1789,7 @@ function POSView({
               fontWeight: 600,
               cursor: "pointer",
               background: cart.length ? "var(--accent)" : "var(--border)",
-              color: cart.length ? "#fff" : "#a8a29e",
+              color: cart.length ? "var(--surface)" : "var(--text-faint)",
               transition: "background 0.15s",
             }}
           >
@@ -2155,282 +1802,6 @@ function POSView({
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// INVENTORY VIEW
-// ═══════════════════════════════════════════════════════════════════
-function InventoryView({ products }: { products: UiProduct[] }) {
-  const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("All");
-  const [sortKey, setSortKey] = useState<InventorySortKey>("sku");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-
-  const categoryOptions = useMemo(
-    () => ["All", ...new Set(products.map((p) => p.category))],
-    [products]
-  );
-
-  const scopedProducts = useMemo(
-    () =>
-      categoryFilter === "All"
-        ? products
-        : products.filter((p) => p.category === categoryFilter),
-    [products, categoryFilter]
-  );
-
-  const totalValue = scopedProducts.reduce((s, p) => s + p.price * p.stock, 0);
-  const lowCount = scopedProducts.filter((p) => stockStatus(p) === "low").length;
-  const outCount = scopedProducts.filter((p) => stockStatus(p) === "out").length;
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return scopedProducts.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.sku.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q)
-    );
-  }, [scopedProducts, search]);
-
-  const sorted = useMemo(() => {
-    const arr = [...filtered];
-    arr.sort((a, b) => compareInventoryRows(a, b, sortKey, sortDir));
-    return arr;
-  }, [filtered, sortKey, sortDir]);
-
-  const toggleSort = (key: InventorySortKey) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
-  };
-
-  const sortColumns: { key: InventorySortKey; label: string }[] = [
-    { key: "sku", label: "SKU" },
-    { key: "name", label: "Product" },
-    { key: "category", label: "Category" },
-    { key: "price", label: "Sale Price" },
-    { key: "stock", label: "Stock" },
-    { key: "unit", label: "Unit" },
-    { key: "status", label: "Status" },
-  ];
-
-  const cards = [
-    {
-      label: "Total SKUs",
-      value: String(scopedProducts.length),
-      color: "#1c1917",
-      mono: false,
-    },
-    {
-      label: "Stock Value",
-      value: fmt(totalValue),
-      color: "#1c1917",
-      mono: true,
-    },
-    {
-      label: "Low Stock",
-      value: String(lowCount),
-      color: "#d97706",
-      mono: false,
-    },
-    {
-      label: "Out of Stock",
-      value: String(outCount),
-      color: "#dc2626",
-      mono: false,
-    },
-  ];
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-        flex: 1,
-        minHeight: 0,
-      }}
-    >
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: 12,
-        }}
-      >
-        {cards.map((c) => (
-          <div
-            key={c.label}
-            style={{
-              background: "#fff",
-              borderRadius: 10,
-              border: "1px solid #e7e5e4",
-              padding: "14px 16px",
-            }}
-          >
-            <div
-              style={{ fontSize: 12, color: "#78716c", marginBottom: 6 }}
-            >
-              {c.label}
-            </div>
-            <div
-              style={{
-                fontSize: 22,
-                fontWeight: 700,
-                color: c.color,
-                fontFamily: c.mono ? "monospace" : undefined,
-              }}
-            >
-              {c.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: "flex", gap: 10, alignItems: "center", width: "100%", flexWrap: "wrap" }}>
-        <input
-          placeholder="Search by name, SKU or category..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ ...inputStyle, flex: 1, maxWidth: 560 }}
-        />
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          style={{ ...inputStyle, width: 220 }}
-        >
-          {categoryOptions.map((c) => (
-            <option key={c} value={c}>
-              {c === "All" ? "All Categories" : c}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          background: "#fff",
-          borderRadius: 12,
-          border: "1px solid #e7e5e4",
-        }}
-      >
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            fontSize: 13,
-          }}
-        >
-          <thead>
-            <tr
-              style={{
-                borderBottom: "1px solid #e7e5e4",
-                position: "sticky",
-                top: 0,
-              }}
-            >
-              {sortColumns.map(({ key, label }) => {
-                const active = sortKey === key;
-                return (
-                  <th
-                    key={key}
-                    style={{
-                      padding: "10px 14px",
-                      textAlign: "left",
-                      fontWeight: 600,
-                      color: active ? "#1c1917" : "#78716c",
-                      fontSize: 12,
-                      background: "#fafaf9",
-                      whiteSpace: "nowrap",
-                      cursor: "pointer",
-                      userSelect: "none",
-                    }}
-                    onClick={() => toggleSort(key)}
-                    title="Click to sort"
-                  >
-                    {label}
-                    {active ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((p, i) => {
-              const st = stockStatus(p);
-              return (
-                <tr
-                  key={p.id}
-                  style={{
-                    borderBottom: "1px solid #f5f4f0",
-                    background: i % 2 === 0 ? "#fff" : "#fafaf9",
-                  }}
-                >
-                  <td
-                    style={{
-                      padding: "10px 14px",
-                      fontFamily: "monospace",
-                      color: "#78716c",
-                      fontSize: 12,
-                    }}
-                  >
-                    {p.sku}
-                  </td>
-                  <td
-                    style={{
-                      padding: "10px 14px",
-                      fontWeight: 500,
-                      color: "#1c1917",
-                    }}
-                  >
-                    {p.name}
-                  </td>
-                  <td style={{ padding: "10px 14px", color: "#78716c" }}>
-                    {p.category}
-                  </td>
-                  <td
-                    style={{
-                      padding: "10px 14px",
-                      fontFamily: "monospace",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {fmt(p.price)}
-                  </td>
-                  <td
-                    style={{
-                      padding: "10px 14px",
-                      fontFamily: "monospace",
-                      fontWeight: 700,
-                      color:
-                        st === "out"
-                          ? "#dc2626"
-                          : st === "low"
-                            ? "#d97706"
-                            : "#1c1917",
-                    }}
-                  >
-                    {p.stock}
-                  </td>
-                  <td style={{ padding: "10px 14px", color: "#78716c" }}>
-                    {p.unit}
-                  </td>
-                  <td style={{ padding: "10px 14px" }}>
-                    <Badge status={st} />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
 
 const PURCHASE_INLINE_ERROR_KEYS = new Set([
   "supplierId",
@@ -2439,7 +1810,9 @@ const PURCHASE_INLINE_ERROR_KEYS = new Set([
 ]);
 
 /** Max purchase lines from one CSV/Excel file (matches batch safety). */
-const MAX_PURCHASE_IMPORT_ROWS = 500;
+const MAX_PURCHASE_IMPORT_ROWS = 1500;
+/** Above this count, show a summary instead of one form row per line (keeps the tab responsive). */
+const PURCHASE_LINE_UI_CAP = 40;
 
 function newPurchaseLineRow(): {
   key: string;
@@ -2460,14 +1833,6 @@ function newPurchaseLineRow(): {
   };
 }
 
-const ADJUSTMENT_INLINE_ERROR_KEYS = new Set([
-  "productId",
-  "quantity",
-  "quantityAfter",
-  "reason",
-  "adjustedById",
-  "note",
-]);
 
 // ═══════════════════════════════════════════════════════════════════
 // PURCHASE VIEW
@@ -2505,6 +1870,16 @@ function PurchaseView({
   >(() => new Map());
   const purchaseImportRef = useRef<HTMLInputElement>(null);
   const [importBanner, setImportBanner] = useState<string | null>(null);
+  const [purchaseImportBusy, setPurchaseImportBusy] = useState(false);
+  const [purchaseImportProgress, setPurchaseImportProgress] = useState<string | null>(
+    null
+  );
+
+  const productById = useMemo(
+    () => new Map(products.map((p) => [p.id, p])),
+    [products]
+  );
+  const isBulkPurchaseImport = form.lines.length > PURCHASE_LINE_UI_CAP;
 
   const newSupplierEmpty = useMemo(
     () => ({
@@ -2615,6 +1990,15 @@ function PurchaseView({
     });
   };
 
+  const clearBulkPurchaseLines = () => {
+    setForm((f) => ({
+      ...f,
+      lines: [newPurchaseLineRow()],
+    }));
+    setImportBanner(null);
+    setLineFieldErrors(new Map());
+  };
+
   const downloadPurchaseImportTemplate = () => {
     const bom = "\uFEFF";
     const blob = new Blob([bom + PURCHASE_IMPORT_TEMPLATE_CSV], {
@@ -2633,7 +2017,10 @@ function PurchaseView({
     e.target.value = "";
     if (!file) return;
     setImportBanner(null);
+    setPurchaseImportBusy(true);
+    setPurchaseImportProgress(null);
     try {
+      await paintBeforeWork();
       const {
         patches,
         patchSourceRows,
@@ -2643,16 +2030,30 @@ function PurchaseView({
       } = await parsePurchaseLinesImportFile(file);
       const capped = patches.slice(0, MAX_PURCHASE_IMPORT_ROWS);
       const cappedRows = patchSourceRows.slice(0, MAX_PURCHASE_IMPORT_ROWS);
+      setPurchaseImportProgress(
+        capped.length > 0
+          ? `Matching ${capped.length} row${capped.length !== 1 ? "s" : ""} to your catalog…`
+          : null
+      );
+      await paintBeforeWork();
       const {
         lines: importedLines,
         unresolved,
         supplierUnresolved,
         resolvedSupplierId,
-      } = resolvePurchaseImportPatches(capped, products, cappedRows, {
-        suppliers,
-        hasSupplierColumn,
-        defaultSupplierId: form.supplierId || null,
-      });
+      } = await resolvePurchaseImportPatchesAsync(
+        capped,
+        products,
+        cappedRows,
+        {
+          suppliers,
+          hasSupplierColumn,
+          defaultSupplierId: form.supplierId || null,
+        },
+        (done, total) => {
+          setPurchaseImportProgress(`Matched ${done} of ${total} rows…`);
+        }
+      );
       if (importedLines.length === 0) {
         const msg =
           supplierUnresolved.length > 0
@@ -2701,9 +2102,13 @@ function PurchaseView({
         );
       }
       if (unresolved.length > 0) {
-        parts.push(
-          `Not imported: ${unresolved.map((u) => `row ${u.row}: ${u.message}`).join("; ")}`
-        );
+        const shown = unresolved
+          .slice(0, 5)
+          .map((u) => `row ${u.row}: ${u.message}`)
+          .join("; ");
+        const more =
+          unresolved.length > 5 ? ` (+${unresolved.length - 5} more not imported)` : "";
+        parts.push(`Not imported: ${shown}${more}`);
       }
       setImportBanner(parts.join(" "));
       setStatus(null);
@@ -2711,6 +2116,9 @@ function PurchaseView({
       window.alert(
         err instanceof Error ? err.message : "Could not read that file."
       );
+    } finally {
+      setPurchaseImportBusy(false);
+      setPurchaseImportProgress(null);
     }
   };
 
@@ -2833,6 +2241,7 @@ function PurchaseView({
     setFieldErrors({});
     setLineFieldErrors(new Map());
     try {
+      await paintBeforeWork();
       const linesPayload = form.lines.map((ln) => {
         const p = products.find((x) => x.id === ln.productId);
         return {
@@ -2942,6 +2351,24 @@ function PurchaseView({
   };
 
   return (
+  <>
+    <BusyOverlay
+      open={purchaseImportBusy}
+      title="Reading import file…"
+      subtitle={
+        purchaseImportProgress ??
+        "Matching products and suppliers from your spreadsheet."
+      }
+    />
+    <BusyOverlay
+      open={loading}
+      title="Recording purchase…"
+      subtitle={
+        form.lines.length > 0
+          ? `Saving ${form.lines.length} line${form.lines.length !== 1 ? "s" : ""} — please keep this tab open.`
+          : "Please keep this tab open."
+      }
+    />
     <div
       style={{
         display: "flex",
@@ -2954,9 +2381,9 @@ function PurchaseView({
     <div style={{ maxWidth: 560 }}>
       <div
         style={{
-          background: "#fff",
+          background: "var(--surface)",
           borderRadius: 12,
-          border: "1px solid #e7e5e4",
+          border: "1px solid var(--border)",
           padding: 24,
           display: "flex",
           flexDirection: "column",
@@ -2970,7 +2397,7 @@ function PurchaseView({
             alignItems: "center",
             justifyContent: "space-between",
             gap: 12,
-            borderBottom: "1px solid #f0ece8",
+            borderBottom: "1px solid var(--border)",
             paddingBottom: 14,
           }}
         >
@@ -2993,19 +2420,20 @@ function PurchaseView({
             <button
               type="button"
               onClick={() => purchaseImportRef.current?.click()}
+              disabled={purchaseImportBusy || loading}
               style={{
                 height: 34,
                 padding: "0 12px",
-                background: "#fff",
-                border: "1px solid #e7e5e4",
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
                 borderRadius: 8,
                 fontSize: 12,
                 fontWeight: 600,
-                color: "#44403c",
-                cursor: "pointer",
+                color: purchaseImportBusy || loading ? "var(--text-faint)" : "var(--text-strong)",
+                cursor: purchaseImportBusy || loading ? "not-allowed" : "pointer",
               }}
             >
-              Import CSV / Excel
+              {purchaseImportBusy ? "Importing…" : "Import CSV / Excel"}
             </button>
             <button
               type="button"
@@ -3013,12 +2441,12 @@ function PurchaseView({
               style={{
                 height: 34,
                 padding: "0 12px",
-                background: "#fafaf9",
-                border: "1px solid #e7e5e4",
+                background: "var(--surface-subtle)",
+                border: "1px solid var(--border)",
                 borderRadius: 8,
                 fontSize: 12,
                 fontWeight: 600,
-                color: "#78716c",
+                color: "var(--muted)",
                 cursor: "pointer",
               }}
             >
@@ -3091,10 +2519,10 @@ function PurchaseView({
         {showAddSupplier && (
           <div
             style={{
-              border: "1px solid #e7e5e4",
+              border: "1px solid var(--border)",
               borderRadius: 10,
               padding: 16,
-              background: "#fafaf9",
+              background: "var(--surface-subtle)",
               display: "flex",
               flexDirection: "column",
               gap: 12,
@@ -3104,7 +2532,7 @@ function PurchaseView({
               style={{
                 fontSize: 13,
                 fontWeight: 600,
-                color: "#44403c",
+                color: "var(--text-strong)",
               }}
             >
               New supplier
@@ -3131,15 +2559,15 @@ function PurchaseView({
                 }
                 style={{
                   ...inputStyle,
-                  borderColor: newSupplierErrors.name ? "#fca5a5" : "#e7e5e4",
+                  borderColor: newSupplierErrors.name ? "var(--input-error-border)" : "var(--border)",
                 }}
               />
             </FieldWrap>
             {matchingSupplier && !newSupplierErrors.name && (
               <div
                 style={{
-                  background: "#fef3c7",
-                  color: "#92400e",
+                  background: "var(--stock-low-bg)",
+                  color: "var(--caution-text)",
                   borderRadius: 8,
                   padding: "8px 10px",
                   fontSize: 12,
@@ -3161,8 +2589,8 @@ function PurchaseView({
                 style={{
                   ...inputStyle,
                   borderColor: newSupplierErrors.contactPerson
-                    ? "#fca5a5"
-                    : "#e7e5e4",
+                    ? "var(--input-error-border)"
+                    : "var(--border)",
                 }}
               />
             </FieldWrap>
@@ -3186,7 +2614,7 @@ function PurchaseView({
                   }
                   style={{
                     ...inputStyle,
-                    borderColor: newSupplierErrors.phone ? "#fca5a5" : "#e7e5e4",
+                    borderColor: newSupplierErrors.phone ? "var(--input-error-border)" : "var(--border)",
                   }}
                 />
               </FieldWrap>
@@ -3199,7 +2627,7 @@ function PurchaseView({
                   }
                   style={{
                     ...inputStyle,
-                    borderColor: newSupplierErrors.email ? "#fca5a5" : "#e7e5e4",
+                    borderColor: newSupplierErrors.email ? "var(--input-error-border)" : "var(--border)",
                   }}
                 />
               </FieldWrap>
@@ -3212,7 +2640,7 @@ function PurchaseView({
                 }
                 style={{
                   ...inputStyle,
-                  borderColor: newSupplierErrors.address ? "#fca5a5" : "#e7e5e4",
+                  borderColor: newSupplierErrors.address ? "var(--input-error-border)" : "var(--border)",
                 }}
               />
             </FieldWrap>
@@ -3229,8 +2657,8 @@ function PurchaseView({
                 style={{
                   ...inputStyle,
                   borderColor: newSupplierErrors.gstNumber
-                    ? "#fca5a5"
-                    : "#e7e5e4",
+                    ? "var(--input-error-border)"
+                    : "var(--border)",
                 }}
               />
             </FieldWrap>
@@ -3243,7 +2671,7 @@ function PurchaseView({
                 rows={2}
                 style={{
                   padding: "8px 12px",
-                  border: `1px solid ${newSupplierErrors.note ? "#fca5a5" : "#e7e5e4"}`,
+                  border: `1px solid ${newSupplierErrors.note ? "var(--input-error-border)" : "var(--border)"}`,
                   borderRadius: 8,
                   fontSize: 14,
                   resize: "vertical",
@@ -3258,8 +2686,8 @@ function PurchaseView({
               disabled={creatingSupplier}
               style={{
                 height: 40,
-                background: "#78716c",
-                color: "#fff",
+                background: "var(--muted)",
+                color: "var(--on-accent)",
                 border: "none",
                 borderRadius: 8,
                 fontSize: 14,
@@ -3276,20 +2704,23 @@ function PurchaseView({
           style={{
             fontWeight: 600,
             fontSize: 14,
-            color: "#44403c",
-            borderBottom: "1px solid #f0ece8",
+            color: "var(--text-strong)",
+            borderBottom: "1px solid var(--border)",
             paddingBottom: 10,
           }}
         >
           Line items
         </div>
 
-        <p style={{ margin: 0, fontSize: 12, color: "#78716c" }}>
+        <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>
           Row 1 = headers. Required:{" "}
           <code style={{ fontSize: 11 }}>quantity</code>,{" "}
           <code style={{ fontSize: 11 }}>unit cost</code> (or rate / purchase price), and{" "}
           <code style={{ fontSize: 11 }}>brand code</code> and/or{" "}
-          <code style={{ fontSize: 11 }}>product name</code> to match your catalog. Optional:{" "}
+          <code style={{ fontSize: 11 }}>product name</code> to match your catalog. When you
+          record the purchase, catalog <strong>cost</strong> is set from unit cost and{" "}
+          <strong>selling price</strong> is recalculated from the product&apos;s percentage markup
+          (same rule as Products). Optional:{" "}
           <code style={{ fontSize: 11 }}>supplier</code> / <code style={{ fontSize: 11 }}>vendor</code>{" "}
           (name or GST); all rows must be the same supplier. Leave a cell blank only if you
           already selected that supplier above. Optional:{" "}
@@ -3301,9 +2732,9 @@ function PurchaseView({
         {importBanner ? (
           <div
             style={{
-              background: "#fefce8",
-              border: "1px solid #fde047",
-              color: "#854d0e",
+              background: "var(--caution-soft)",
+              border: "1px solid var(--caution-border)",
+              color: "var(--caution-text)",
               padding: "10px 14px",
               borderRadius: 8,
               fontSize: 13,
@@ -3314,140 +2745,211 @@ function PurchaseView({
           </div>
         ) : null}
 
-        {form.lines.map((line, idx) => {
-          const rowErr = lineFieldErrors.get(idx);
-          const prodErr = rowErr?.productId ?? rowErr?.productUnitId;
-          const qtyErr = rowErr?.quantity;
-          const costErr = rowErr?.unitCost;
-          const sel = products.find((p) => p.id === line.productId);
-          return (
+        {isBulkPurchaseImport ? (
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              padding: 16,
+              background: "var(--surface-subtle)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+            }}
+          >
+            <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text)" }}>
+              {form.lines.length} line items loaded from import
+            </div>
+            <div style={{ fontSize: 14, color: "var(--text-strong)" }}>
+              Estimated total: <strong>{fmt(totalCost)}</strong>
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+              Large imports use a summary view so this page stays responsive. Review the
+              banner above, then record the purchase — or clear the import to edit lines one
+              at a time.
+            </p>
             <div
-              key={line.key}
               style={{
-                border: "1px solid #e7e5e4",
-                borderRadius: 10,
-                padding: 14,
-                background: "#fafaf9",
+                fontSize: 12,
+                color: "var(--muted)",
+                borderTop: "1px solid var(--border)",
+                paddingTop: 10,
                 display: "flex",
                 flexDirection: "column",
-                gap: 12,
+                gap: 4,
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#78716c" }}>
-                  Line {idx + 1}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => removePurchaseLine(idx)}
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "#78716c",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    textDecoration: "underline",
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-              <FieldWrap label="Product *" error={prodErr}>
-                <select
-                  value={line.productId}
-                  onChange={(e) => setLine(idx, { productId: e.target.value })}
-                  style={{ ...inputStyle, padding: "0 10px", cursor: "pointer" }}
-                >
-                  <option value="">— Select product —</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.sku})
-                    </option>
-                  ))}
-                </select>
-              </FieldWrap>
-              {sel ? (
-                <div
-                  style={{
-                    background: "#fef9ee",
-                    borderRadius: 8,
-                    padding: "8px 12px",
-                    fontSize: 12,
-                    color: "#78716c",
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 16,
-                  }}
-                >
-                  <span>
-                    Stock:{" "}
-                    <strong style={{ color: "#1c1917" }}>
-                      {sel.stock} {sel.unit}
-                    </strong>
-                  </span>
-                  <span>
-                    Sale:{" "}
-                    <strong style={{ color: "#1c1917" }}>{fmt(sel.price)}</strong>
-                  </span>
+              {form.lines.slice(0, 5).map((line, idx) => {
+                const p = productById.get(line.productId);
+                return (
+                  <div key={line.key}>
+                    {idx + 1}. {p?.name ?? "Product"} × {line.quantity} @{" "}
+                    {fmt(Number(line.unitCost) || 0)}
+                  </div>
+                );
+              })}
+              {form.lines.length > 5 ? (
+                <div style={{ color: "var(--muted)", marginTop: 4 }}>
+                  … and {form.lines.length - 5} more lines
                 </div>
               ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={clearBulkPurchaseLines}
+              style={{
+                alignSelf: "flex-start",
+                height: 34,
+                padding: "0 12px",
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--muted)",
+                cursor: "pointer",
+              }}
+            >
+              Clear import
+            </button>
+          </div>
+        ) : (
+          form.lines.map((line, idx) => {
+            const rowErr = lineFieldErrors.get(idx);
+            const prodErr = rowErr?.productId ?? rowErr?.productUnitId;
+            const qtyErr = rowErr?.quantity;
+            const costErr = rowErr?.unitCost;
+            const sel = productById.get(line.productId);
+            return (
               <div
+                key={line.key}
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 14,
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  padding: 14,
+                  background: "var(--surface-subtle)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
                 }}
               >
-                <FieldWrap label="Quantity *" error={qtyErr}>
-                  <input
-                    type="number"
-                    min={0.0001}
-                    step="any"
-                    placeholder="0"
-                    value={line.quantity}
-                    onChange={(e) => setLine(idx, { quantity: e.target.value })}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>
+                    Line {idx + 1}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removePurchaseLine(idx)}
                     style={{
-                      ...inputStyle,
-                      borderColor: qtyErr ? "#fca5a5" : "#e7e5e4",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "var(--muted)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      textDecoration: "underline",
                     }}
-                  />
+                  >
+                    Remove
+                  </button>
+                </div>
+                <FieldWrap label="Product *" error={prodErr}>
+                  <select
+                    value={line.productId}
+                    onChange={(e) => setLine(idx, { productId: e.target.value })}
+                    style={{ ...inputStyle, padding: "0 10px", cursor: "pointer" }}
+                  >
+                    <option value="">— Select product —</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.sku})
+                      </option>
+                    ))}
+                  </select>
                 </FieldWrap>
-                <FieldWrap label="Unit Cost (₹) *" error={costErr}>
-                  <input
-                    type="number"
-                    min={0}
-                    step="any"
-                    placeholder="0.00"
-                    value={line.unitCost}
-                    onChange={(e) => setLine(idx, { unitCost: e.target.value })}
+                {sel ? (
+                  <div
                     style={{
-                      ...inputStyle,
-                      borderColor: costErr ? "#fca5a5" : "#e7e5e4",
+                      background: "var(--caution-panel)",
+                      borderRadius: 8,
+                      padding: "8px 12px",
+                      fontSize: 12,
+                      color: "var(--muted)",
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 16,
                     }}
+                  >
+                    <span>
+                      Stock:{" "}
+                      <strong style={{ color: "var(--text)" }}>
+                        {sel.stock} {sel.unit}
+                      </strong>
+                    </span>
+                    <span>
+                      Sale:{" "}
+                      <strong style={{ color: "var(--text)" }}>{fmt(sel.price)}</strong>
+                    </span>
+                  </div>
+                ) : null}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 14,
+                  }}
+                >
+                  <FieldWrap label="Quantity *" error={qtyErr}>
+                    <input
+                      type="number"
+                      min={0.0001}
+                      step="any"
+                      placeholder="0"
+                      value={line.quantity}
+                      onChange={(e) => setLine(idx, { quantity: e.target.value })}
+                      style={{
+                        ...inputStyle,
+                        borderColor: qtyErr ? "var(--input-error-border)" : "var(--border)",
+                      }}
+                    />
+                  </FieldWrap>
+                  <FieldWrap label="Unit Cost (₹) *" error={costErr}>
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      placeholder="0.00"
+                      value={line.unitCost}
+                      onChange={(e) => setLine(idx, { unitCost: e.target.value })}
+                      style={{
+                        ...inputStyle,
+                        borderColor: costErr ? "var(--input-error-border)" : "var(--border)",
+                      }}
+                    />
+                  </FieldWrap>
+                </div>
+                <FieldWrap label="Line note (optional)">
+                  <input
+                    type="text"
+                    placeholder="e.g. batch, shelf, supplier remarks"
+                    value={line.lineNote}
+                    onChange={(e) => setLine(idx, { lineNote: e.target.value })}
+                    style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }}
                   />
                 </FieldWrap>
               </div>
-              <FieldWrap label="Line note (optional)">
-                <input
-                  type="text"
-                  placeholder="e.g. batch, shelf, supplier remarks"
-                  value={line.lineNote}
-                  onChange={(e) => setLine(idx, { lineNote: e.target.value })}
-                  style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }}
-                />
-              </FieldWrap>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
 
+        {!isBulkPurchaseImport ? (
         <button
           type="button"
           onClick={addPurchaseLine}
@@ -3455,30 +2957,31 @@ function PurchaseView({
             alignSelf: "flex-start",
             height: 36,
             padding: "0 14px",
-            background: "#fff",
-            border: "1px solid #e7e5e4",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
             borderRadius: 8,
             fontSize: 13,
             fontWeight: 600,
-            color: "#44403c",
+            color: "var(--text-strong)",
             cursor: "pointer",
           }}
         >
           + Add line
         </button>
+        ) : null}
 
         {totalCost > 0 && (
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
-              background: "#f5f4f0",
+              background: "var(--input-disabled)",
               padding: "10px 14px",
               borderRadius: 8,
               fontSize: 14,
             }}
           >
-            <span style={{ color: "#78716c" }}>Total Purchase Cost</span>
+            <span style={{ color: "var(--muted)" }}>Total Purchase Cost</span>
             <strong style={{ fontFamily: "monospace" }}>{fmt(totalCost)}</strong>
           </div>
         )}
@@ -3492,7 +2995,7 @@ function PurchaseView({
             }
             style={{
               ...inputStyle,
-              borderColor: fieldErrors.invoiceDate ? "#fca5a5" : "#e7e5e4",
+              borderColor: fieldErrors.invoiceDate ? "var(--input-error-border)" : "var(--border)",
             }}
           />
         </FieldWrap>
@@ -3505,7 +3008,7 @@ function PurchaseView({
             placeholder="Any additional notes..."
             style={{
               padding: "8px 12px",
-              border: `1px solid ${fieldErrors.note ? "#fca5a5" : "#e7e5e4"}`,
+              border: `1px solid ${fieldErrors.note ? "var(--input-error-border)" : "var(--border)"}`,
               borderRadius: 8,
               fontSize: 14,
               resize: "vertical",
@@ -3521,16 +3024,16 @@ function PurchaseView({
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={loading}
+          disabled={loading || purchaseImportBusy}
           style={{
             height: 44,
-            background: "var(--accent)",
-            color: "#fff",
+            background: loading ? "var(--border)" : "var(--accent)",
+            color: loading ? "var(--text-faint)" : "var(--on-accent)",
             border: "none",
             borderRadius: 10,
             fontSize: 15,
             fontWeight: 600,
-            cursor: "pointer",
+            cursor: loading || purchaseImportBusy ? "not-allowed" : "pointer",
           }}
         >
           {loading ? "Recording..." : "Record Purchase"}
@@ -3541,9 +3044,9 @@ function PurchaseView({
       {isAdminUser ? (
         <div
           style={{
-            background: "#fff",
+            background: "var(--surface)",
             borderRadius: 12,
-            border: "1px solid #e7e5e4",
+            border: "1px solid var(--border)",
             padding: 24,
             display: "flex",
             flexDirection: "column",
@@ -3555,14 +3058,14 @@ function PurchaseView({
               style={{
                 fontWeight: 600,
                 fontSize: 16,
-                borderBottom: "1px solid #f0ece8",
+                borderBottom: "1px solid var(--border)",
                 paddingBottom: 10,
                 color: "var(--text)",
               }}
             >
               Supplier payments
             </div>
-            <p style={{ margin: "8px 0 0", fontSize: 13, color: "#78716c" }}>
+            <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--muted)" }}>
               Purchases still owed to suppliers. Record partial payments; each entry
               is stored with date and who recorded it.
             </p>
@@ -3576,9 +3079,9 @@ function PurchaseView({
                 height: 36,
                 padding: "0 14px",
                 borderRadius: 8,
-                border: "1px solid #e7e5e4",
-                background: "#fafaf9",
-                color: "#44403c",
+                border: "1px solid var(--border)",
+                background: "var(--surface-subtle)",
+                color: "var(--text-strong)",
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: payLoading ? "not-allowed" : "pointer",
@@ -3587,7 +3090,7 @@ function PurchaseView({
               Refresh
             </button>
             {payLoading ? (
-              <span style={{ fontSize: 13, color: "#78716c" }}>Loading…</span>
+              <span style={{ fontSize: 13, color: "var(--muted)" }}>Loading…</span>
             ) : null}
           </div>
           {payError ? (
@@ -3595,8 +3098,8 @@ function PurchaseView({
               style={{
                 padding: "10px 12px",
                 borderRadius: 8,
-                background: "#fef2f2",
-                color: "#b91c1c",
+                background: "var(--danger-soft-solid)",
+                color: "var(--danger-text)",
                 fontSize: 13,
               }}
             >
@@ -3604,7 +3107,7 @@ function PurchaseView({
             </div>
           ) : null}
           {!payLoading && !payError && payRows.length === 0 ? (
-            <div style={{ fontSize: 14, color: "#78716c" }}>
+            <div style={{ fontSize: 14, color: "var(--muted)" }}>
               No outstanding supplier balances.
             </div>
           ) : null}
@@ -3618,7 +3121,7 @@ function PurchaseView({
                 }}
               >
                 <thead>
-                  <tr style={{ background: "#fafaf9", color: "#78716c" }}>
+                  <tr style={{ background: "var(--surface-subtle)", color: "var(--muted)" }}>
                     <th style={{ textAlign: "left", padding: "10px 12px" }}>
                       Purchase
                     </th>
@@ -3646,12 +3149,12 @@ function PurchaseView({
                     return (
                       <tr
                         key={r.id}
-                        style={{ borderTop: "1px solid #f0ece8" }}
+                        style={{ borderTop: "1px solid var(--border)" }}
                       >
                         <td style={{ padding: "10px 12px", fontWeight: 600 }}>
                           {r.purchaseNumber}
                         </td>
-                        <td style={{ padding: "10px 12px", color: "#78716c" }}>
+                        <td style={{ padding: "10px 12px", color: "var(--muted)" }}>
                           {Number.isNaN(dt.getTime())
                             ? r.createdAt
                             : formatIndiaDateTime(dt)}
@@ -3671,7 +3174,7 @@ function PurchaseView({
                             padding: "10px 12px",
                             textAlign: "right",
                             fontFamily: "monospace",
-                            color: "#78716c",
+                            color: "var(--muted)",
                           }}
                         >
                           {fmt(Number(r.paidAmount))}
@@ -3697,7 +3200,7 @@ function PurchaseView({
                               borderRadius: 8,
                               border: "none",
                               background: "var(--accent)",
-                              color: "#fff",
+                              color: "var(--on-accent)",
                               fontSize: 12,
                               fontWeight: 600,
                               cursor: "pointer",
@@ -3724,7 +3227,7 @@ function PurchaseView({
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
+            background: "var(--overlay-scrim)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -3744,7 +3247,7 @@ function PurchaseView({
               borderRadius: 12,
               border: "1px solid var(--border)",
               padding: 20,
-              boxShadow: "0 20px 50px rgba(0,0,0,0.15)",
+              boxShadow: "0 20px 50px var(--shadow-color)",
             }}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
@@ -3865,7 +3368,7 @@ function PurchaseView({
                   borderRadius: 8,
                   border: "none",
                   background: "var(--accent)",
-                  color: "#fff",
+                  color: "var(--on-accent)",
                   fontWeight: 600,
                   cursor: payLoadingSubmit ? "wait" : "pointer",
                 }}
@@ -3877,486 +3380,10 @@ function PurchaseView({
         </div>
       ) : null}
     </div>
+  </>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// STOCK ADJUSTMENT VIEW
-// ═══════════════════════════════════════════════════════════════════
-function AdjustmentView({
-  products,
-  actingUserId,
-  onAdjustmentComplete,
-}: {
-  products: UiProduct[];
-  actingUserId: string;
-  onAdjustmentComplete: () => Promise<void>;
-}) {
-  const empty = { productId: "", type: "add" as const, quantity: "", reason: "" };
-  const pageSize = 12;
-  const reasonOptions = [
-    "Physical Count",
-    "Damage",
-    "Wastage",
-    "Supplier Return",
-    "Correction",
-    "Other",
-  ];
-  const [form, setForm] = useState<{
-    productId: string;
-    type: "add" | "remove" | "set";
-    quantity: string;
-    reason: string;
-  }>(empty);
-  const [status, setStatus] = useState<{
-    type: "success" | "error";
-    msg: string;
-  } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [productSearch, setProductSearch] = useState("");
-  const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">("all");
-  const [listPage, setListPage] = useState(1);
-  const [reasonPreset, setReasonPreset] = useState("Physical Count");
-  const [reasonNote, setReasonNote] = useState("");
-
-  useEffect(() => {
-    setFieldErrors({});
-  }, [form.productId, form.type, form.quantity, form.reason]);
-
-  const adjustmentFormBanner = useMemo(() => {
-    const extra = Object.entries(fieldErrors).filter(
-      ([k]) => !ADJUSTMENT_INLINE_ERROR_KEYS.has(k)
-    );
-    if (extra.length === 0) return undefined;
-    return extra.map(([k, v]) => `${k}: ${v}`).join(" · ");
-  }, [fieldErrors]);
-
-  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
-    setForm((f) => ({ ...f, [k]: v }));
-
-  const selectedProduct = products.find((p) => p.id === form.productId);
-  const filteredProducts = useMemo(() => {
-    const q = productSearch.trim().toLowerCase();
-    return products.filter((p) => {
-      if (stockFilter === "out" && p.stock !== 0) return false;
-      if (stockFilter === "low" && (p.stock === 0 || p.stock > p.lowStock)) return false;
-      if (!q) return true;
-      return (
-        p.name.toLowerCase().includes(q) ||
-        p.sku.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q)
-      );
-    });
-  }, [products, productSearch, stockFilter]);
-  const pageCount = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
-  useEffect(() => {
-    if (listPage > pageCount) setListPage(pageCount);
-  }, [listPage, pageCount]);
-  const pagedProducts = useMemo(() => {
-    const start = (listPage - 1) * pageSize;
-    return filteredProducts.slice(start, start + pageSize);
-  }, [filteredProducts, listPage]);
-
-  const previewStock = (): number | null => {
-    if (!selectedProduct || form.quantity === "") return null;
-    const qtyVal = Number(form.quantity);
-    if (!Number.isFinite(qtyVal)) return null;
-    if (form.type === "add") return selectedProduct.stock + qtyVal;
-    if (form.type === "remove")
-      return Math.max(0, selectedProduct.stock - qtyVal);
-    if (form.type === "set") return qtyVal;
-    return null;
-  };
-
-  const handleSubmit = async () => {
-    if (loading) return;
-    if (!selectedProduct) {
-      setStatus({
-        type: "error",
-        msg: "Select a product first.",
-      });
-      setTimeout(() => setStatus(null), 4000);
-      return;
-    }
-    if (reasonPreset === "Other" && reasonNote.trim() === "") {
-      setStatus({ type: "error", msg: "Please enter a reason note for 'Other'." });
-      setTimeout(() => setStatus(null), 4000);
-      return;
-    }
-
-    const qtyVal = Number(form.quantity);
-    if (form.quantity === "" || !Number.isFinite(qtyVal) || qtyVal < 0) {
-      setStatus({ type: "error", msg: "Enter a valid quantity." });
-      setTimeout(() => setStatus(null), 4000);
-      return;
-    }
-
-    const current = selectedProduct.stock;
-    let quantityAfter: number;
-    if (form.type === "add") quantityAfter = current + qtyVal;
-    else if (form.type === "remove") quantityAfter = Math.max(0, current - qtyVal);
-    else quantityAfter = qtyVal;
-
-    const riskyAction =
-      (form.type === "remove" && qtyVal >= Math.max(20, current * 0.5)) ||
-      (form.type === "set" && quantityAfter === 0);
-    if (riskyAction) {
-      const ok = window.confirm(
-        `Please confirm this adjustment.\nCurrent: ${current} ${selectedProduct.unit}\nAfter: ${quantityAfter} ${selectedProduct.unit}`
-      );
-      if (!ok) return;
-    }
-
-    const resolvedReason =
-      reasonPreset === "Other" ? reasonNote.trim() : reasonPreset;
-    const noteParts = [
-      form.type !== "set" ? `Mode: ${form.type}` : null,
-      reasonPreset !== "Other" && reasonNote.trim() ? reasonNote.trim() : null,
-    ].filter((x): x is string => Boolean(x));
-
-    setLoading(true);
-    setStatus(null);
-    setFieldErrors({});
-    try {
-      await api.createStockAdjustment({
-        productId: form.productId,
-        adjustedById: actingUserId,
-        quantityAfter,
-        reason: resolvedReason,
-        note: noteParts.length > 0 ? noteParts.join(" | ") : undefined,
-      });
-      setStatus({
-        type: "success",
-        msg: "Adjustment recorded — stock updated.",
-      });
-      setForm(empty);
-      setReasonPreset("Physical Count");
-      setReasonNote("");
-      await onAdjustmentComplete();
-      setTimeout(() => setStatus(null), 4000);
-    } catch (e) {
-      if (isApiError(e)) {
-        const fe: Record<string, string> = {};
-        for (const d of e.details ?? []) {
-          const k = mapAdjustmentDetailField(d.field);
-          if (!fe[k]) fe[k] = d.message;
-        }
-        setFieldErrors(fe);
-        setStatus({ type: "error", msg: e.message });
-      } else {
-        setStatus({
-          type: "error",
-          msg: e instanceof Error ? e.message : "Adjustment failed",
-        });
-      }
-      setTimeout(() => setStatus(null), 6000);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const adjTypes = [
-    { value: "add" as const, label: "Add Stock", sub: "Received stock" },
-    { value: "remove" as const, label: "Reduce Stock", sub: "Damage / write-off" },
-    { value: "set" as const, label: "Set Exact Count", sub: "Physical count" },
-  ];
-  const adjustQuantityBy = (delta: number) => {
-    const cur = Number(form.quantity || 0);
-    const next = Math.max(0, (Number.isFinite(cur) ? cur : 0) + delta);
-    set("quantity", String(next));
-  };
-
-  const preview = previewStock();
-
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(0, 1.8fr) minmax(420px, 1.2fr)",
-        gap: 16,
-        width: "100%",
-        alignItems: "start",
-      }}
-    >
-      <div style={{ background: "#fff", border: "1px solid #e7e5e4", borderRadius: 12, overflow: "hidden" }}>
-        <div style={{ padding: 14, borderBottom: "1px solid #f0ece8", display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <input
-            value={productSearch}
-            onChange={(e) => {
-              setProductSearch(e.target.value);
-              setListPage(1);
-            }}
-            placeholder="Search by name, SKU or category..."
-            style={{ ...inputStyle, flex: 1, minWidth: 240 }}
-          />
-          {([
-            ["all", "All"],
-            ["low", "Low Stock"],
-            ["out", "Out of Stock"],
-          ] as const).map(([k, label]) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => {
-                setStockFilter(k);
-                setListPage(1);
-              }}
-              style={{
-                height: 32,
-                padding: "0 10px",
-                borderRadius: 8,
-                border: stockFilter === k ? "2px solid var(--accent)" : "1px solid #e7e5e4",
-                background: stockFilter === k ? "rgba(37,99,235,0.08)" : "#fff",
-                color: stockFilter === k ? "var(--accent)" : "#44403c",
-                fontWeight: 600,
-                fontSize: 12,
-                cursor: "pointer",
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div style={{ maxHeight: 560, overflow: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid #f0ece8", background: "#fafaf9" }}>
-                {["SKU", "Name", "Category", "Price", "Stock", "Status"].map((h) => (
-                  <th
-                    key={h}
-                    style={{
-                      textAlign: "left",
-                      padding: "8px 10px",
-                      color: "#78716c",
-                      fontWeight: 600,
-                      position: "sticky",
-                      top: 0,
-                      background: "#fafaf9",
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {pagedProducts.length === 0 ? (
-                <tr>
-                  <td colSpan={6} style={{ padding: "16px 12px", color: "#a8a29e" }}>
-                    No products match your filter.
-                  </td>
-                </tr>
-              ) : (
-                pagedProducts.map((p, idx) => {
-                  const active = p.id === form.productId;
-                  const statusLabel = p.stock === 0 ? "OUT" : p.stock <= p.lowStock ? "LOW" : "OK";
-                  return (
-                    <tr
-                      key={p.id}
-                      onClick={() => set("productId", p.id)}
-                      style={{
-                        cursor: "pointer",
-                        borderBottom: "1px solid #f5f4f0",
-                        background: active ? "rgba(37,99,235,0.08)" : idx % 2 === 0 ? "#fff" : "#fafaf9",
-                      }}
-                    >
-                      <td style={{ padding: "8px 10px", fontFamily: "monospace", color: "#78716c" }}>{p.sku}</td>
-                      <td style={{ padding: "8px 10px", color: "#1c1917", fontWeight: 500 }}>{p.name}</td>
-                      <td style={{ padding: "8px 10px", color: "#78716c" }}>{p.category}</td>
-                      <td style={{ padding: "8px 10px", fontFamily: "monospace", color: "#78716c" }}>
-                        {fmt(p.price)}
-                      </td>
-                      <td style={{ padding: "8px 10px", fontFamily: "monospace", color: "#78716c" }}>
-                        {p.stock} {p.unit}
-                      </td>
-                      <td style={{ padding: "8px 10px", fontWeight: 700, fontSize: 11, color: statusLabel === "OUT" ? "#dc2626" : statusLabel === "LOW" ? "#d97706" : "#16a34a" }}>
-                        {statusLabel}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div style={{ padding: 12, borderTop: "1px solid #f0ece8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 12, color: "#78716c" }}>
-            Showing {filteredProducts.length === 0 ? 0 : (listPage - 1) * pageSize + 1}-
-            {Math.min(listPage * pageSize, filteredProducts.length)} of {filteredProducts.length}
-          </span>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="button"
-              disabled={listPage <= 1}
-              onClick={() => setListPage((p) => Math.max(1, p - 1))}
-              style={{ height: 28, padding: "0 9px", borderRadius: 8, border: "1px solid #e7e5e4", background: "#fff", cursor: "pointer", fontSize: 12 }}
-            >
-              Prev
-            </button>
-            <span style={{ fontSize: 12, color: "#78716c", alignSelf: "center" }}>
-              {listPage}/{pageCount}
-            </span>
-            <button
-              type="button"
-              disabled={listPage >= pageCount}
-              onClick={() => setListPage((p) => Math.min(pageCount, p + 1))}
-              style={{ height: 28, padding: "0 9px", borderRadius: 8, border: "1px solid #e7e5e4", background: "#fff", cursor: "pointer", fontSize: 12 }}
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ position: "sticky", top: 12 }}>
-        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e7e5e4", padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontWeight: 700, fontSize: 16, borderBottom: "1px solid #f0ece8", paddingBottom: 10 }}>
-            Stock Adjustment
-          </div>
-
-          <div style={{ background: "#fafaf9", border: "1px solid #ece8e1", borderRadius: 10, padding: 10 }}>
-            {selectedProduct ? (
-              <>
-                <div style={{ fontWeight: 600, color: "#1c1917" }}>{selectedProduct.name}</div>
-                <div style={{ marginTop: 4, fontSize: 12, color: "#78716c" }}>
-                  {selectedProduct.sku} · {selectedProduct.category}
-                </div>
-                <div style={{ marginTop: 6, fontSize: 12, color: "#44403c" }}>
-                  Current: <strong>{selectedProduct.stock} {selectedProduct.unit}</strong>
-                </div>
-              </>
-            ) : (
-              <div style={{ fontSize: 12, color: "#a8a29e" }}>Select a product from the list.</div>
-            )}
-          </div>
-
-          <FieldWrap label="Adjustment Type *">
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {adjTypes.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => set("type", t.value)}
-                  style={{
-                    flex: "1 1 110px",
-                    padding: "8px 7px",
-                    borderRadius: 8,
-                    cursor: "pointer",
-                    textAlign: "center",
-                    border: form.type === t.value ? "2px solid var(--accent)" : "1px solid #e7e5e4",
-                    background: form.type === t.value ? "rgba(37,99,235,0.08)" : "#fff",
-                    color: form.type === t.value ? "var(--accent)" : "#44403c",
-                    fontWeight: form.type === t.value ? 600 : 400,
-                    fontSize: 12,
-                  }}
-                >
-                  <div style={{ fontSize: 12 }}>{t.label}</div>
-                  <div style={{ fontSize: 10, color: form.type === t.value ? "var(--accent)" : "#a8a29e", marginTop: 2 }}>
-                    {t.sub}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </FieldWrap>
-
-          <FieldWrap label="Quantity *" error={fieldErrors.quantity ?? fieldErrors.quantityAfter}>
-            <input
-              type="number"
-              min={0}
-              step="any"
-              placeholder="0"
-              value={form.quantity}
-              onChange={(e) => set("quantity", e.target.value)}
-              style={{
-                ...inputStyle,
-                borderColor: fieldErrors.quantity || fieldErrors.quantityAfter ? "#fca5a5" : "#e7e5e4",
-              }}
-            />
-            <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-              {[-5, -1, +1, +5, +10].map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => adjustQuantityBy(v)}
-                  style={{
-                    height: 26,
-                    padding: "0 9px",
-                    borderRadius: 8,
-                    border: "1px solid #e7e5e4",
-                    background: "#fff",
-                    color: "#44403c",
-                    fontSize: 11,
-                    cursor: "pointer",
-                  }}
-                >
-                  {v > 0 ? `+${v}` : v}
-                </button>
-              ))}
-            </div>
-          </FieldWrap>
-
-          <FieldWrap label="Reason *" error={fieldErrors.reason}>
-            <select
-              value={reasonPreset}
-              onChange={(e) => setReasonPreset(e.target.value)}
-              style={{ ...inputStyle, padding: "0 10px", cursor: "pointer" }}
-            >
-              {reasonOptions.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-            <input
-              placeholder={reasonPreset === "Other" ? "Enter reason..." : "Optional note"}
-              value={reasonNote}
-              onChange={(e) => setReasonNote(e.target.value)}
-              style={{ ...inputStyle, marginTop: 8 }}
-            />
-          </FieldWrap>
-
-          {selectedProduct && preview !== null && (
-            <div style={{ background: "#f5f4f0", borderRadius: 8, padding: "10px 14px", display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-              <span style={{ color: "#78716c" }}>Current → After adjustment</span>
-              <span style={{ fontFamily: "monospace", fontWeight: 600 }}>
-                {selectedProduct.stock} →{" "}
-                <span style={{ color: preview <= selectedProduct.lowStock ? (preview === 0 ? "#dc2626" : "#d97706") : "#16a34a" }}>
-                  {preview}
-                </span>{" "}
-                {selectedProduct.unit}
-              </span>
-            </div>
-          )}
-
-          <FormErrorBanner text={adjustmentFormBanner} />
-          <Toast status={status} />
-
-          <div style={{ paddingTop: 8, borderTop: "1px solid #f0ece8" }}>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={loading}
-              style={{
-                height: 40,
-                width: "100%",
-                background: "#1c1917",
-                color: "#fff",
-                border: "none",
-                borderRadius: 10,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              {loading ? "Saving..." : "Save Adjustment"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ═══════════════════════════════════════════════════════════════════
 // APP ROOT
@@ -4567,6 +3594,10 @@ export default function App() {
       setTab("home");
       return;
     }
+    if (!FEATURE_FLAGS.reporting && tab === "reporting") {
+      setTab("home");
+      return;
+    }
     if (
       !isAdminUser &&
       ["reporting", "promotion", "purchase", "adjustment"].includes(tab)
@@ -4764,7 +3795,7 @@ export default function App() {
                 style={{
                   textAlign: "center",
                   padding: 80,
-                  color: "#78716c",
+                  color: "var(--muted)",
                   fontSize: 14,
                 }}
               >
@@ -4816,6 +3847,7 @@ export default function App() {
                     customers={customers}
                     refreshCustomers={refreshCustomers}
                     onSaleComplete={refreshProducts}
+                    confirm={confirm}
                   />
                 )}
                 {tab === "outstanding" && (
@@ -4842,7 +3874,8 @@ export default function App() {
                     onAdjustmentComplete={refreshProducts}
                   />
                 )}
-                {tab === "reporting" && <ReportingPage />}
+                {FEATURE_FLAGS.reporting && tab === "reporting" && <ReportingPage />}
+                {tab === "settings" && <SettingsPage />}
               </>
             )}
           </div>

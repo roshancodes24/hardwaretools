@@ -346,7 +346,7 @@ export function PromotionsPage({
             border: "none",
             borderRadius: 10,
             background: "var(--accent)",
-            color: "#fff",
+            color: "var(--on-accent)",
             fontWeight: 600,
             cursor: "pointer",
           }}
@@ -441,11 +441,11 @@ export function PromotionsPage({
                     onClick={() => void removePromotion(p.id)}
                     disabled={!!rowBusyId}
                     style={{
-                      border: "1px solid #fca5a5",
+                      border: "1px solid var(--input-error-border)",
                       borderRadius: 8,
                       padding: "4px 8px",
                       background: "var(--surface)",
-                      color: "#b91c1c",
+                      color: "var(--danger-text)",
                       cursor: rowBusyId ? "not-allowed" : "pointer",
                       fontSize: 12,
                     }}

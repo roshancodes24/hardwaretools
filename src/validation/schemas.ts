@@ -76,28 +76,95 @@ const optionalCustomerId = z.preprocess(
   z.string().trim().min(1, "customerId is invalid").optional()
 );
 
-export const createSaleSchema = z.object({
-  createdById: z.string().trim().min(1, "createdById is required"),
-  customerId: optionalCustomerId,
-  customerName: z.string().trim().max(500).optional(),
-  customerPhone: optionalIndianMobile10Digits,
-  customerPartyGstNo: optionalGstinAlphanumeric(20, "Party GST No."),
-  customerPartyState: optionalSupplierTrimmed(100, "State"),
-  transportAmount: nonNegativeMoney.optional().default(0),
-  note: z.string().max(5000).optional(),
-  /** Bill → BIL-* ; GST tax invoice → INV-* (separate counters). */
-  documentKind: z.enum(["bill", "tax_invoice"]).optional().default("bill"),
-  paidAmount: nonNegativeMoney,
-  lines: z
-    .array(saleLineSchema)
-    .min(1, "At least one line item is required"),
+const saleInitialPaymentSchema = z.object({
+  method: z.enum(["cash", "online_banking"]),
+  amount: positiveMoney,
 });
 
-export const recordSalePaymentSchema = z.object({
-  amount: positiveMoney,
-  createdById: z.string().trim().min(1, "createdById is required"),
-  note: z.string().max(500).optional(),
-});
+export const createSaleSchema = z
+  .object({
+    createdById: z.string().trim().min(1, "createdById is required"),
+    customerId: optionalCustomerId,
+    customerName: z.string().trim().max(500).optional(),
+    customerPhone: optionalIndianMobile10Digits,
+    customerPartyGstNo: optionalGstinAlphanumeric(20, "Party GST No."),
+    customerPartyState: optionalSupplierTrimmed(100, "State"),
+    transportAmount: nonNegativeMoney.optional().default(0),
+    note: z.string().max(5000).optional(),
+    /** Bill → BIL-* ; GST tax invoice → INV-* (separate counters). */
+    documentKind: z.enum(["bill", "tax_invoice"]).optional().default("bill"),
+    paidAmount: nonNegativeMoney,
+    paymentMethod: z
+      .enum(["cash", "online_banking"])
+      .optional()
+      .default("cash"),
+    /** When set, creates one payment row per entry (split cash / online at checkout). */
+    initialPayments: z.array(saleInitialPaymentSchema).optional(),
+    lines: z
+      .array(saleLineSchema)
+      .min(1, "At least one line item is required"),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.initialPayments?.length) return;
+    const sum = data.initialPayments.reduce(
+      (acc, p) => acc + Number(p.amount),
+      0
+    );
+    const paid = Number(data.paidAmount);
+    if (Math.abs(sum - paid) > 0.01) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "paidAmount must equal the sum of initialPayments",
+        path: ["paidAmount"],
+      });
+    }
+  });
+
+export const recordSalePaymentSchema = z
+  .object({
+    amount: nonNegativeMoney.optional(),
+    createdById: z.string().trim().min(1, "createdById is required"),
+    paymentMethod: z
+      .enum(["cash", "online_banking"])
+      .optional()
+      .default("cash"),
+    payments: z.array(saleInitialPaymentSchema).optional(),
+    note: z.string().max(500).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.payments?.length) {
+      const sum = data.payments.reduce(
+        (acc, p) => acc + Number(p.amount),
+        0
+      );
+      if (sum <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "At least one split payment amount must be greater than zero",
+          path: ["payments"],
+        });
+      }
+      if (
+        data.amount != null &&
+        data.amount !== undefined &&
+        Math.abs(sum - Number(data.amount)) > 0.01
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "amount must equal the sum of payments",
+          path: ["amount"],
+        });
+      }
+      return;
+    }
+    if (data.amount == null || data.amount === undefined || Number(data.amount) <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "amount must be greater than zero",
+        path: ["amount"],
+      });
+    }
+  });
 
 const optionalPaidAt = z.preprocess(
   (v) => (v === null || v === undefined || v === "" ? undefined : v),

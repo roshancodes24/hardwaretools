@@ -3,7 +3,7 @@
 // In production you'd drive these from an env var, remote config, or user role.
 
 export const FEATURE_FLAGS = {
-  reporting: false,
+  reporting: true,
   catalogBrands: false,
   catalogProductTypes: false,
   catalogPromotions: false,

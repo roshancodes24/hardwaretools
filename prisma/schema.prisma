@@ -51,6 +51,11 @@ enum SaleStatus {
   RETURNED
 }
 
+enum SalePaymentMethod {
+  CASH
+  ONLINE_BANKING
+}
+
 enum PromotionScope {
   CART
   PRODUCT
@@ -136,6 +141,7 @@ model Product {
   description String?
   category    String?
   brand       String?
+  /// Unique case-insensitively when non-blank (see migration Product_brandCode_lower_key).
   brandCode   String?
   color       String?
   /// Physical size / dimension label (e.g. 10mm, 500ml) — optional.
@@ -149,12 +155,21 @@ model Product {
   allowsFractional Boolean  @default(false)
 
   costPrice    Decimal? @db.Decimal(14, 4)
+  /// Moving weighted-average cost of stock on hand (for margin/valuation, not pricing).
+  avgCostPrice Decimal? @db.Decimal(14, 4)
   percentage   Decimal? @db.Decimal(8, 4)
   mrp          Decimal? @db.Decimal(14, 4)
   sellingPrice Decimal? @db.Decimal(14, 4)
   cgstPercent  Decimal? @db.Decimal(5, 2)
   sgstPercent  Decimal? @db.Decimal(5, 2)
   igstPercent  Decimal? @db.Decimal(5, 2)
+
+  /// Set when a purchase came in cheaper: selling price kept, owner should review.
+  priceReviewNeeded     Boolean  @default(false)
+  /// Suggested selling price (from markup on the new lower cost) awaiting owner approval.
+  suggestedSellingPrice Decimal? @db.Decimal(14, 4)
+  /// Human-readable reason for the pending price review.
+  priceReviewNote       String?
 
   reorderLevel Decimal? @db.Decimal(14, 4)
   currentStock Decimal  @default(0) @db.Decimal(18, 4)
@@ -369,10 +384,11 @@ model Sale {
 }
 
 model SalePayment {
-  id          String   @id @default(cuid())
+  id          String            @id @default(cuid())
   saleId      String
-  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  amount      Decimal  @db.Decimal(14, 2)
+  sale        Sale              @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  amount      Decimal           @db.Decimal(14, 2)
+  method      SalePaymentMethod @default(CASH)
   note        String?
   createdById String
   createdBy   User     @relation(fields: [createdById], references: [id])

@@ -59,6 +59,12 @@ function friendlyHttpFallback(status: number): string {
       "Or set VITE_API_URL (no trailing slash, e.g. http://127.0.0.1:4000) and rebuild.",
     ].join(" ");
   }
+  if (status === 413) {
+    return [
+      "Request body is too large (413).",
+      "Bulk imports send a large JSON payload — restart the API after updating JSON_BODY_LIMIT, or import fewer rows at a time.",
+    ].join(" ");
+  }
   return `Request failed (${status}). Check that the API server is running.`;
 }
 

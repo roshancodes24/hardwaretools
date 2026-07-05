@@ -1,0 +1,1001 @@
+﻿name,sku,category,brand,brandCode,color,size,hsnCode,description,status,baseUnitCode,unitKind,allowsFractional,costPrice,percentage,sellingPrice,mrp,cgstPercent,sgstPercent,igstPercent,currentStock,reorderLevel
+Bulk Test HW Item 0001,BULK-HW-00001,Hardware,BuildPro,BC-HW-00001,Blue,25mm,8501,Regression bulk import row 1,ACTIVE,kg,WEIGHT,true,51.00,11.00,57.00,78.00,9,9,,6,11
+Bulk Test PT Item 0002,BULK-PT-00002,Paint,ColorMax,BC-PT-00002,White,500 ml,8502,Regression bulk import row 2,ACTIVE,m,LENGTH,true,52.00,12.00,58.00,80.00,9,9,,7,12
+Bulk Test EL Item 0003,BULK-EL-00003,Electrical,SteelWorks,BC-EL-00003,Black,1 inch,8503,Regression bulk import row 3,ACTIVE,l,VOLUME,true,53.00,13.00,60.00,83.00,9,9,,8,13
+Bulk Test HW Item 0004,BULK-HW-00004,Hardware,VoltEdge,BC-HW-00004,Green,M6,8504,Regression bulk import row 4,ACTIVE,box,PACK,false,54.00,14.00,62.00,86.00,9,9,,9,14
+Bulk Test PT Item 0005,BULK-PT-00005,Paint,PowerLine,BC-PT-00005,Yellow,2m,8505,Regression bulk import row 5,ACTIVE,pc,PIECE,false,55.00,15.00,63.00,88.00,9,9,,10,15
+Bulk Test EL Item 0006,BULK-EL-00006,Electrical,BuildPro,BC-EL-00006,,,8506,Regression bulk import row 6,ACTIVE,kg,WEIGHT,true,56.00,16.00,65.00,91.00,9,9,,11,16
+Bulk Test HW Item 0007,BULK-HW-00007,Hardware,ColorMax,BC-HW-00007,Red,10mm,8507,Regression bulk import row 7,ACTIVE,m,LENGTH,true,57.00,17.00,67.00,94.00,9,9,,12,17
+Bulk Test PT Item 0008,BULK-PT-00008,Paint,SteelWorks,BC-PT-00008,Blue,25mm,8508,Regression bulk import row 8,ACTIVE,l,VOLUME,true,58.00,18.00,68.00,96.00,9,9,,13,18
+Bulk Test EL Item 0009,BULK-EL-00009,Electrical,VoltEdge,BC-EL-00009,White,500 ml,8509,Regression bulk import row 9,ACTIVE,box,PACK,false,59.00,19.00,70.00,99.00,9,9,,14,19
+Bulk Test HW Item 0010,BULK-HW-00010,Hardware,PowerLine,BC-HW-00010,Black,1 inch,8510,Regression bulk import row 10,ACTIVE,pc,PIECE,false,60.00,20.00,72.00,102.00,9,9,,15,20
+Bulk Test PT Item 0011,BULK-PT-00011,Paint,BuildPro,BC-PT-00011,Green,M6,8511,Regression bulk import row 11,ACTIVE,kg,WEIGHT,true,61.00,21.00,74.00,105.00,9,9,,16,21
+Bulk Test EL Item 0012,BULK-EL-00012,Electrical,ColorMax,BC-EL-00012,Yellow,2m,8512,Regression bulk import row 12,ACTIVE,m,LENGTH,true,62.00,22.00,76.00,108.00,9,9,,17,22
+Bulk Test HW Item 0013,BULK-HW-00013,Hardware,SteelWorks,BC-HW-00013,,,8513,Regression bulk import row 13,ACTIVE,l,VOLUME,true,63.00,23.00,77.00,110.00,9,9,,18,23
+Bulk Test PT Item 0014,BULK-PT-00014,Paint,VoltEdge,BC-PT-00014,Red,10mm,8514,Regression bulk import row 14,ACTIVE,box,PACK,false,64.00,24.00,79.00,113.00,9,9,,19,24
+Bulk Test EL Item 0015,BULK-EL-00015,Electrical,PowerLine,BC-EL-00015,Blue,25mm,8515,Regression bulk import row 15,ACTIVE,pc,PIECE,false,65.00,25.00,81.00,116.00,9,9,,20,25
+Bulk Test HW Item 0016,BULK-HW-00016,Hardware,BuildPro,BC-HW-00016,White,500 ml,8516,Regression bulk import row 16,ACTIVE,kg,WEIGHT,true,66.00,26.00,83.00,119.00,9,9,,21,26
+Bulk Test PT Item 0017,BULK-PT-00017,Paint,ColorMax,BC-PT-00017,Black,1 inch,8517,Regression bulk import row 17,ACTIVE,m,LENGTH,true,67.00,27.00,85.00,122.00,9,9,,22,27
+Bulk Test EL Item 0018,BULK-EL-00018,Electrical,SteelWorks,BC-EL-00018,Green,M6,8518,Regression bulk import row 18,ACTIVE,l,VOLUME,true,68.00,28.00,87.00,125.00,9,9,,23,28
+Bulk Test HW Item 0019,BULK-HW-00019,Hardware,VoltEdge,BC-HW-00019,Yellow,2m,8519,Regression bulk import row 19,ACTIVE,box,PACK,false,69.00,29.00,89.00,128.00,9,9,,24,29
+Bulk Test PT Item 0020,BULK-PT-00020,Paint,PowerLine,BC-PT-00020,,,8520,Regression bulk import row 20,ACTIVE,pc,PIECE,false,70.00,30.00,91.00,131.00,9,9,,25,10
+Bulk Test EL Item 0021,BULK-EL-00021,Electrical,BuildPro,BC-EL-00021,Red,10mm,8521,Regression bulk import row 21,ACTIVE,kg,WEIGHT,true,71.00,31.00,93.00,134.00,9,9,,26,11
+Bulk Test HW Item 0022,BULK-HW-00022,Hardware,ColorMax,BC-HW-00022,Blue,25mm,8522,Regression bulk import row 22,ACTIVE,m,LENGTH,true,72.00,32.00,95.00,137.00,9,9,,27,12
+Bulk Test PT Item 0023,BULK-PT-00023,Paint,SteelWorks,BC-PT-00023,White,500 ml,8523,Regression bulk import row 23,ACTIVE,l,VOLUME,true,73.00,33.00,97.00,140.00,9,9,,28,13
+Bulk Test EL Item 0024,BULK-EL-00024,Electrical,VoltEdge,BC-EL-00024,Black,1 inch,8524,Regression bulk import row 24,ACTIVE,box,PACK,false,74.00,34.00,99.00,143.00,9,9,,29,14
+Bulk Test HW Item 0025,BULK-HW-00025,Hardware,PowerLine,BC-HW-00025,Green,M6,8525,Regression bulk import row 25,ACTIVE,pc,PIECE,false,75.00,10.00,83.00,128.00,9,9,,30,15
+Bulk Test PT Item 0026,BULK-PT-00026,Paint,BuildPro,BC-PT-00026,Yellow,2m,8526,Regression bulk import row 26,ACTIVE,kg,WEIGHT,true,76.00,11.00,84.00,130.00,9,9,,31,16
+Bulk Test EL Item 0027,BULK-EL-00027,Electrical,ColorMax,BC-EL-00027,,,8527,Regression bulk import row 27,ACTIVE,m,LENGTH,true,77.00,12.00,86.00,133.00,9,9,,32,17
+Bulk Test HW Item 0028,BULK-HW-00028,Hardware,SteelWorks,BC-HW-00028,Red,10mm,8528,Regression bulk import row 28,ACTIVE,l,VOLUME,true,78.00,13.00,88.00,136.00,9,9,,33,18
+Bulk Test PT Item 0029,BULK-PT-00029,Paint,VoltEdge,BC-PT-00029,Blue,25mm,8529,Regression bulk import row 29,ACTIVE,box,PACK,false,79.00,14.00,90.00,139.00,9,9,,34,19
+Bulk Test EL Item 0030,BULK-EL-00030,Electrical,PowerLine,BC-EL-00030,White,500 ml,8530,Regression bulk import row 30,ACTIVE,pc,PIECE,false,80.00,15.00,92.00,142.00,9,9,,35,20
+Bulk Test HW Item 0031,BULK-HW-00031,Hardware,BuildPro,BC-HW-00031,Black,1 inch,8531,Regression bulk import row 31,ACTIVE,kg,WEIGHT,true,81.00,16.00,94.00,145.00,9,9,,36,21
+Bulk Test PT Item 0032,BULK-PT-00032,Paint,ColorMax,BC-PT-00032,Green,M6,8532,Regression bulk import row 32,ACTIVE,m,LENGTH,true,82.00,17.00,96.00,148.00,9,9,,37,22
+Bulk Test EL Item 0033,BULK-EL-00033,Electrical,SteelWorks,BC-EL-00033,Yellow,2m,8533,Regression bulk import row 33,ACTIVE,l,VOLUME,true,83.00,18.00,98.00,151.00,9,9,,38,23
+Bulk Test HW Item 0034,BULK-HW-00034,Hardware,VoltEdge,BC-HW-00034,,,8534,Regression bulk import row 34,ACTIVE,box,PACK,false,84.00,19.00,100.00,154.00,9,9,,39,24
+Bulk Test PT Item 0035,BULK-PT-00035,Paint,PowerLine,BC-PT-00035,Red,10mm,8535,Regression bulk import row 35,ACTIVE,pc,PIECE,false,85.00,20.00,102.00,157.00,9,9,,40,25
+Bulk Test EL Item 0036,BULK-EL-00036,Electrical,BuildPro,BC-EL-00036,Blue,25mm,8536,Regression bulk import row 36,ACTIVE,kg,WEIGHT,true,86.00,21.00,104.00,160.00,9,9,,41,26
+Bulk Test HW Item 0037,BULK-HW-00037,Hardware,ColorMax,BC-HW-00037,White,500 ml,8537,Regression bulk import row 37,ACTIVE,m,LENGTH,true,87.00,22.00,106.00,163.00,9,9,,42,27
+Bulk Test PT Item 0038,BULK-PT-00038,Paint,SteelWorks,BC-PT-00038,Black,1 inch,8538,Regression bulk import row 38,ACTIVE,l,VOLUME,true,88.00,23.00,108.00,166.00,9,9,,43,28
+Bulk Test EL Item 0039,BULK-EL-00039,Electrical,VoltEdge,BC-EL-00039,Green,M6,8539,Regression bulk import row 39,ACTIVE,box,PACK,false,89.00,24.00,110.00,169.00,9,9,,44,29
+Bulk Test HW Item 0040,BULK-HW-00040,Hardware,PowerLine,BC-HW-00040,Yellow,2m,8540,Regression bulk import row 40,ACTIVE,pc,PIECE,false,90.00,25.00,113.00,173.00,9,9,,45,10
+Bulk Test PT Item 0041,BULK-PT-00041,Paint,BuildPro,BC-PT-00041,,,8541,Regression bulk import row 41,ACTIVE,kg,WEIGHT,true,91.00,26.00,115.00,176.00,9,9,,46,11
+Bulk Test EL Item 0042,BULK-EL-00042,Electrical,ColorMax,BC-EL-00042,Red,10mm,8542,Regression bulk import row 42,ACTIVE,m,LENGTH,true,92.00,27.00,117.00,179.00,9,9,,47,12
+Bulk Test HW Item 0043,BULK-HW-00043,Hardware,SteelWorks,BC-HW-00043,Blue,25mm,8543,Regression bulk import row 43,ACTIVE,l,VOLUME,true,93.00,28.00,119.00,182.00,9,9,,48,13
+Bulk Test PT Item 0044,BULK-PT-00044,Paint,VoltEdge,BC-PT-00044,White,500 ml,8544,Regression bulk import row 44,ACTIVE,box,PACK,false,94.00,29.00,121.00,185.00,9,9,,49,14
+Bulk Test EL Item 0045,BULK-EL-00045,Electrical,PowerLine,BC-EL-00045,Black,1 inch,8545,Regression bulk import row 45,ACTIVE,pc,PIECE,false,95.00,30.00,124.00,189.00,9,9,,50,15
+Bulk Test HW Item 0046,BULK-HW-00046,Hardware,BuildPro,BC-HW-00046,Green,M6,8546,Regression bulk import row 46,ACTIVE,kg,WEIGHT,true,96.00,31.00,126.00,192.00,9,9,,51,16
+Bulk Test PT Item 0047,BULK-PT-00047,Paint,ColorMax,BC-PT-00047,Yellow,2m,8547,Regression bulk import row 47,ACTIVE,m,LENGTH,true,97.00,32.00,128.00,195.00,9,9,,52,17
+Bulk Test EL Item 0048,BULK-EL-00048,Electrical,SteelWorks,BC-EL-00048,,,8548,Regression bulk import row 48,ACTIVE,l,VOLUME,true,98.00,33.00,130.00,198.00,9,9,,53,18
+Bulk Test HW Item 0049,BULK-HW-00049,Hardware,VoltEdge,BC-HW-00049,Red,10mm,8549,Regression bulk import row 49,ACTIVE,box,PACK,false,99.00,34.00,133.00,202.00,9,9,,54,19
+Bulk Test PT Item 0050,BULK-PT-00050,Paint,PowerLine,BC-PT-00050,Blue,25mm,8550,Regression bulk import row 50,ACTIVE,pc,PIECE,false,100.00,10.00,110.00,180.00,9,9,,5,20
+Bulk Test EL Item 0051,BULK-EL-00051,Electrical,BuildPro,BC-EL-00051,White,500 ml,8551,Regression bulk import row 51,ACTIVE,kg,WEIGHT,true,101.00,11.00,112.00,183.00,9,9,,6,21
+Bulk Test HW Item 0052,BULK-HW-00052,Hardware,ColorMax,BC-HW-00052,Black,1 inch,8552,Regression bulk import row 52,ACTIVE,m,LENGTH,true,102.00,12.00,114.00,186.00,9,9,,7,22
+Bulk Test PT Item 0053,BULK-PT-00053,Paint,SteelWorks,BC-PT-00053,Green,M6,8553,Regression bulk import row 53,ACTIVE,l,VOLUME,true,103.00,13.00,116.00,189.00,9,9,,8,23
+Bulk Test EL Item 0054,BULK-EL-00054,Electrical,VoltEdge,BC-EL-00054,Yellow,2m,8554,Regression bulk import row 54,ACTIVE,box,PACK,false,104.00,14.00,119.00,193.00,9,9,,9,24
+Bulk Test HW Item 0055,BULK-HW-00055,Hardware,PowerLine,BC-HW-00055,,,8555,Regression bulk import row 55,ACTIVE,pc,PIECE,false,105.00,15.00,121.00,196.00,9,9,,10,25
+Bulk Test PT Item 0056,BULK-PT-00056,Paint,BuildPro,BC-PT-00056,Red,10mm,8556,Regression bulk import row 56,ACTIVE,kg,WEIGHT,true,106.00,16.00,123.00,199.00,9,9,,11,26
+Bulk Test EL Item 0057,BULK-EL-00057,Electrical,ColorMax,BC-EL-00057,Blue,25mm,8557,Regression bulk import row 57,ACTIVE,m,LENGTH,true,107.00,17.00,125.00,202.00,9,9,,12,27
+Bulk Test HW Item 0058,BULK-HW-00058,Hardware,SteelWorks,BC-HW-00058,White,500 ml,8558,Regression bulk import row 58,ACTIVE,l,VOLUME,true,108.00,18.00,127.00,205.00,9,9,,13,28
+Bulk Test PT Item 0059,BULK-PT-00059,Paint,VoltEdge,BC-PT-00059,Black,1 inch,8559,Regression bulk import row 59,ACTIVE,box,PACK,false,109.00,19.00,130.00,209.00,9,9,,14,29
+Bulk Test EL Item 0060,BULK-EL-00060,Electrical,PowerLine,BC-EL-00060,Green,M6,8560,Regression bulk import row 60,ACTIVE,pc,PIECE,false,110.00,20.00,132.00,212.00,9,9,,15,10
+Bulk Test HW Item 0061,BULK-HW-00061,Hardware,BuildPro,BC-HW-00061,Yellow,2m,8561,Regression bulk import row 61,ACTIVE,kg,WEIGHT,true,111.00,21.00,134.00,215.00,9,9,,16,11
+Bulk Test PT Item 0062,BULK-PT-00062,Paint,ColorMax,BC-PT-00062,,,8562,Regression bulk import row 62,ACTIVE,m,LENGTH,true,112.00,22.00,137.00,219.00,9,9,,17,12
+Bulk Test EL Item 0063,BULK-EL-00063,Electrical,SteelWorks,BC-EL-00063,Red,10mm,8563,Regression bulk import row 63,ACTIVE,l,VOLUME,true,113.00,23.00,139.00,222.00,9,9,,18,13
+Bulk Test HW Item 0064,BULK-HW-00064,Hardware,VoltEdge,BC-HW-00064,Blue,25mm,8564,Regression bulk import row 64,ACTIVE,box,PACK,false,114.00,24.00,141.00,225.00,9,9,,19,14
+Bulk Test PT Item 0065,BULK-PT-00065,Paint,PowerLine,BC-PT-00065,White,500 ml,8565,Regression bulk import row 65,ACTIVE,pc,PIECE,false,115.00,25.00,144.00,229.00,9,9,,20,15
+Bulk Test EL Item 0066,BULK-EL-00066,Electrical,BuildPro,BC-EL-00066,Black,1 inch,8566,Regression bulk import row 66,ACTIVE,kg,WEIGHT,true,116.00,26.00,146.00,232.00,9,9,,21,16
+Bulk Test HW Item 0067,BULK-HW-00067,Hardware,ColorMax,BC-HW-00067,Green,M6,8567,Regression bulk import row 67,ACTIVE,m,LENGTH,true,117.00,27.00,149.00,236.00,9,9,,22,17
+Bulk Test PT Item 0068,BULK-PT-00068,Paint,SteelWorks,BC-PT-00068,Yellow,2m,8568,Regression bulk import row 68,ACTIVE,l,VOLUME,true,118.00,28.00,151.00,239.00,9,9,,23,18
+Bulk Test EL Item 0069,BULK-EL-00069,Electrical,VoltEdge,BC-EL-00069,,,8569,Regression bulk import row 69,ACTIVE,box,PACK,false,119.00,29.00,154.00,243.00,9,9,,24,19
+Bulk Test HW Item 0070,BULK-HW-00070,Hardware,PowerLine,BC-HW-00070,Red,10mm,8570,Regression bulk import row 70,ACTIVE,pc,PIECE,false,120.00,30.00,156.00,246.00,9,9,,25,20
+Bulk Test PT Item 0071,BULK-PT-00071,Paint,BuildPro,BC-PT-00071,Blue,25mm,8571,Regression bulk import row 71,ACTIVE,kg,WEIGHT,true,121.00,31.00,159.00,250.00,9,9,,26,21
+Bulk Test EL Item 0072,BULK-EL-00072,Electrical,ColorMax,BC-EL-00072,White,500 ml,8572,Regression bulk import row 72,ACTIVE,m,LENGTH,true,122.00,32.00,161.00,253.00,9,9,,27,22
+Bulk Test HW Item 0073,BULK-HW-00073,Hardware,SteelWorks,BC-HW-00073,Black,1 inch,8573,Regression bulk import row 73,ACTIVE,l,VOLUME,true,123.00,33.00,164.00,257.00,9,9,,28,23
+Bulk Test PT Item 0074,BULK-PT-00074,Paint,VoltEdge,BC-PT-00074,Green,M6,8574,Regression bulk import row 74,ACTIVE,box,PACK,false,124.00,34.00,166.00,260.00,9,9,,29,24
+Bulk Test EL Item 0075,BULK-EL-00075,Electrical,PowerLine,BC-EL-00075,Yellow,2m,8575,Regression bulk import row 75,ACTIVE,pc,PIECE,false,125.00,10.00,138.00,233.00,9,9,,30,25
+Bulk Test HW Item 0076,BULK-HW-00076,Hardware,BuildPro,BC-HW-00076,,,8576,Regression bulk import row 76,ACTIVE,kg,WEIGHT,true,126.00,11.00,140.00,236.00,9,9,,31,26
+Bulk Test PT Item 0077,BULK-PT-00077,Paint,ColorMax,BC-PT-00077,Red,10mm,8577,Regression bulk import row 77,ACTIVE,m,LENGTH,true,127.00,12.00,142.00,239.00,9,9,,32,27
+Bulk Test EL Item 0078,BULK-EL-00078,Electrical,SteelWorks,BC-EL-00078,Blue,25mm,8578,Regression bulk import row 78,ACTIVE,l,VOLUME,true,128.00,13.00,145.00,243.00,9,9,,33,28
+Bulk Test HW Item 0079,BULK-HW-00079,Hardware,VoltEdge,BC-HW-00079,White,500 ml,8579,Regression bulk import row 79,ACTIVE,box,PACK,false,129.00,14.00,147.00,246.00,9,9,,34,29
+Bulk Test PT Item 0080,BULK-PT-00080,Paint,PowerLine,BC-PT-00080,Black,1 inch,8580,Regression bulk import row 80,ACTIVE,pc,PIECE,false,130.00,15.00,150.00,170.00,9,9,,35,10
+Bulk Test EL Item 0081,BULK-EL-00081,Electrical,BuildPro,BC-EL-00081,Green,M6,8581,Regression bulk import row 81,ACTIVE,kg,WEIGHT,true,131.00,16.00,152.00,173.00,9,9,,36,11
+Bulk Test HW Item 0082,BULK-HW-00082,Hardware,ColorMax,BC-HW-00082,Yellow,2m,8582,Regression bulk import row 82,ACTIVE,m,LENGTH,true,132.00,17.00,154.00,176.00,9,9,,37,12
+Bulk Test PT Item 0083,BULK-PT-00083,Paint,SteelWorks,BC-PT-00083,,,8583,Regression bulk import row 83,ACTIVE,l,VOLUME,true,133.00,18.00,157.00,180.00,9,9,,38,13
+Bulk Test EL Item 0084,BULK-EL-00084,Electrical,VoltEdge,BC-EL-00084,Red,10mm,8584,Regression bulk import row 84,ACTIVE,box,PACK,false,134.00,19.00,159.00,183.00,9,9,,39,14
+Bulk Test HW Item 0085,BULK-HW-00085,Hardware,PowerLine,BC-HW-00085,Blue,25mm,8585,Regression bulk import row 85,ACTIVE,pc,PIECE,false,135.00,20.00,162.00,187.00,9,9,,40,15
+Bulk Test PT Item 0086,BULK-PT-00086,Paint,BuildPro,BC-PT-00086,White,500 ml,8586,Regression bulk import row 86,ACTIVE,kg,WEIGHT,true,136.00,21.00,165.00,191.00,9,9,,41,16
+Bulk Test EL Item 0087,BULK-EL-00087,Electrical,ColorMax,BC-EL-00087,Black,1 inch,8587,Regression bulk import row 87,ACTIVE,m,LENGTH,true,137.00,22.00,167.00,194.00,9,9,,42,17
+Bulk Test HW Item 0088,BULK-HW-00088,Hardware,SteelWorks,BC-HW-00088,Green,M6,8588,Regression bulk import row 88,ACTIVE,l,VOLUME,true,138.00,23.00,170.00,198.00,9,9,,43,18
+Bulk Test PT Item 0089,BULK-PT-00089,Paint,VoltEdge,BC-PT-00089,Yellow,2m,8589,Regression bulk import row 89,ACTIVE,box,PACK,false,139.00,24.00,172.00,201.00,9,9,,44,19
+Bulk Test EL Item 0090,BULK-EL-00090,Electrical,PowerLine,BC-EL-00090,,,8590,Regression bulk import row 90,ACTIVE,pc,PIECE,false,140.00,25.00,175.00,205.00,9,9,,45,20
+Bulk Test HW Item 0091,BULK-HW-00091,Hardware,BuildPro,BC-HW-00091,Red,10mm,8591,Regression bulk import row 91,ACTIVE,kg,WEIGHT,true,141.00,26.00,178.00,209.00,9,9,,46,21
+Bulk Test PT Item 0092,BULK-PT-00092,Paint,ColorMax,BC-PT-00092,Blue,25mm,8592,Regression bulk import row 92,ACTIVE,m,LENGTH,true,142.00,27.00,180.00,212.00,9,9,,47,22
+Bulk Test EL Item 0093,BULK-EL-00093,Electrical,SteelWorks,BC-EL-00093,White,500 ml,8593,Regression bulk import row 93,ACTIVE,l,VOLUME,true,143.00,28.00,183.00,216.00,9,9,,48,23
+Bulk Test HW Item 0094,BULK-HW-00094,Hardware,VoltEdge,BC-HW-00094,Black,1 inch,8594,Regression bulk import row 94,ACTIVE,box,PACK,false,144.00,29.00,186.00,220.00,9,9,,49,24
+Bulk Test PT Item 0095,BULK-PT-00095,Paint,PowerLine,BC-PT-00095,Green,M6,8595,Regression bulk import row 95,ACTIVE,pc,PIECE,false,145.00,30.00,189.00,224.00,9,9,,50,25
+Bulk Test EL Item 0096,BULK-EL-00096,Electrical,BuildPro,BC-EL-00096,Yellow,2m,8596,Regression bulk import row 96,ACTIVE,kg,WEIGHT,true,146.00,31.00,191.00,227.00,9,9,,51,26
+Bulk Test HW Item 0097,BULK-HW-00097,Hardware,ColorMax,BC-HW-00097,,,8597,Regression bulk import row 97,ACTIVE,m,LENGTH,true,147.00,32.00,194.00,231.00,9,9,,52,27
+Bulk Test PT Item 0098,BULK-PT-00098,Paint,SteelWorks,BC-PT-00098,Red,10mm,8598,Regression bulk import row 98,ACTIVE,l,VOLUME,true,148.00,33.00,197.00,235.00,9,9,,53,28
+Bulk Test EL Item 0099,BULK-EL-00099,Electrical,VoltEdge,BC-EL-00099,Blue,25mm,8599,Regression bulk import row 99,ACTIVE,box,PACK,false,149.00,34.00,200.00,239.00,9,9,,54,29
+Bulk Test HW Item 0100,BULK-HW-00100,Hardware,PowerLine,BC-HW-00100,White,500 ml,8600,Regression bulk import row 100,ACTIVE,pc,PIECE,false,150.00,10.00,165.00,205.00,9,9,,5,10
+Bulk Test PT Item 0101,BULK-PT-00101,Paint,BuildPro,BC-PT-00101,Black,1 inch,8601,Regression bulk import row 101,ACTIVE,kg,WEIGHT,true,151.00,11.00,168.00,209.00,9,9,,6,11
+Bulk Test EL Item 0102,BULK-EL-00102,Electrical,ColorMax,BC-EL-00102,Green,M6,8602,Regression bulk import row 102,ACTIVE,m,LENGTH,true,152.00,12.00,170.00,212.00,9,9,,7,12
+Bulk Test HW Item 0103,BULK-HW-00103,Hardware,SteelWorks,BC-HW-00103,Yellow,2m,8603,Regression bulk import row 103,ACTIVE,l,VOLUME,true,153.00,13.00,173.00,216.00,9,9,,8,13
+Bulk Test PT Item 0104,BULK-PT-00104,Paint,VoltEdge,BC-PT-00104,,,8604,Regression bulk import row 104,ACTIVE,box,PACK,false,154.00,14.00,176.00,220.00,9,9,,9,14
+Bulk Test EL Item 0105,BULK-EL-00105,Electrical,PowerLine,BC-EL-00105,Red,10mm,8605,Regression bulk import row 105,ACTIVE,pc,PIECE,false,155.00,15.00,178.00,223.00,9,9,,10,15
+Bulk Test HW Item 0106,BULK-HW-00106,Hardware,BuildPro,BC-HW-00106,Blue,25mm,8606,Regression bulk import row 106,ACTIVE,kg,WEIGHT,true,156.00,16.00,181.00,227.00,9,9,,11,16
+Bulk Test PT Item 0107,BULK-PT-00107,Paint,ColorMax,BC-PT-00107,White,500 ml,8607,Regression bulk import row 107,ACTIVE,m,LENGTH,true,157.00,17.00,184.00,231.00,9,9,,12,17
+Bulk Test EL Item 0108,BULK-EL-00108,Electrical,SteelWorks,BC-EL-00108,Black,1 inch,8608,Regression bulk import row 108,ACTIVE,l,VOLUME,true,158.00,18.00,186.00,234.00,9,9,,13,18
+Bulk Test HW Item 0109,BULK-HW-00109,Hardware,VoltEdge,BC-HW-00109,Green,M6,8609,Regression bulk import row 109,ACTIVE,box,PACK,false,159.00,19.00,189.00,238.00,9,9,,14,19
+Bulk Test PT Item 0110,BULK-PT-00110,Paint,PowerLine,BC-PT-00110,Yellow,2m,8610,Regression bulk import row 110,ACTIVE,pc,PIECE,false,160.00,20.00,192.00,242.00,9,9,,15,20
+Bulk Test EL Item 0111,BULK-EL-00111,Electrical,BuildPro,BC-EL-00111,,,8611,Regression bulk import row 111,ACTIVE,kg,WEIGHT,true,161.00,21.00,195.00,246.00,9,9,,16,21
+Bulk Test HW Item 0112,BULK-HW-00112,Hardware,ColorMax,BC-HW-00112,Red,10mm,8612,Regression bulk import row 112,ACTIVE,m,LENGTH,true,162.00,22.00,198.00,250.00,9,9,,17,22
+Bulk Test PT Item 0113,BULK-PT-00113,Paint,SteelWorks,BC-PT-00113,Blue,25mm,8613,Regression bulk import row 113,ACTIVE,l,VOLUME,true,163.00,23.00,200.00,253.00,9,9,,18,23
+Bulk Test EL Item 0114,BULK-EL-00114,Electrical,VoltEdge,BC-EL-00114,White,500 ml,8614,Regression bulk import row 114,ACTIVE,box,PACK,false,164.00,24.00,203.00,257.00,9,9,,19,24
+Bulk Test HW Item 0115,BULK-HW-00115,Hardware,PowerLine,BC-HW-00115,Black,1 inch,8615,Regression bulk import row 115,ACTIVE,pc,PIECE,false,165.00,25.00,206.00,261.00,9,9,,20,25
+Bulk Test PT Item 0116,BULK-PT-00116,Paint,BuildPro,BC-PT-00116,Green,M6,8616,Regression bulk import row 116,ACTIVE,kg,WEIGHT,true,166.00,26.00,209.00,265.00,9,9,,21,26
+Bulk Test EL Item 0117,BULK-EL-00117,Electrical,ColorMax,BC-EL-00117,Yellow,2m,8617,Regression bulk import row 117,ACTIVE,m,LENGTH,true,167.00,27.00,212.00,269.00,9,9,,22,27
+Bulk Test HW Item 0118,BULK-HW-00118,Hardware,SteelWorks,BC-HW-00118,,,8618,Regression bulk import row 118,ACTIVE,l,VOLUME,true,168.00,28.00,215.00,273.00,9,9,,23,28
+Bulk Test PT Item 0119,BULK-PT-00119,Paint,VoltEdge,BC-PT-00119,Red,10mm,8619,Regression bulk import row 119,ACTIVE,box,PACK,false,169.00,29.00,218.00,277.00,9,9,,24,29
+Bulk Test EL Item 0120,BULK-EL-00120,Electrical,PowerLine,BC-EL-00120,Blue,25mm,8620,Regression bulk import row 120,ACTIVE,pc,PIECE,false,170.00,30.00,221.00,281.00,9,9,,25,10
+Bulk Test HW Item 0121,BULK-HW-00121,Hardware,BuildPro,BC-HW-00121,White,500 ml,8621,Regression bulk import row 121,ACTIVE,kg,WEIGHT,true,171.00,31.00,224.00,285.00,9,9,,26,11
+Bulk Test PT Item 0122,BULK-PT-00122,Paint,ColorMax,BC-PT-00122,Black,1 inch,8622,Regression bulk import row 122,ACTIVE,m,LENGTH,true,172.00,32.00,227.00,289.00,9,9,,27,12
+Bulk Test EL Item 0123,BULK-EL-00123,Electrical,SteelWorks,BC-EL-00123,Green,M6,8623,Regression bulk import row 123,ACTIVE,l,VOLUME,true,173.00,33.00,230.00,293.00,9,9,,28,13
+Bulk Test HW Item 0124,BULK-HW-00124,Hardware,VoltEdge,BC-HW-00124,Yellow,2m,8624,Regression bulk import row 124,ACTIVE,box,PACK,false,174.00,34.00,233.00,297.00,9,9,,29,14
+Bulk Test PT Item 0125,BULK-PT-00125,Paint,PowerLine,BC-PT-00125,,,8625,Regression bulk import row 125,ACTIVE,pc,PIECE,false,175.00,10.00,193.00,258.00,9,9,,30,15
+Bulk Test EL Item 0126,BULK-EL-00126,Electrical,BuildPro,BC-EL-00126,Red,10mm,8626,Regression bulk import row 126,ACTIVE,kg,WEIGHT,true,176.00,11.00,195.00,261.00,9,9,,31,16
+Bulk Test HW Item 0127,BULK-HW-00127,Hardware,ColorMax,BC-HW-00127,Blue,25mm,8627,Regression bulk import row 127,ACTIVE,m,LENGTH,true,177.00,12.00,198.00,265.00,9,9,,32,17
+Bulk Test PT Item 0128,BULK-PT-00128,Paint,SteelWorks,BC-PT-00128,White,500 ml,8628,Regression bulk import row 128,ACTIVE,l,VOLUME,true,178.00,13.00,201.00,269.00,9,9,,33,18
+Bulk Test EL Item 0129,BULK-EL-00129,Electrical,VoltEdge,BC-EL-00129,Black,1 inch,8629,Regression bulk import row 129,ACTIVE,box,PACK,false,179.00,14.00,204.00,273.00,9,9,,34,19
+Bulk Test HW Item 0130,BULK-HW-00130,Hardware,PowerLine,BC-HW-00130,Green,M6,8630,Regression bulk import row 130,ACTIVE,pc,PIECE,false,180.00,15.00,207.00,277.00,9,9,,35,20
+Bulk Test PT Item 0131,BULK-PT-00131,Paint,BuildPro,BC-PT-00131,Yellow,2m,8631,Regression bulk import row 131,ACTIVE,kg,WEIGHT,true,181.00,16.00,210.00,281.00,9,9,,36,21
+Bulk Test EL Item 0132,BULK-EL-00132,Electrical,ColorMax,BC-EL-00132,,,8632,Regression bulk import row 132,ACTIVE,m,LENGTH,true,182.00,17.00,213.00,285.00,9,9,,37,22
+Bulk Test HW Item 0133,BULK-HW-00133,Hardware,SteelWorks,BC-HW-00133,Red,10mm,8633,Regression bulk import row 133,ACTIVE,l,VOLUME,true,183.00,18.00,216.00,289.00,9,9,,38,23
+Bulk Test PT Item 0134,BULK-PT-00134,Paint,VoltEdge,BC-PT-00134,Blue,25mm,8634,Regression bulk import row 134,ACTIVE,box,PACK,false,184.00,19.00,219.00,293.00,9,9,,39,24
+Bulk Test EL Item 0135,BULK-EL-00135,Electrical,PowerLine,BC-EL-00135,White,500 ml,8635,Regression bulk import row 135,ACTIVE,pc,PIECE,false,185.00,20.00,222.00,297.00,9,9,,40,25
+Bulk Test HW Item 0136,BULK-HW-00136,Hardware,BuildPro,BC-HW-00136,Black,1 inch,8636,Regression bulk import row 136,ACTIVE,kg,WEIGHT,true,186.00,21.00,225.00,301.00,9,9,,41,26
+Bulk Test PT Item 0137,BULK-PT-00137,Paint,ColorMax,BC-PT-00137,Green,M6,8637,Regression bulk import row 137,ACTIVE,m,LENGTH,true,187.00,22.00,228.00,305.00,9,9,,42,27
+Bulk Test EL Item 0138,BULK-EL-00138,Electrical,SteelWorks,BC-EL-00138,Yellow,2m,8638,Regression bulk import row 138,ACTIVE,l,VOLUME,true,188.00,23.00,231.00,309.00,9,9,,43,28
+Bulk Test HW Item 0139,BULK-HW-00139,Hardware,VoltEdge,BC-HW-00139,,,8639,Regression bulk import row 139,ACTIVE,box,PACK,false,189.00,24.00,234.00,313.00,9,9,,44,29
+Bulk Test PT Item 0140,BULK-PT-00140,Paint,PowerLine,BC-PT-00140,Red,10mm,8640,Regression bulk import row 140,ACTIVE,pc,PIECE,false,190.00,25.00,238.00,318.00,9,9,,45,10
+Bulk Test EL Item 0141,BULK-EL-00141,Electrical,BuildPro,BC-EL-00141,Blue,25mm,8641,Regression bulk import row 141,ACTIVE,kg,WEIGHT,true,191.00,26.00,241.00,322.00,9,9,,46,11
+Bulk Test HW Item 0142,BULK-HW-00142,Hardware,ColorMax,BC-HW-00142,White,500 ml,8642,Regression bulk import row 142,ACTIVE,m,LENGTH,true,192.00,27.00,244.00,326.00,9,9,,47,12
+Bulk Test PT Item 0143,BULK-PT-00143,Paint,SteelWorks,BC-PT-00143,Black,1 inch,8643,Regression bulk import row 143,ACTIVE,l,VOLUME,true,193.00,28.00,247.00,330.00,9,9,,48,13
+Bulk Test EL Item 0144,BULK-EL-00144,Electrical,VoltEdge,BC-EL-00144,Green,M6,8644,Regression bulk import row 144,ACTIVE,box,PACK,false,194.00,29.00,250.00,334.00,9,9,,49,14
+Bulk Test HW Item 0145,BULK-HW-00145,Hardware,PowerLine,BC-HW-00145,Yellow,2m,8645,Regression bulk import row 145,ACTIVE,pc,PIECE,false,195.00,30.00,254.00,339.00,9,9,,50,15
+Bulk Test PT Item 0146,BULK-PT-00146,Paint,BuildPro,BC-PT-00146,,,8646,Regression bulk import row 146,ACTIVE,kg,WEIGHT,true,196.00,31.00,257.00,343.00,9,9,,51,16
+Bulk Test EL Item 0147,BULK-EL-00147,Electrical,ColorMax,BC-EL-00147,Red,10mm,8647,Regression bulk import row 147,ACTIVE,m,LENGTH,true,197.00,32.00,260.00,347.00,9,9,,52,17
+Bulk Test HW Item 0148,BULK-HW-00148,Hardware,SteelWorks,BC-HW-00148,Blue,25mm,8648,Regression bulk import row 148,ACTIVE,l,VOLUME,true,198.00,33.00,263.00,351.00,9,9,,53,18
+Bulk Test PT Item 0149,BULK-PT-00149,Paint,VoltEdge,BC-PT-00149,White,500 ml,8649,Regression bulk import row 149,ACTIVE,box,PACK,false,199.00,34.00,267.00,356.00,9,9,,54,19
+Bulk Test EL Item 0150,BULK-EL-00150,Electrical,PowerLine,BC-EL-00150,Black,1 inch,8650,Regression bulk import row 150,ACTIVE,pc,PIECE,false,200.00,10.00,220.00,310.00,9,9,,5,20
+Bulk Test HW Item 0151,BULK-HW-00151,Hardware,BuildPro,BC-HW-00151,Green,M6,8651,Regression bulk import row 151,ACTIVE,kg,WEIGHT,true,201.00,11.00,223.00,314.00,9,9,,6,21
+Bulk Test PT Item 0152,BULK-PT-00152,Paint,ColorMax,BC-PT-00152,Yellow,2m,8652,Regression bulk import row 152,ACTIVE,m,LENGTH,true,202.00,12.00,226.00,318.00,9,9,,7,22
+Bulk Test EL Item 0153,BULK-EL-00153,Electrical,SteelWorks,BC-EL-00153,,,8653,Regression bulk import row 153,ACTIVE,l,VOLUME,true,203.00,13.00,229.00,322.00,9,9,,8,23
+Bulk Test HW Item 0154,BULK-HW-00154,Hardware,VoltEdge,BC-HW-00154,Red,10mm,8654,Regression bulk import row 154,ACTIVE,box,PACK,false,204.00,14.00,233.00,327.00,9,9,,9,24
+Bulk Test PT Item 0155,BULK-PT-00155,Paint,PowerLine,BC-PT-00155,Blue,25mm,8655,Regression bulk import row 155,ACTIVE,pc,PIECE,false,205.00,15.00,236.00,331.00,9,9,,10,25
+Bulk Test EL Item 0156,BULK-EL-00156,Electrical,BuildPro,BC-EL-00156,White,500 ml,8656,Regression bulk import row 156,ACTIVE,kg,WEIGHT,true,206.00,16.00,239.00,335.00,9,9,,11,26
+Bulk Test HW Item 0157,BULK-HW-00157,Hardware,ColorMax,BC-HW-00157,Black,1 inch,8657,Regression bulk import row 157,ACTIVE,m,LENGTH,true,207.00,17.00,242.00,339.00,9,9,,12,27
+Bulk Test PT Item 0158,BULK-PT-00158,Paint,SteelWorks,BC-PT-00158,Green,M6,8658,Regression bulk import row 158,ACTIVE,l,VOLUME,true,208.00,18.00,245.00,343.00,9,9,,13,28
+Bulk Test EL Item 0159,BULK-EL-00159,Electrical,VoltEdge,BC-EL-00159,Yellow,2m,8659,Regression bulk import row 159,ACTIVE,box,PACK,false,209.00,19.00,249.00,348.00,9,9,,14,29
+Bulk Test HW Item 0160,BULK-HW-00160,Hardware,PowerLine,BC-HW-00160,,,8660,Regression bulk import row 160,ACTIVE,pc,PIECE,false,210.00,20.00,252.00,272.00,9,9,,15,10
+Bulk Test PT Item 0161,BULK-PT-00161,Paint,BuildPro,BC-PT-00161,Red,10mm,8661,Regression bulk import row 161,ACTIVE,kg,WEIGHT,true,211.00,21.00,255.00,276.00,9,9,,16,11
+Bulk Test EL Item 0162,BULK-EL-00162,Electrical,ColorMax,BC-EL-00162,Blue,25mm,8662,Regression bulk import row 162,ACTIVE,m,LENGTH,true,212.00,22.00,259.00,281.00,9,9,,17,12
+Bulk Test HW Item 0163,BULK-HW-00163,Hardware,SteelWorks,BC-HW-00163,White,500 ml,8663,Regression bulk import row 163,ACTIVE,l,VOLUME,true,213.00,23.00,262.00,285.00,9,9,,18,13
+Bulk Test PT Item 0164,BULK-PT-00164,Paint,VoltEdge,BC-PT-00164,Black,1 inch,8664,Regression bulk import row 164,ACTIVE,box,PACK,false,214.00,24.00,265.00,289.00,9,9,,19,14
+Bulk Test EL Item 0165,BULK-EL-00165,Electrical,PowerLine,BC-EL-00165,Green,M6,8665,Regression bulk import row 165,ACTIVE,pc,PIECE,false,215.00,25.00,269.00,294.00,9,9,,20,15
+Bulk Test HW Item 0166,BULK-HW-00166,Hardware,BuildPro,BC-HW-00166,Yellow,2m,8666,Regression bulk import row 166,ACTIVE,kg,WEIGHT,true,216.00,26.00,272.00,298.00,9,9,,21,16
+Bulk Test PT Item 0167,BULK-PT-00167,Paint,ColorMax,BC-PT-00167,,,8667,Regression bulk import row 167,ACTIVE,m,LENGTH,true,217.00,27.00,276.00,303.00,9,9,,22,17
+Bulk Test EL Item 0168,BULK-EL-00168,Electrical,SteelWorks,BC-EL-00168,Red,10mm,8668,Regression bulk import row 168,ACTIVE,l,VOLUME,true,218.00,28.00,279.00,307.00,9,9,,23,18
+Bulk Test HW Item 0169,BULK-HW-00169,Hardware,VoltEdge,BC-HW-00169,Blue,25mm,8669,Regression bulk import row 169,ACTIVE,box,PACK,false,219.00,29.00,283.00,312.00,9,9,,24,19
+Bulk Test PT Item 0170,BULK-PT-00170,Paint,PowerLine,BC-PT-00170,White,500 ml,8670,Regression bulk import row 170,ACTIVE,pc,PIECE,false,220.00,30.00,286.00,316.00,9,9,,25,20
+Bulk Test EL Item 0171,BULK-EL-00171,Electrical,BuildPro,BC-EL-00171,Black,1 inch,8671,Regression bulk import row 171,ACTIVE,kg,WEIGHT,true,221.00,31.00,290.00,321.00,9,9,,26,21
+Bulk Test HW Item 0172,BULK-HW-00172,Hardware,ColorMax,BC-HW-00172,Green,M6,8672,Regression bulk import row 172,ACTIVE,m,LENGTH,true,222.00,32.00,293.00,325.00,9,9,,27,22
+Bulk Test PT Item 0173,BULK-PT-00173,Paint,SteelWorks,BC-PT-00173,Yellow,2m,8673,Regression bulk import row 173,ACTIVE,l,VOLUME,true,223.00,33.00,297.00,330.00,9,9,,28,23
+Bulk Test EL Item 0174,BULK-EL-00174,Electrical,VoltEdge,BC-EL-00174,,,8674,Regression bulk import row 174,ACTIVE,box,PACK,false,224.00,34.00,300.00,334.00,9,9,,29,24
+Bulk Test HW Item 0175,BULK-HW-00175,Hardware,PowerLine,BC-HW-00175,Red,10mm,8675,Regression bulk import row 175,ACTIVE,pc,PIECE,false,225.00,10.00,248.00,283.00,9,9,,30,25
+Bulk Test PT Item 0176,BULK-PT-00176,Paint,BuildPro,BC-PT-00176,Blue,25mm,8676,Regression bulk import row 176,ACTIVE,kg,WEIGHT,true,226.00,11.00,251.00,287.00,9,9,,31,26
+Bulk Test EL Item 0177,BULK-EL-00177,Electrical,ColorMax,BC-EL-00177,White,500 ml,8677,Regression bulk import row 177,ACTIVE,m,LENGTH,true,227.00,12.00,254.00,291.00,9,9,,32,27
+Bulk Test HW Item 0178,BULK-HW-00178,Hardware,SteelWorks,BC-HW-00178,Black,1 inch,8678,Regression bulk import row 178,ACTIVE,l,VOLUME,true,228.00,13.00,258.00,296.00,9,9,,33,28
+Bulk Test PT Item 0179,BULK-PT-00179,Paint,VoltEdge,BC-PT-00179,Green,M6,8679,Regression bulk import row 179,ACTIVE,box,PACK,false,229.00,14.00,261.00,300.00,9,9,,34,29
+Bulk Test EL Item 0180,BULK-EL-00180,Electrical,PowerLine,BC-EL-00180,Yellow,2m,8680,Regression bulk import row 180,ACTIVE,pc,PIECE,false,230.00,15.00,265.00,305.00,9,9,,35,10
+Bulk Test HW Item 0181,BULK-HW-00181,Hardware,BuildPro,BC-HW-00181,,,8681,Regression bulk import row 181,ACTIVE,kg,WEIGHT,true,231.00,16.00,268.00,309.00,9,9,,36,11
+Bulk Test PT Item 0182,BULK-PT-00182,Paint,ColorMax,BC-PT-00182,Red,10mm,8682,Regression bulk import row 182,ACTIVE,m,LENGTH,true,232.00,17.00,271.00,313.00,9,9,,37,12
+Bulk Test EL Item 0183,BULK-EL-00183,Electrical,SteelWorks,BC-EL-00183,Blue,25mm,8683,Regression bulk import row 183,ACTIVE,l,VOLUME,true,233.00,18.00,275.00,318.00,9,9,,38,13
+Bulk Test HW Item 0184,BULK-HW-00184,Hardware,VoltEdge,BC-HW-00184,White,500 ml,8684,Regression bulk import row 184,ACTIVE,box,PACK,false,234.00,19.00,278.00,322.00,9,9,,39,14
+Bulk Test PT Item 0185,BULK-PT-00185,Paint,PowerLine,BC-PT-00185,Black,1 inch,8685,Regression bulk import row 185,ACTIVE,pc,PIECE,false,235.00,20.00,282.00,327.00,9,9,,40,15
+Bulk Test EL Item 0186,BULK-EL-00186,Electrical,BuildPro,BC-EL-00186,Green,M6,8686,Regression bulk import row 186,ACTIVE,kg,WEIGHT,true,236.00,21.00,286.00,332.00,9,9,,41,16
+Bulk Test HW Item 0187,BULK-HW-00187,Hardware,ColorMax,BC-HW-00187,Yellow,2m,8687,Regression bulk import row 187,ACTIVE,m,LENGTH,true,237.00,22.00,289.00,336.00,9,9,,42,17
+Bulk Test PT Item 0188,BULK-PT-00188,Paint,SteelWorks,BC-PT-00188,,,8688,Regression bulk import row 188,ACTIVE,l,VOLUME,true,238.00,23.00,293.00,341.00,9,9,,43,18
+Bulk Test EL Item 0189,BULK-EL-00189,Electrical,VoltEdge,BC-EL-00189,Red,10mm,8689,Regression bulk import row 189,ACTIVE,box,PACK,false,239.00,24.00,296.00,345.00,9,9,,44,19
+Bulk Test HW Item 0190,BULK-HW-00190,Hardware,PowerLine,BC-HW-00190,Blue,25mm,8690,Regression bulk import row 190,ACTIVE,pc,PIECE,false,240.00,25.00,300.00,350.00,9,9,,45,20
+Bulk Test PT Item 0191,BULK-PT-00191,Paint,BuildPro,BC-PT-00191,White,500 ml,8691,Regression bulk import row 191,ACTIVE,kg,WEIGHT,true,241.00,26.00,304.00,355.00,9,9,,46,21
+Bulk Test EL Item 0192,BULK-EL-00192,Electrical,ColorMax,BC-EL-00192,Black,1 inch,8692,Regression bulk import row 192,ACTIVE,m,LENGTH,true,242.00,27.00,307.00,359.00,9,9,,47,22
+Bulk Test HW Item 0193,BULK-HW-00193,Hardware,SteelWorks,BC-HW-00193,Green,M6,8693,Regression bulk import row 193,ACTIVE,l,VOLUME,true,243.00,28.00,311.00,364.00,9,9,,48,23
+Bulk Test PT Item 0194,BULK-PT-00194,Paint,VoltEdge,BC-PT-00194,Yellow,2m,8694,Regression bulk import row 194,ACTIVE,box,PACK,false,244.00,29.00,315.00,369.00,9,9,,49,24
+Bulk Test EL Item 0195,BULK-EL-00195,Electrical,PowerLine,BC-EL-00195,,,8695,Regression bulk import row 195,ACTIVE,pc,PIECE,false,245.00,30.00,319.00,374.00,9,9,,50,25
+Bulk Test HW Item 0196,BULK-HW-00196,Hardware,BuildPro,BC-HW-00196,Red,10mm,8696,Regression bulk import row 196,ACTIVE,kg,WEIGHT,true,246.00,31.00,322.00,378.00,9,9,,51,26
+Bulk Test PT Item 0197,BULK-PT-00197,Paint,ColorMax,BC-PT-00197,Blue,25mm,8697,Regression bulk import row 197,ACTIVE,m,LENGTH,true,247.00,32.00,326.00,383.00,9,9,,52,27
+Bulk Test EL Item 0198,BULK-EL-00198,Electrical,SteelWorks,BC-EL-00198,White,500 ml,8698,Regression bulk import row 198,ACTIVE,l,VOLUME,true,248.00,33.00,330.00,388.00,9,9,,53,28
+Bulk Test HW Item 0199,BULK-HW-00199,Hardware,VoltEdge,BC-HW-00199,Black,1 inch,8699,Regression bulk import row 199,ACTIVE,box,PACK,false,249.00,34.00,334.00,393.00,9,9,,54,29
+Bulk Test PT Item 0200,BULK-PT-00200,Paint,PowerLine,BC-PT-00200,Green,M6,8700,Regression bulk import row 200,ACTIVE,pc,PIECE,false,250.00,10.00,275.00,335.00,9,9,,5,10
+Bulk Test EL Item 0201,BULK-EL-00201,Electrical,BuildPro,BC-EL-00201,Yellow,2m,8701,Regression bulk import row 201,ACTIVE,kg,WEIGHT,true,251.00,11.00,279.00,340.00,9,9,,6,11
+Bulk Test HW Item 0202,BULK-HW-00202,Hardware,ColorMax,BC-HW-00202,,,8702,Regression bulk import row 202,ACTIVE,m,LENGTH,true,252.00,12.00,282.00,344.00,9,9,,7,12
+Bulk Test PT Item 0203,BULK-PT-00203,Paint,SteelWorks,BC-PT-00203,Red,10mm,8703,Regression bulk import row 203,ACTIVE,l,VOLUME,true,253.00,13.00,286.00,349.00,9,9,,8,13
+Bulk Test EL Item 0204,BULK-EL-00204,Electrical,VoltEdge,BC-EL-00204,Blue,25mm,8704,Regression bulk import row 204,ACTIVE,box,PACK,false,254.00,14.00,290.00,354.00,9,9,,9,14
+Bulk Test HW Item 0205,BULK-HW-00205,Hardware,PowerLine,BC-HW-00205,White,500 ml,8705,Regression bulk import row 205,ACTIVE,pc,PIECE,false,255.00,15.00,293.00,358.00,9,9,,10,15
+Bulk Test PT Item 0206,BULK-PT-00206,Paint,BuildPro,BC-PT-00206,Black,1 inch,8706,Regression bulk import row 206,ACTIVE,kg,WEIGHT,true,256.00,16.00,297.00,363.00,9,9,,11,16
+Bulk Test EL Item 0207,BULK-EL-00207,Electrical,ColorMax,BC-EL-00207,Green,M6,8707,Regression bulk import row 207,ACTIVE,m,LENGTH,true,257.00,17.00,301.00,368.00,9,9,,12,17
+Bulk Test HW Item 0208,BULK-HW-00208,Hardware,SteelWorks,BC-HW-00208,Yellow,2m,8708,Regression bulk import row 208,ACTIVE,l,VOLUME,true,258.00,18.00,304.00,372.00,9,9,,13,18
+Bulk Test PT Item 0209,BULK-PT-00209,Paint,VoltEdge,BC-PT-00209,,,8709,Regression bulk import row 209,ACTIVE,box,PACK,false,259.00,19.00,308.00,377.00,9,9,,14,19
+Bulk Test EL Item 0210,BULK-EL-00210,Electrical,PowerLine,BC-EL-00210,Red,10mm,8710,Regression bulk import row 210,ACTIVE,pc,PIECE,false,260.00,20.00,312.00,382.00,9,9,,15,20
+Bulk Test HW Item 0211,BULK-HW-00211,Hardware,BuildPro,BC-HW-00211,Blue,25mm,8711,Regression bulk import row 211,ACTIVE,kg,WEIGHT,true,261.00,21.00,316.00,387.00,9,9,,16,21
+Bulk Test PT Item 0212,BULK-PT-00212,Paint,ColorMax,BC-PT-00212,White,500 ml,8712,Regression bulk import row 212,ACTIVE,m,LENGTH,true,262.00,22.00,320.00,392.00,9,9,,17,22
+Bulk Test EL Item 0213,BULK-EL-00213,Electrical,SteelWorks,BC-EL-00213,Black,1 inch,8713,Regression bulk import row 213,ACTIVE,l,VOLUME,true,263.00,23.00,323.00,396.00,9,9,,18,23
+Bulk Test HW Item 0214,BULK-HW-00214,Hardware,VoltEdge,BC-HW-00214,Green,M6,8714,Regression bulk import row 214,ACTIVE,box,PACK,false,264.00,24.00,327.00,401.00,9,9,,19,24
+Bulk Test PT Item 0215,BULK-PT-00215,Paint,PowerLine,BC-PT-00215,Yellow,2m,8715,Regression bulk import row 215,ACTIVE,pc,PIECE,false,265.00,25.00,331.00,406.00,9,9,,20,25
+Bulk Test EL Item 0216,BULK-EL-00216,Electrical,BuildPro,BC-EL-00216,,,8716,Regression bulk import row 216,ACTIVE,kg,WEIGHT,true,266.00,26.00,335.00,411.00,9,9,,21,26
+Bulk Test HW Item 0217,BULK-HW-00217,Hardware,ColorMax,BC-HW-00217,Red,10mm,8717,Regression bulk import row 217,ACTIVE,m,LENGTH,true,267.00,27.00,339.00,416.00,9,9,,22,27
+Bulk Test PT Item 0218,BULK-PT-00218,Paint,SteelWorks,BC-PT-00218,Blue,25mm,8718,Regression bulk import row 218,ACTIVE,l,VOLUME,true,268.00,28.00,343.00,421.00,9,9,,23,28
+Bulk Test EL Item 0219,BULK-EL-00219,Electrical,VoltEdge,BC-EL-00219,White,500 ml,8719,Regression bulk import row 219,ACTIVE,box,PACK,false,269.00,29.00,347.00,426.00,9,9,,24,29
+Bulk Test HW Item 0220,BULK-HW-00220,Hardware,PowerLine,BC-HW-00220,Black,1 inch,8720,Regression bulk import row 220,ACTIVE,pc,PIECE,false,270.00,30.00,351.00,431.00,9,9,,25,10
+Bulk Test PT Item 0221,BULK-PT-00221,Paint,BuildPro,BC-PT-00221,Green,M6,8721,Regression bulk import row 221,ACTIVE,kg,WEIGHT,true,271.00,31.00,355.00,436.00,9,9,,26,11
+Bulk Test EL Item 0222,BULK-EL-00222,Electrical,ColorMax,BC-EL-00222,Yellow,2m,8722,Regression bulk import row 222,ACTIVE,m,LENGTH,true,272.00,32.00,359.00,441.00,9,9,,27,12
+Bulk Test HW Item 0223,BULK-HW-00223,Hardware,SteelWorks,BC-HW-00223,,,8723,Regression bulk import row 223,ACTIVE,l,VOLUME,true,273.00,33.00,363.00,446.00,9,9,,28,13
+Bulk Test PT Item 0224,BULK-PT-00224,Paint,VoltEdge,BC-PT-00224,Red,10mm,8724,Regression bulk import row 224,ACTIVE,box,PACK,false,274.00,34.00,367.00,451.00,9,9,,29,14
+Bulk Test EL Item 0225,BULK-EL-00225,Electrical,PowerLine,BC-EL-00225,Blue,25mm,8725,Regression bulk import row 225,ACTIVE,pc,PIECE,false,275.00,10.00,303.00,388.00,9,9,,30,15
+Bulk Test HW Item 0226,BULK-HW-00226,Hardware,BuildPro,BC-HW-00226,White,500 ml,8726,Regression bulk import row 226,ACTIVE,kg,WEIGHT,true,276.00,11.00,306.00,392.00,9,9,,31,16
+Bulk Test PT Item 0227,BULK-PT-00227,Paint,ColorMax,BC-PT-00227,Black,1 inch,8727,Regression bulk import row 227,ACTIVE,m,LENGTH,true,277.00,12.00,310.00,397.00,9,9,,32,17
+Bulk Test EL Item 0228,BULK-EL-00228,Electrical,SteelWorks,BC-EL-00228,Green,M6,8728,Regression bulk import row 228,ACTIVE,l,VOLUME,true,278.00,13.00,314.00,402.00,9,9,,33,18
+Bulk Test HW Item 0229,BULK-HW-00229,Hardware,VoltEdge,BC-HW-00229,Yellow,2m,8729,Regression bulk import row 229,ACTIVE,box,PACK,false,279.00,14.00,318.00,407.00,9,9,,34,19
+Bulk Test PT Item 0230,BULK-PT-00230,Paint,PowerLine,BC-PT-00230,,,8730,Regression bulk import row 230,ACTIVE,pc,PIECE,false,280.00,15.00,322.00,412.00,9,9,,35,20
+Bulk Test EL Item 0231,BULK-EL-00231,Electrical,BuildPro,BC-EL-00231,Red,10mm,8731,Regression bulk import row 231,ACTIVE,kg,WEIGHT,true,281.00,16.00,326.00,417.00,9,9,,36,21
+Bulk Test HW Item 0232,BULK-HW-00232,Hardware,ColorMax,BC-HW-00232,Blue,25mm,8732,Regression bulk import row 232,ACTIVE,m,LENGTH,true,282.00,17.00,330.00,422.00,9,9,,37,22
+Bulk Test PT Item 0233,BULK-PT-00233,Paint,SteelWorks,BC-PT-00233,White,500 ml,8733,Regression bulk import row 233,ACTIVE,l,VOLUME,true,283.00,18.00,334.00,427.00,9,9,,38,23
+Bulk Test EL Item 0234,BULK-EL-00234,Electrical,VoltEdge,BC-EL-00234,Black,1 inch,8734,Regression bulk import row 234,ACTIVE,box,PACK,false,284.00,19.00,338.00,432.00,9,9,,39,24
+Bulk Test HW Item 0235,BULK-HW-00235,Hardware,PowerLine,BC-HW-00235,Green,M6,8735,Regression bulk import row 235,ACTIVE,pc,PIECE,false,285.00,20.00,342.00,437.00,9,9,,40,25
+Bulk Test PT Item 0236,BULK-PT-00236,Paint,BuildPro,BC-PT-00236,Yellow,2m,8736,Regression bulk import row 236,ACTIVE,kg,WEIGHT,true,286.00,21.00,346.00,442.00,9,9,,41,26
+Bulk Test EL Item 0237,BULK-EL-00237,Electrical,ColorMax,BC-EL-00237,,,8737,Regression bulk import row 237,ACTIVE,m,LENGTH,true,287.00,22.00,350.00,447.00,9,9,,42,27
+Bulk Test HW Item 0238,BULK-HW-00238,Hardware,SteelWorks,BC-HW-00238,Red,10mm,8738,Regression bulk import row 238,ACTIVE,l,VOLUME,true,288.00,23.00,354.00,452.00,9,9,,43,28
+Bulk Test PT Item 0239,BULK-PT-00239,Paint,VoltEdge,BC-PT-00239,Blue,25mm,8739,Regression bulk import row 239,ACTIVE,box,PACK,false,289.00,24.00,358.00,457.00,9,9,,44,29
+Bulk Test EL Item 0240,BULK-EL-00240,Electrical,PowerLine,BC-EL-00240,White,500 ml,8740,Regression bulk import row 240,ACTIVE,pc,PIECE,false,290.00,25.00,363.00,383.00,9,9,,45,10
+Bulk Test HW Item 0241,BULK-HW-00241,Hardware,BuildPro,BC-HW-00241,Black,1 inch,8741,Regression bulk import row 241,ACTIVE,kg,WEIGHT,true,291.00,26.00,367.00,388.00,9,9,,46,11
+Bulk Test PT Item 0242,BULK-PT-00242,Paint,ColorMax,BC-PT-00242,Green,M6,8742,Regression bulk import row 242,ACTIVE,m,LENGTH,true,292.00,27.00,371.00,393.00,9,9,,47,12
+Bulk Test EL Item 0243,BULK-EL-00243,Electrical,SteelWorks,BC-EL-00243,Yellow,2m,8743,Regression bulk import row 243,ACTIVE,l,VOLUME,true,293.00,28.00,375.00,398.00,9,9,,48,13
+Bulk Test HW Item 0244,BULK-HW-00244,Hardware,VoltEdge,BC-HW-00244,,,8744,Regression bulk import row 244,ACTIVE,box,PACK,false,294.00,29.00,379.00,403.00,9,9,,49,14
+Bulk Test PT Item 0245,BULK-PT-00245,Paint,PowerLine,BC-PT-00245,Red,10mm,8745,Regression bulk import row 245,ACTIVE,pc,PIECE,false,295.00,30.00,384.00,409.00,9,9,,50,15
+Bulk Test EL Item 0246,BULK-EL-00246,Electrical,BuildPro,BC-EL-00246,Blue,25mm,8746,Regression bulk import row 246,ACTIVE,kg,WEIGHT,true,296.00,31.00,388.00,414.00,9,9,,51,16
+Bulk Test HW Item 0247,BULK-HW-00247,Hardware,ColorMax,BC-HW-00247,White,500 ml,8747,Regression bulk import row 247,ACTIVE,m,LENGTH,true,297.00,32.00,392.00,419.00,9,9,,52,17
+Bulk Test PT Item 0248,BULK-PT-00248,Paint,SteelWorks,BC-PT-00248,Black,1 inch,8748,Regression bulk import row 248,ACTIVE,l,VOLUME,true,298.00,33.00,396.00,424.00,9,9,,53,18
+Bulk Test EL Item 0249,BULK-EL-00249,Electrical,VoltEdge,BC-EL-00249,Green,M6,8749,Regression bulk import row 249,ACTIVE,box,PACK,false,299.00,34.00,401.00,430.00,9,9,,54,19
+Bulk Test HW Item 0250,BULK-HW-00250,Hardware,PowerLine,BC-HW-00250,Yellow,2m,8750,Regression bulk import row 250,ACTIVE,pc,PIECE,false,300.00,10.00,330.00,360.00,9,9,,5,20
+Bulk Test PT Item 0251,BULK-PT-00251,Paint,BuildPro,BC-PT-00251,,,8751,Regression bulk import row 251,ACTIVE,kg,WEIGHT,true,301.00,11.00,334.00,365.00,9,9,,6,21
+Bulk Test EL Item 0252,BULK-EL-00252,Electrical,ColorMax,BC-EL-00252,Red,10mm,8752,Regression bulk import row 252,ACTIVE,m,LENGTH,true,302.00,12.00,338.00,370.00,9,9,,7,22
+Bulk Test HW Item 0253,BULK-HW-00253,Hardware,SteelWorks,BC-HW-00253,Blue,25mm,8753,Regression bulk import row 253,ACTIVE,l,VOLUME,true,303.00,13.00,342.00,375.00,9,9,,8,23
+Bulk Test PT Item 0254,BULK-PT-00254,Paint,VoltEdge,BC-PT-00254,White,500 ml,8754,Regression bulk import row 254,ACTIVE,box,PACK,false,304.00,14.00,347.00,381.00,9,9,,9,24
+Bulk Test EL Item 0255,BULK-EL-00255,Electrical,PowerLine,BC-EL-00255,Black,1 inch,8755,Regression bulk import row 255,ACTIVE,pc,PIECE,false,305.00,15.00,351.00,386.00,9,9,,10,25
+Bulk Test HW Item 0256,BULK-HW-00256,Hardware,BuildPro,BC-HW-00256,Green,M6,8756,Regression bulk import row 256,ACTIVE,kg,WEIGHT,true,306.00,16.00,355.00,391.00,9,9,,11,26
+Bulk Test PT Item 0257,BULK-PT-00257,Paint,ColorMax,BC-PT-00257,Yellow,2m,8757,Regression bulk import row 257,ACTIVE,m,LENGTH,true,307.00,17.00,359.00,396.00,9,9,,12,27
+Bulk Test EL Item 0258,BULK-EL-00258,Electrical,SteelWorks,BC-EL-00258,,,8758,Regression bulk import row 258,ACTIVE,l,VOLUME,true,308.00,18.00,363.00,401.00,9,9,,13,28
+Bulk Test HW Item 0259,BULK-HW-00259,Hardware,VoltEdge,BC-HW-00259,Red,10mm,8759,Regression bulk import row 259,ACTIVE,box,PACK,false,309.00,19.00,368.00,407.00,9,9,,14,29
+Bulk Test PT Item 0260,BULK-PT-00260,Paint,PowerLine,BC-PT-00260,Blue,25mm,8760,Regression bulk import row 260,ACTIVE,pc,PIECE,false,310.00,20.00,372.00,412.00,9,9,,15,10
+Bulk Test EL Item 0261,BULK-EL-00261,Electrical,BuildPro,BC-EL-00261,White,500 ml,8761,Regression bulk import row 261,ACTIVE,kg,WEIGHT,true,311.00,21.00,376.00,417.00,9,9,,16,11
+Bulk Test HW Item 0262,BULK-HW-00262,Hardware,ColorMax,BC-HW-00262,Black,1 inch,8762,Regression bulk import row 262,ACTIVE,m,LENGTH,true,312.00,22.00,381.00,423.00,9,9,,17,12
+Bulk Test PT Item 0263,BULK-PT-00263,Paint,SteelWorks,BC-PT-00263,Green,M6,8763,Regression bulk import row 263,ACTIVE,l,VOLUME,true,313.00,23.00,385.00,428.00,9,9,,18,13
+Bulk Test EL Item 0264,BULK-EL-00264,Electrical,VoltEdge,BC-EL-00264,Yellow,2m,8764,Regression bulk import row 264,ACTIVE,box,PACK,false,314.00,24.00,389.00,433.00,9,9,,19,14
+Bulk Test HW Item 0265,BULK-HW-00265,Hardware,PowerLine,BC-HW-00265,,,8765,Regression bulk import row 265,ACTIVE,pc,PIECE,false,315.00,25.00,394.00,439.00,9,9,,20,15
+Bulk Test PT Item 0266,BULK-PT-00266,Paint,BuildPro,BC-PT-00266,Red,10mm,8766,Regression bulk import row 266,ACTIVE,kg,WEIGHT,true,316.00,26.00,398.00,444.00,9,9,,21,16
+Bulk Test EL Item 0267,BULK-EL-00267,Electrical,ColorMax,BC-EL-00267,Blue,25mm,8767,Regression bulk import row 267,ACTIVE,m,LENGTH,true,317.00,27.00,403.00,450.00,9,9,,22,17
+Bulk Test HW Item 0268,BULK-HW-00268,Hardware,SteelWorks,BC-HW-00268,White,500 ml,8768,Regression bulk import row 268,ACTIVE,l,VOLUME,true,318.00,28.00,407.00,455.00,9,9,,23,18
+Bulk Test PT Item 0269,BULK-PT-00269,Paint,VoltEdge,BC-PT-00269,Black,1 inch,8769,Regression bulk import row 269,ACTIVE,box,PACK,false,319.00,29.00,412.00,461.00,9,9,,24,19
+Bulk Test EL Item 0270,BULK-EL-00270,Electrical,PowerLine,BC-EL-00270,Green,M6,8770,Regression bulk import row 270,ACTIVE,pc,PIECE,false,320.00,30.00,416.00,466.00,9,9,,25,20
+Bulk Test HW Item 0271,BULK-HW-00271,Hardware,BuildPro,BC-HW-00271,Yellow,2m,8771,Regression bulk import row 271,ACTIVE,kg,WEIGHT,true,321.00,31.00,421.00,472.00,9,9,,26,21
+Bulk Test PT Item 0272,BULK-PT-00272,Paint,ColorMax,BC-PT-00272,,,8772,Regression bulk import row 272,ACTIVE,m,LENGTH,true,322.00,32.00,425.00,477.00,9,9,,27,22
+Bulk Test EL Item 0273,BULK-EL-00273,Electrical,SteelWorks,BC-EL-00273,Red,10mm,8773,Regression bulk import row 273,ACTIVE,l,VOLUME,true,323.00,33.00,430.00,483.00,9,9,,28,23
+Bulk Test HW Item 0274,BULK-HW-00274,Hardware,VoltEdge,BC-HW-00274,Blue,25mm,8774,Regression bulk import row 274,ACTIVE,box,PACK,false,324.00,34.00,434.00,488.00,9,9,,29,24
+Bulk Test PT Item 0275,BULK-PT-00275,Paint,PowerLine,BC-PT-00275,White,500 ml,8775,Regression bulk import row 275,ACTIVE,pc,PIECE,false,325.00,10.00,358.00,413.00,9,9,,30,25
+Bulk Test EL Item 0276,BULK-EL-00276,Electrical,BuildPro,BC-EL-00276,Black,1 inch,8776,Regression bulk import row 276,ACTIVE,kg,WEIGHT,true,326.00,11.00,362.00,418.00,9,9,,31,26
+Bulk Test HW Item 0277,BULK-HW-00277,Hardware,ColorMax,BC-HW-00277,Green,M6,8777,Regression bulk import row 277,ACTIVE,m,LENGTH,true,327.00,12.00,366.00,423.00,9,9,,32,27
+Bulk Test PT Item 0278,BULK-PT-00278,Paint,SteelWorks,BC-PT-00278,Yellow,2m,8778,Regression bulk import row 278,ACTIVE,l,VOLUME,true,328.00,13.00,371.00,429.00,9,9,,33,28
+Bulk Test EL Item 0279,BULK-EL-00279,Electrical,VoltEdge,BC-EL-00279,,,8779,Regression bulk import row 279,ACTIVE,box,PACK,false,329.00,14.00,375.00,434.00,9,9,,34,29
+Bulk Test HW Item 0280,BULK-HW-00280,Hardware,PowerLine,BC-HW-00280,Red,10mm,8780,Regression bulk import row 280,ACTIVE,pc,PIECE,false,330.00,15.00,379.00,439.00,9,9,,35,10
+Bulk Test PT Item 0281,BULK-PT-00281,Paint,BuildPro,BC-PT-00281,Blue,25mm,8781,Regression bulk import row 281,ACTIVE,kg,WEIGHT,true,331.00,16.00,384.00,445.00,9,9,,36,11
+Bulk Test EL Item 0282,BULK-EL-00282,Electrical,ColorMax,BC-EL-00282,White,500 ml,8782,Regression bulk import row 282,ACTIVE,m,LENGTH,true,332.00,17.00,388.00,450.00,9,9,,37,12
+Bulk Test HW Item 0283,BULK-HW-00283,Hardware,SteelWorks,BC-HW-00283,Black,1 inch,8783,Regression bulk import row 283,ACTIVE,l,VOLUME,true,333.00,18.00,393.00,456.00,9,9,,38,13
+Bulk Test PT Item 0284,BULK-PT-00284,Paint,VoltEdge,BC-PT-00284,Green,M6,8784,Regression bulk import row 284,ACTIVE,box,PACK,false,334.00,19.00,397.00,461.00,9,9,,39,14
+Bulk Test EL Item 0285,BULK-EL-00285,Electrical,PowerLine,BC-EL-00285,Yellow,2m,8785,Regression bulk import row 285,ACTIVE,pc,PIECE,false,335.00,20.00,402.00,467.00,9,9,,40,15
+Bulk Test HW Item 0286,BULK-HW-00286,Hardware,BuildPro,BC-HW-00286,,,8786,Regression bulk import row 286,ACTIVE,kg,WEIGHT,true,336.00,21.00,407.00,473.00,9,9,,41,16
+Bulk Test PT Item 0287,BULK-PT-00287,Paint,ColorMax,BC-PT-00287,Red,10mm,8787,Regression bulk import row 287,ACTIVE,m,LENGTH,true,337.00,22.00,411.00,478.00,9,9,,42,17
+Bulk Test EL Item 0288,BULK-EL-00288,Electrical,SteelWorks,BC-EL-00288,Blue,25mm,8788,Regression bulk import row 288,ACTIVE,l,VOLUME,true,338.00,23.00,416.00,484.00,9,9,,43,18
+Bulk Test HW Item 0289,BULK-HW-00289,Hardware,VoltEdge,BC-HW-00289,White,500 ml,8789,Regression bulk import row 289,ACTIVE,box,PACK,false,339.00,24.00,420.00,489.00,9,9,,44,19
+Bulk Test PT Item 0290,BULK-PT-00290,Paint,PowerLine,BC-PT-00290,Black,1 inch,8790,Regression bulk import row 290,ACTIVE,pc,PIECE,false,340.00,25.00,425.00,495.00,9,9,,45,20
+Bulk Test EL Item 0291,BULK-EL-00291,Electrical,BuildPro,BC-EL-00291,Green,M6,8791,Regression bulk import row 291,ACTIVE,kg,WEIGHT,true,341.00,26.00,430.00,501.00,9,9,,46,21
+Bulk Test HW Item 0292,BULK-HW-00292,Hardware,ColorMax,BC-HW-00292,Yellow,2m,8792,Regression bulk import row 292,ACTIVE,m,LENGTH,true,342.00,27.00,434.00,506.00,9,9,,47,22
+Bulk Test PT Item 0293,BULK-PT-00293,Paint,SteelWorks,BC-PT-00293,,,8793,Regression bulk import row 293,ACTIVE,l,VOLUME,true,343.00,28.00,439.00,512.00,9,9,,48,23
+Bulk Test EL Item 0294,BULK-EL-00294,Electrical,VoltEdge,BC-EL-00294,Red,10mm,8794,Regression bulk import row 294,ACTIVE,box,PACK,false,344.00,29.00,444.00,518.00,9,9,,49,24
+Bulk Test HW Item 0295,BULK-HW-00295,Hardware,PowerLine,BC-HW-00295,Blue,25mm,8795,Regression bulk import row 295,ACTIVE,pc,PIECE,false,345.00,30.00,449.00,524.00,9,9,,50,25
+Bulk Test PT Item 0296,BULK-PT-00296,Paint,BuildPro,BC-PT-00296,White,500 ml,8796,Regression bulk import row 296,ACTIVE,kg,WEIGHT,true,346.00,31.00,453.00,529.00,9,9,,51,26
+Bulk Test EL Item 0297,BULK-EL-00297,Electrical,ColorMax,BC-EL-00297,Black,1 inch,8797,Regression bulk import row 297,ACTIVE,m,LENGTH,true,347.00,32.00,458.00,535.00,9,9,,52,27
+Bulk Test HW Item 0298,BULK-HW-00298,Hardware,SteelWorks,BC-HW-00298,Green,M6,8798,Regression bulk import row 298,ACTIVE,l,VOLUME,true,348.00,33.00,463.00,541.00,9,9,,53,28
+Bulk Test PT Item 0299,BULK-PT-00299,Paint,VoltEdge,BC-PT-00299,Yellow,2m,8799,Regression bulk import row 299,ACTIVE,box,PACK,false,349.00,34.00,468.00,547.00,9,9,,54,29
+Bulk Test EL Item 0300,BULK-EL-00300,Electrical,PowerLine,BC-EL-00300,,,8800,Regression bulk import row 300,ACTIVE,pc,PIECE,false,350.00,10.00,385.00,465.00,9,9,,5,10
+Bulk Test HW Item 0301,BULK-HW-00301,Hardware,BuildPro,BC-HW-00301,Red,10mm,8801,Regression bulk import row 301,ACTIVE,kg,WEIGHT,true,351.00,11.00,390.00,471.00,9,9,,6,11
+Bulk Test PT Item 0302,BULK-PT-00302,Paint,ColorMax,BC-PT-00302,Blue,25mm,8802,Regression bulk import row 302,ACTIVE,m,LENGTH,true,352.00,12.00,394.00,476.00,9,9,,7,12
+Bulk Test EL Item 0303,BULK-EL-00303,Electrical,SteelWorks,BC-EL-00303,White,500 ml,8803,Regression bulk import row 303,ACTIVE,l,VOLUME,true,353.00,13.00,399.00,482.00,9,9,,8,13
+Bulk Test HW Item 0304,BULK-HW-00304,Hardware,VoltEdge,BC-HW-00304,Black,1 inch,8804,Regression bulk import row 304,ACTIVE,box,PACK,false,354.00,14.00,404.00,488.00,9,9,,9,14
+Bulk Test PT Item 0305,BULK-PT-00305,Paint,PowerLine,BC-PT-00305,Green,M6,8805,Regression bulk import row 305,ACTIVE,pc,PIECE,false,355.00,15.00,408.00,493.00,9,9,,10,15
+Bulk Test EL Item 0306,BULK-EL-00306,Electrical,BuildPro,BC-EL-00306,Yellow,2m,8806,Regression bulk import row 306,ACTIVE,kg,WEIGHT,true,356.00,16.00,413.00,499.00,9,9,,11,16
+Bulk Test HW Item 0307,BULK-HW-00307,Hardware,ColorMax,BC-HW-00307,,,8807,Regression bulk import row 307,ACTIVE,m,LENGTH,true,357.00,17.00,418.00,505.00,9,9,,12,17
+Bulk Test PT Item 0308,BULK-PT-00308,Paint,SteelWorks,BC-PT-00308,Red,10mm,8808,Regression bulk import row 308,ACTIVE,l,VOLUME,true,358.00,18.00,422.00,510.00,9,9,,13,18
+Bulk Test EL Item 0309,BULK-EL-00309,Electrical,VoltEdge,BC-EL-00309,Blue,25mm,8809,Regression bulk import row 309,ACTIVE,box,PACK,false,359.00,19.00,427.00,516.00,9,9,,14,19
+Bulk Test HW Item 0310,BULK-HW-00310,Hardware,PowerLine,BC-HW-00310,White,500 ml,8810,Regression bulk import row 310,ACTIVE,pc,PIECE,false,360.00,20.00,432.00,522.00,9,9,,15,20
+Bulk Test PT Item 0311,BULK-PT-00311,Paint,BuildPro,BC-PT-00311,Black,1 inch,8811,Regression bulk import row 311,ACTIVE,kg,WEIGHT,true,361.00,21.00,437.00,528.00,9,9,,16,21
+Bulk Test EL Item 0312,BULK-EL-00312,Electrical,ColorMax,BC-EL-00312,Green,M6,8812,Regression bulk import row 312,ACTIVE,m,LENGTH,true,362.00,22.00,442.00,534.00,9,9,,17,22
+Bulk Test HW Item 0313,BULK-HW-00313,Hardware,SteelWorks,BC-HW-00313,Yellow,2m,8813,Regression bulk import row 313,ACTIVE,l,VOLUME,true,363.00,23.00,446.00,539.00,9,9,,18,23
+Bulk Test PT Item 0314,BULK-PT-00314,Paint,VoltEdge,BC-PT-00314,,,8814,Regression bulk import row 314,ACTIVE,box,PACK,false,364.00,24.00,451.00,545.00,9,9,,19,24
+Bulk Test EL Item 0315,BULK-EL-00315,Electrical,PowerLine,BC-EL-00315,Red,10mm,8815,Regression bulk import row 315,ACTIVE,pc,PIECE,false,365.00,25.00,456.00,551.00,9,9,,20,25
+Bulk Test HW Item 0316,BULK-HW-00316,Hardware,BuildPro,BC-HW-00316,Blue,25mm,8816,Regression bulk import row 316,ACTIVE,kg,WEIGHT,true,366.00,26.00,461.00,557.00,9,9,,21,26
+Bulk Test PT Item 0317,BULK-PT-00317,Paint,ColorMax,BC-PT-00317,White,500 ml,8817,Regression bulk import row 317,ACTIVE,m,LENGTH,true,367.00,27.00,466.00,563.00,9,9,,22,27
+Bulk Test EL Item 0318,BULK-EL-00318,Electrical,SteelWorks,BC-EL-00318,Black,1 inch,8818,Regression bulk import row 318,ACTIVE,l,VOLUME,true,368.00,28.00,471.00,569.00,9,9,,23,28
+Bulk Test HW Item 0319,BULK-HW-00319,Hardware,VoltEdge,BC-HW-00319,Green,M6,8819,Regression bulk import row 319,ACTIVE,box,PACK,false,369.00,29.00,476.00,575.00,9,9,,24,29
+Bulk Test PT Item 0320,BULK-PT-00320,Paint,PowerLine,BC-PT-00320,Yellow,2m,8820,Regression bulk import row 320,ACTIVE,pc,PIECE,false,370.00,30.00,481.00,501.00,9,9,,25,10
+Bulk Test EL Item 0321,BULK-EL-00321,Electrical,BuildPro,BC-EL-00321,,,8821,Regression bulk import row 321,ACTIVE,kg,WEIGHT,true,371.00,31.00,486.00,507.00,9,9,,26,11
+Bulk Test HW Item 0322,BULK-HW-00322,Hardware,ColorMax,BC-HW-00322,Red,10mm,8822,Regression bulk import row 322,ACTIVE,m,LENGTH,true,372.00,32.00,491.00,513.00,9,9,,27,12
+Bulk Test PT Item 0323,BULK-PT-00323,Paint,SteelWorks,BC-PT-00323,Blue,25mm,8823,Regression bulk import row 323,ACTIVE,l,VOLUME,true,373.00,33.00,496.00,519.00,9,9,,28,13
+Bulk Test EL Item 0324,BULK-EL-00324,Electrical,VoltEdge,BC-EL-00324,White,500 ml,8824,Regression bulk import row 324,ACTIVE,box,PACK,false,374.00,34.00,501.00,525.00,9,9,,29,14
+Bulk Test HW Item 0325,BULK-HW-00325,Hardware,PowerLine,BC-HW-00325,Black,1 inch,8825,Regression bulk import row 325,ACTIVE,pc,PIECE,false,375.00,10.00,413.00,438.00,9,9,,30,15
+Bulk Test PT Item 0326,BULK-PT-00326,Paint,BuildPro,BC-PT-00326,Green,M6,8826,Regression bulk import row 326,ACTIVE,kg,WEIGHT,true,376.00,11.00,417.00,443.00,9,9,,31,16
+Bulk Test EL Item 0327,BULK-EL-00327,Electrical,ColorMax,BC-EL-00327,Yellow,2m,8827,Regression bulk import row 327,ACTIVE,m,LENGTH,true,377.00,12.00,422.00,449.00,9,9,,32,17
+Bulk Test HW Item 0328,BULK-HW-00328,Hardware,SteelWorks,BC-HW-00328,,,8828,Regression bulk import row 328,ACTIVE,l,VOLUME,true,378.00,13.00,427.00,455.00,9,9,,33,18
+Bulk Test PT Item 0329,BULK-PT-00329,Paint,VoltEdge,BC-PT-00329,Red,10mm,8829,Regression bulk import row 329,ACTIVE,box,PACK,false,379.00,14.00,432.00,461.00,9,9,,34,19
+Bulk Test EL Item 0330,BULK-EL-00330,Electrical,PowerLine,BC-EL-00330,Blue,25mm,8830,Regression bulk import row 330,ACTIVE,pc,PIECE,false,380.00,15.00,437.00,467.00,9,9,,35,20
+Bulk Test HW Item 0331,BULK-HW-00331,Hardware,BuildPro,BC-HW-00331,White,500 ml,8831,Regression bulk import row 331,ACTIVE,kg,WEIGHT,true,381.00,16.00,442.00,473.00,9,9,,36,21
+Bulk Test PT Item 0332,BULK-PT-00332,Paint,ColorMax,BC-PT-00332,Black,1 inch,8832,Regression bulk import row 332,ACTIVE,m,LENGTH,true,382.00,17.00,447.00,479.00,9,9,,37,22
+Bulk Test EL Item 0333,BULK-EL-00333,Electrical,SteelWorks,BC-EL-00333,Green,M6,8833,Regression bulk import row 333,ACTIVE,l,VOLUME,true,383.00,18.00,452.00,485.00,9,9,,38,23
+Bulk Test HW Item 0334,BULK-HW-00334,Hardware,VoltEdge,BC-HW-00334,Yellow,2m,8834,Regression bulk import row 334,ACTIVE,box,PACK,false,384.00,19.00,457.00,491.00,9,9,,39,24
+Bulk Test PT Item 0335,BULK-PT-00335,Paint,PowerLine,BC-PT-00335,,,8835,Regression bulk import row 335,ACTIVE,pc,PIECE,false,385.00,20.00,462.00,497.00,9,9,,40,25
+Bulk Test EL Item 0336,BULK-EL-00336,Electrical,BuildPro,BC-EL-00336,Red,10mm,8836,Regression bulk import row 336,ACTIVE,kg,WEIGHT,true,386.00,21.00,467.00,503.00,9,9,,41,26
+Bulk Test HW Item 0337,BULK-HW-00337,Hardware,ColorMax,BC-HW-00337,Blue,25mm,8837,Regression bulk import row 337,ACTIVE,m,LENGTH,true,387.00,22.00,472.00,509.00,9,9,,42,27
+Bulk Test PT Item 0338,BULK-PT-00338,Paint,SteelWorks,BC-PT-00338,White,500 ml,8838,Regression bulk import row 338,ACTIVE,l,VOLUME,true,388.00,23.00,477.00,515.00,9,9,,43,28
+Bulk Test EL Item 0339,BULK-EL-00339,Electrical,VoltEdge,BC-EL-00339,Black,1 inch,8839,Regression bulk import row 339,ACTIVE,box,PACK,false,389.00,24.00,482.00,521.00,9,9,,44,29
+Bulk Test HW Item 0340,BULK-HW-00340,Hardware,PowerLine,BC-HW-00340,Green,M6,8840,Regression bulk import row 340,ACTIVE,pc,PIECE,false,390.00,25.00,488.00,528.00,9,9,,45,10
+Bulk Test PT Item 0341,BULK-PT-00341,Paint,BuildPro,BC-PT-00341,Yellow,2m,8841,Regression bulk import row 341,ACTIVE,kg,WEIGHT,true,391.00,26.00,493.00,534.00,9,9,,46,11
+Bulk Test EL Item 0342,BULK-EL-00342,Electrical,ColorMax,BC-EL-00342,,,8842,Regression bulk import row 342,ACTIVE,m,LENGTH,true,392.00,27.00,498.00,540.00,9,9,,47,12
+Bulk Test HW Item 0343,BULK-HW-00343,Hardware,SteelWorks,BC-HW-00343,Red,10mm,8843,Regression bulk import row 343,ACTIVE,l,VOLUME,true,393.00,28.00,503.00,546.00,9,9,,48,13
+Bulk Test PT Item 0344,BULK-PT-00344,Paint,VoltEdge,BC-PT-00344,Blue,25mm,8844,Regression bulk import row 344,ACTIVE,box,PACK,false,394.00,29.00,508.00,552.00,9,9,,49,14
+Bulk Test EL Item 0345,BULK-EL-00345,Electrical,PowerLine,BC-EL-00345,White,500 ml,8845,Regression bulk import row 345,ACTIVE,pc,PIECE,false,395.00,30.00,514.00,559.00,9,9,,50,15
+Bulk Test HW Item 0346,BULK-HW-00346,Hardware,BuildPro,BC-HW-00346,Black,1 inch,8846,Regression bulk import row 346,ACTIVE,kg,WEIGHT,true,396.00,31.00,519.00,565.00,9,9,,51,16
+Bulk Test PT Item 0347,BULK-PT-00347,Paint,ColorMax,BC-PT-00347,Green,M6,8847,Regression bulk import row 347,ACTIVE,m,LENGTH,true,397.00,32.00,524.00,571.00,9,9,,52,17
+Bulk Test EL Item 0348,BULK-EL-00348,Electrical,SteelWorks,BC-EL-00348,Yellow,2m,8848,Regression bulk import row 348,ACTIVE,l,VOLUME,true,398.00,33.00,529.00,577.00,9,9,,53,18
+Bulk Test HW Item 0349,BULK-HW-00349,Hardware,VoltEdge,BC-HW-00349,,,8849,Regression bulk import row 349,ACTIVE,box,PACK,false,399.00,34.00,535.00,584.00,9,9,,54,19
+Bulk Test PT Item 0350,BULK-PT-00350,Paint,PowerLine,BC-PT-00350,Red,10mm,8850,Regression bulk import row 350,ACTIVE,pc,PIECE,false,400.00,10.00,440.00,490.00,9,9,,5,20
+Bulk Test EL Item 0351,BULK-EL-00351,Electrical,BuildPro,BC-EL-00351,Blue,25mm,8851,Regression bulk import row 351,ACTIVE,kg,WEIGHT,true,401.00,11.00,445.00,496.00,9,9,,6,21
+Bulk Test HW Item 0352,BULK-HW-00352,Hardware,ColorMax,BC-HW-00352,White,500 ml,8852,Regression bulk import row 352,ACTIVE,m,LENGTH,true,402.00,12.00,450.00,502.00,9,9,,7,22
+Bulk Test PT Item 0353,BULK-PT-00353,Paint,SteelWorks,BC-PT-00353,Black,1 inch,8853,Regression bulk import row 353,ACTIVE,l,VOLUME,true,403.00,13.00,455.00,508.00,9,9,,8,23
+Bulk Test EL Item 0354,BULK-EL-00354,Electrical,VoltEdge,BC-EL-00354,Green,M6,8854,Regression bulk import row 354,ACTIVE,box,PACK,false,404.00,14.00,461.00,515.00,9,9,,9,24
+Bulk Test HW Item 0355,BULK-HW-00355,Hardware,PowerLine,BC-HW-00355,Yellow,2m,8855,Regression bulk import row 355,ACTIVE,pc,PIECE,false,405.00,15.00,466.00,521.00,9,9,,10,25
+Bulk Test PT Item 0356,BULK-PT-00356,Paint,BuildPro,BC-PT-00356,,,8856,Regression bulk import row 356,ACTIVE,kg,WEIGHT,true,406.00,16.00,471.00,527.00,9,9,,11,26
+Bulk Test EL Item 0357,BULK-EL-00357,Electrical,ColorMax,BC-EL-00357,Red,10mm,8857,Regression bulk import row 357,ACTIVE,m,LENGTH,true,407.00,17.00,476.00,533.00,9,9,,12,27
+Bulk Test HW Item 0358,BULK-HW-00358,Hardware,SteelWorks,BC-HW-00358,Blue,25mm,8858,Regression bulk import row 358,ACTIVE,l,VOLUME,true,408.00,18.00,481.00,539.00,9,9,,13,28
+Bulk Test PT Item 0359,BULK-PT-00359,Paint,VoltEdge,BC-PT-00359,White,500 ml,8859,Regression bulk import row 359,ACTIVE,box,PACK,false,409.00,19.00,487.00,546.00,9,9,,14,29
+Bulk Test EL Item 0360,BULK-EL-00360,Electrical,PowerLine,BC-EL-00360,Black,1 inch,8860,Regression bulk import row 360,ACTIVE,pc,PIECE,false,410.00,20.00,492.00,552.00,9,9,,15,10
+Bulk Test HW Item 0361,BULK-HW-00361,Hardware,BuildPro,BC-HW-00361,Green,M6,8861,Regression bulk import row 361,ACTIVE,kg,WEIGHT,true,411.00,21.00,497.00,558.00,9,9,,16,11
+Bulk Test PT Item 0362,BULK-PT-00362,Paint,ColorMax,BC-PT-00362,Yellow,2m,8862,Regression bulk import row 362,ACTIVE,m,LENGTH,true,412.00,22.00,503.00,565.00,9,9,,17,12
+Bulk Test EL Item 0363,BULK-EL-00363,Electrical,SteelWorks,BC-EL-00363,,,8863,Regression bulk import row 363,ACTIVE,l,VOLUME,true,413.00,23.00,508.00,571.00,9,9,,18,13
+Bulk Test HW Item 0364,BULK-HW-00364,Hardware,VoltEdge,BC-HW-00364,Red,10mm,8864,Regression bulk import row 364,ACTIVE,box,PACK,false,414.00,24.00,513.00,577.00,9,9,,19,14
+Bulk Test PT Item 0365,BULK-PT-00365,Paint,PowerLine,BC-PT-00365,Blue,25mm,8865,Regression bulk import row 365,ACTIVE,pc,PIECE,false,415.00,25.00,519.00,584.00,9,9,,20,15
+Bulk Test EL Item 0366,BULK-EL-00366,Electrical,BuildPro,BC-EL-00366,White,500 ml,8866,Regression bulk import row 366,ACTIVE,kg,WEIGHT,true,416.00,26.00,524.00,590.00,9,9,,21,16
+Bulk Test HW Item 0367,BULK-HW-00367,Hardware,ColorMax,BC-HW-00367,Black,1 inch,8867,Regression bulk import row 367,ACTIVE,m,LENGTH,true,417.00,27.00,530.00,597.00,9,9,,22,17
+Bulk Test PT Item 0368,BULK-PT-00368,Paint,SteelWorks,BC-PT-00368,Green,M6,8868,Regression bulk import row 368,ACTIVE,l,VOLUME,true,418.00,28.00,535.00,603.00,9,9,,23,18
+Bulk Test EL Item 0369,BULK-EL-00369,Electrical,VoltEdge,BC-EL-00369,Yellow,2m,8869,Regression bulk import row 369,ACTIVE,box,PACK,false,419.00,29.00,541.00,610.00,9,9,,24,19
+Bulk Test HW Item 0370,BULK-HW-00370,Hardware,PowerLine,BC-HW-00370,,,8870,Regression bulk import row 370,ACTIVE,pc,PIECE,false,420.00,30.00,546.00,616.00,9,9,,25,20
+Bulk Test PT Item 0371,BULK-PT-00371,Paint,BuildPro,BC-PT-00371,Red,10mm,8871,Regression bulk import row 371,ACTIVE,kg,WEIGHT,true,421.00,31.00,552.00,623.00,9,9,,26,21
+Bulk Test EL Item 0372,BULK-EL-00372,Electrical,ColorMax,BC-EL-00372,Blue,25mm,8872,Regression bulk import row 372,ACTIVE,m,LENGTH,true,422.00,32.00,557.00,629.00,9,9,,27,22
+Bulk Test HW Item 0373,BULK-HW-00373,Hardware,SteelWorks,BC-HW-00373,White,500 ml,8873,Regression bulk import row 373,ACTIVE,l,VOLUME,true,423.00,33.00,563.00,636.00,9,9,,28,23
+Bulk Test PT Item 0374,BULK-PT-00374,Paint,VoltEdge,BC-PT-00374,Black,1 inch,8874,Regression bulk import row 374,ACTIVE,box,PACK,false,424.00,34.00,568.00,642.00,9,9,,29,24
+Bulk Test EL Item 0375,BULK-EL-00375,Electrical,PowerLine,BC-EL-00375,Green,M6,8875,Regression bulk import row 375,ACTIVE,pc,PIECE,false,425.00,10.00,468.00,543.00,9,9,,30,25
+Bulk Test HW Item 0376,BULK-HW-00376,Hardware,BuildPro,BC-HW-00376,Yellow,2m,8876,Regression bulk import row 376,ACTIVE,kg,WEIGHT,true,426.00,11.00,473.00,549.00,9,9,,31,26
+Bulk Test PT Item 0377,BULK-PT-00377,Paint,ColorMax,BC-PT-00377,,,8877,Regression bulk import row 377,ACTIVE,m,LENGTH,true,427.00,12.00,478.00,555.00,9,9,,32,27
+Bulk Test EL Item 0378,BULK-EL-00378,Electrical,SteelWorks,BC-EL-00378,Red,10mm,8878,Regression bulk import row 378,ACTIVE,l,VOLUME,true,428.00,13.00,484.00,562.00,9,9,,33,28
+Bulk Test HW Item 0379,BULK-HW-00379,Hardware,VoltEdge,BC-HW-00379,Blue,25mm,8879,Regression bulk import row 379,ACTIVE,box,PACK,false,429.00,14.00,489.00,568.00,9,9,,34,29
+Bulk Test PT Item 0380,BULK-PT-00380,Paint,PowerLine,BC-PT-00380,White,500 ml,8880,Regression bulk import row 380,ACTIVE,pc,PIECE,false,430.00,15.00,494.00,574.00,9,9,,35,10
+Bulk Test EL Item 0381,BULK-EL-00381,Electrical,BuildPro,BC-EL-00381,Black,1 inch,8881,Regression bulk import row 381,ACTIVE,kg,WEIGHT,true,431.00,16.00,500.00,581.00,9,9,,36,11
+Bulk Test HW Item 0382,BULK-HW-00382,Hardware,ColorMax,BC-HW-00382,Green,M6,8882,Regression bulk import row 382,ACTIVE,m,LENGTH,true,432.00,17.00,505.00,587.00,9,9,,37,12
+Bulk Test PT Item 0383,BULK-PT-00383,Paint,SteelWorks,BC-PT-00383,Yellow,2m,8883,Regression bulk import row 383,ACTIVE,l,VOLUME,true,433.00,18.00,511.00,594.00,9,9,,38,13
+Bulk Test EL Item 0384,BULK-EL-00384,Electrical,VoltEdge,BC-EL-00384,,,8884,Regression bulk import row 384,ACTIVE,box,PACK,false,434.00,19.00,516.00,600.00,9,9,,39,14
+Bulk Test HW Item 0385,BULK-HW-00385,Hardware,PowerLine,BC-HW-00385,Red,10mm,8885,Regression bulk import row 385,ACTIVE,pc,PIECE,false,435.00,20.00,522.00,607.00,9,9,,40,15
+Bulk Test PT Item 0386,BULK-PT-00386,Paint,BuildPro,BC-PT-00386,Blue,25mm,8886,Regression bulk import row 386,ACTIVE,kg,WEIGHT,true,436.00,21.00,528.00,614.00,9,9,,41,16
+Bulk Test EL Item 0387,BULK-EL-00387,Electrical,ColorMax,BC-EL-00387,White,500 ml,8887,Regression bulk import row 387,ACTIVE,m,LENGTH,true,437.00,22.00,533.00,620.00,9,9,,42,17
+Bulk Test HW Item 0388,BULK-HW-00388,Hardware,SteelWorks,BC-HW-00388,Black,1 inch,8888,Regression bulk import row 388,ACTIVE,l,VOLUME,true,438.00,23.00,539.00,627.00,9,9,,43,18
+Bulk Test PT Item 0389,BULK-PT-00389,Paint,VoltEdge,BC-PT-00389,Green,M6,8889,Regression bulk import row 389,ACTIVE,box,PACK,false,439.00,24.00,544.00,633.00,9,9,,44,19
+Bulk Test EL Item 0390,BULK-EL-00390,Electrical,PowerLine,BC-EL-00390,Yellow,2m,8890,Regression bulk import row 390,ACTIVE,pc,PIECE,false,440.00,25.00,550.00,640.00,9,9,,45,20
+Bulk Test HW Item 0391,BULK-HW-00391,Hardware,BuildPro,BC-HW-00391,,,8891,Regression bulk import row 391,ACTIVE,kg,WEIGHT,true,441.00,26.00,556.00,647.00,9,9,,46,21
+Bulk Test PT Item 0392,BULK-PT-00392,Paint,ColorMax,BC-PT-00392,Red,10mm,8892,Regression bulk import row 392,ACTIVE,m,LENGTH,true,442.00,27.00,561.00,653.00,9,9,,47,22
+Bulk Test EL Item 0393,BULK-EL-00393,Electrical,SteelWorks,BC-EL-00393,Blue,25mm,8893,Regression bulk import row 393,ACTIVE,l,VOLUME,true,443.00,28.00,567.00,660.00,9,9,,48,23
+Bulk Test HW Item 0394,BULK-HW-00394,Hardware,VoltEdge,BC-HW-00394,White,500 ml,8894,Regression bulk import row 394,ACTIVE,box,PACK,false,444.00,29.00,573.00,667.00,9,9,,49,24
+Bulk Test PT Item 0395,BULK-PT-00395,Paint,PowerLine,BC-PT-00395,Black,1 inch,8895,Regression bulk import row 395,ACTIVE,pc,PIECE,false,445.00,30.00,579.00,674.00,9,9,,50,25
+Bulk Test EL Item 0396,BULK-EL-00396,Electrical,BuildPro,BC-EL-00396,Green,M6,8896,Regression bulk import row 396,ACTIVE,kg,WEIGHT,true,446.00,31.00,584.00,680.00,9,9,,51,26
+Bulk Test HW Item 0397,BULK-HW-00397,Hardware,ColorMax,BC-HW-00397,Yellow,2m,8897,Regression bulk import row 397,ACTIVE,m,LENGTH,true,447.00,32.00,590.00,687.00,9,9,,52,27
+Bulk Test PT Item 0398,BULK-PT-00398,Paint,SteelWorks,BC-PT-00398,,,8898,Regression bulk import row 398,ACTIVE,l,VOLUME,true,448.00,33.00,596.00,694.00,9,9,,53,28
+Bulk Test EL Item 0399,BULK-EL-00399,Electrical,VoltEdge,BC-EL-00399,Red,10mm,8899,Regression bulk import row 399,ACTIVE,box,PACK,false,449.00,34.00,602.00,701.00,9,9,,54,29
+Bulk Test HW Item 0400,BULK-HW-00400,Hardware,PowerLine,BC-HW-00400,Blue,25mm,8900,Regression bulk import row 400,ACTIVE,pc,PIECE,false,450.00,10.00,495.00,515.00,9,9,,5,10
+Bulk Test PT Item 0401,BULK-PT-00401,Paint,BuildPro,BC-PT-00401,White,500 ml,8901,Regression bulk import row 401,ACTIVE,kg,WEIGHT,true,451.00,11.00,501.00,522.00,9,9,,6,11
+Bulk Test EL Item 0402,BULK-EL-00402,Electrical,ColorMax,BC-EL-00402,Black,1 inch,8902,Regression bulk import row 402,ACTIVE,m,LENGTH,true,452.00,12.00,506.00,528.00,9,9,,7,12
+Bulk Test HW Item 0403,BULK-HW-00403,Hardware,SteelWorks,BC-HW-00403,Green,M6,8903,Regression bulk import row 403,ACTIVE,l,VOLUME,true,453.00,13.00,512.00,535.00,9,9,,8,13
+Bulk Test PT Item 0404,BULK-PT-00404,Paint,VoltEdge,BC-PT-00404,Yellow,2m,8904,Regression bulk import row 404,ACTIVE,box,PACK,false,454.00,14.00,518.00,542.00,9,9,,9,14
+Bulk Test EL Item 0405,BULK-EL-00405,Electrical,PowerLine,BC-EL-00405,,,8905,Regression bulk import row 405,ACTIVE,pc,PIECE,false,455.00,15.00,523.00,548.00,9,9,,10,15
+Bulk Test HW Item 0406,BULK-HW-00406,Hardware,BuildPro,BC-HW-00406,Red,10mm,8906,Regression bulk import row 406,ACTIVE,kg,WEIGHT,true,456.00,16.00,529.00,555.00,9,9,,11,16
+Bulk Test PT Item 0407,BULK-PT-00407,Paint,ColorMax,BC-PT-00407,Blue,25mm,8907,Regression bulk import row 407,ACTIVE,m,LENGTH,true,457.00,17.00,535.00,562.00,9,9,,12,17
+Bulk Test EL Item 0408,BULK-EL-00408,Electrical,SteelWorks,BC-EL-00408,White,500 ml,8908,Regression bulk import row 408,ACTIVE,l,VOLUME,true,458.00,18.00,540.00,568.00,9,9,,13,18
+Bulk Test HW Item 0409,BULK-HW-00409,Hardware,VoltEdge,BC-HW-00409,Black,1 inch,8909,Regression bulk import row 409,ACTIVE,box,PACK,false,459.00,19.00,546.00,575.00,9,9,,14,19
+Bulk Test PT Item 0410,BULK-PT-00410,Paint,PowerLine,BC-PT-00410,Green,M6,8910,Regression bulk import row 410,ACTIVE,pc,PIECE,false,460.00,20.00,552.00,582.00,9,9,,15,20
+Bulk Test EL Item 0411,BULK-EL-00411,Electrical,BuildPro,BC-EL-00411,Yellow,2m,8911,Regression bulk import row 411,ACTIVE,kg,WEIGHT,true,461.00,21.00,558.00,589.00,9,9,,16,21
+Bulk Test HW Item 0412,BULK-HW-00412,Hardware,ColorMax,BC-HW-00412,,,8912,Regression bulk import row 412,ACTIVE,m,LENGTH,true,462.00,22.00,564.00,596.00,9,9,,17,22
+Bulk Test PT Item 0413,BULK-PT-00413,Paint,SteelWorks,BC-PT-00413,Red,10mm,8913,Regression bulk import row 413,ACTIVE,l,VOLUME,true,463.00,23.00,569.00,602.00,9,9,,18,23
+Bulk Test EL Item 0414,BULK-EL-00414,Electrical,VoltEdge,BC-EL-00414,Blue,25mm,8914,Regression bulk import row 414,ACTIVE,box,PACK,false,464.00,24.00,575.00,609.00,9,9,,19,24
+Bulk Test HW Item 0415,BULK-HW-00415,Hardware,PowerLine,BC-HW-00415,White,500 ml,8915,Regression bulk import row 415,ACTIVE,pc,PIECE,false,465.00,25.00,581.00,616.00,9,9,,20,25
+Bulk Test PT Item 0416,BULK-PT-00416,Paint,BuildPro,BC-PT-00416,Black,1 inch,8916,Regression bulk import row 416,ACTIVE,kg,WEIGHT,true,466.00,26.00,587.00,623.00,9,9,,21,26
+Bulk Test EL Item 0417,BULK-EL-00417,Electrical,ColorMax,BC-EL-00417,Green,M6,8917,Regression bulk import row 417,ACTIVE,m,LENGTH,true,467.00,27.00,593.00,630.00,9,9,,22,27
+Bulk Test HW Item 0418,BULK-HW-00418,Hardware,SteelWorks,BC-HW-00418,Yellow,2m,8918,Regression bulk import row 418,ACTIVE,l,VOLUME,true,468.00,28.00,599.00,637.00,9,9,,23,28
+Bulk Test PT Item 0419,BULK-PT-00419,Paint,VoltEdge,BC-PT-00419,,,8919,Regression bulk import row 419,ACTIVE,box,PACK,false,469.00,29.00,605.00,644.00,9,9,,24,29
+Bulk Test EL Item 0420,BULK-EL-00420,Electrical,PowerLine,BC-EL-00420,Red,10mm,8920,Regression bulk import row 420,ACTIVE,pc,PIECE,false,470.00,30.00,611.00,651.00,9,9,,25,10
+Bulk Test HW Item 0421,BULK-HW-00421,Hardware,BuildPro,BC-HW-00421,Blue,25mm,8921,Regression bulk import row 421,ACTIVE,kg,WEIGHT,true,471.00,31.00,617.00,658.00,9,9,,26,11
+Bulk Test PT Item 0422,BULK-PT-00422,Paint,ColorMax,BC-PT-00422,White,500 ml,8922,Regression bulk import row 422,ACTIVE,m,LENGTH,true,472.00,32.00,623.00,665.00,9,9,,27,12
+Bulk Test EL Item 0423,BULK-EL-00423,Electrical,SteelWorks,BC-EL-00423,Black,1 inch,8923,Regression bulk import row 423,ACTIVE,l,VOLUME,true,473.00,33.00,629.00,672.00,9,9,,28,13
+Bulk Test HW Item 0424,BULK-HW-00424,Hardware,VoltEdge,BC-HW-00424,Green,M6,8924,Regression bulk import row 424,ACTIVE,box,PACK,false,474.00,34.00,635.00,679.00,9,9,,29,14
+Bulk Test PT Item 0425,BULK-PT-00425,Paint,PowerLine,BC-PT-00425,Yellow,2m,8925,Regression bulk import row 425,ACTIVE,pc,PIECE,false,475.00,10.00,523.00,568.00,9,9,,30,15
+Bulk Test EL Item 0426,BULK-EL-00426,Electrical,BuildPro,BC-EL-00426,,,8926,Regression bulk import row 426,ACTIVE,kg,WEIGHT,true,476.00,11.00,528.00,574.00,9,9,,31,16
+Bulk Test HW Item 0427,BULK-HW-00427,Hardware,ColorMax,BC-HW-00427,Red,10mm,8927,Regression bulk import row 427,ACTIVE,m,LENGTH,true,477.00,12.00,534.00,581.00,9,9,,32,17
+Bulk Test PT Item 0428,BULK-PT-00428,Paint,SteelWorks,BC-PT-00428,Blue,25mm,8928,Regression bulk import row 428,ACTIVE,l,VOLUME,true,478.00,13.00,540.00,588.00,9,9,,33,18
+Bulk Test EL Item 0429,BULK-EL-00429,Electrical,VoltEdge,BC-EL-00429,White,500 ml,8929,Regression bulk import row 429,ACTIVE,box,PACK,false,479.00,14.00,546.00,595.00,9,9,,34,19
+Bulk Test HW Item 0430,BULK-HW-00430,Hardware,PowerLine,BC-HW-00430,Black,1 inch,8930,Regression bulk import row 430,ACTIVE,pc,PIECE,false,480.00,15.00,552.00,602.00,9,9,,35,20
+Bulk Test PT Item 0431,BULK-PT-00431,Paint,BuildPro,BC-PT-00431,Green,M6,8931,Regression bulk import row 431,ACTIVE,kg,WEIGHT,true,481.00,16.00,558.00,609.00,9,9,,36,21
+Bulk Test EL Item 0432,BULK-EL-00432,Electrical,ColorMax,BC-EL-00432,Yellow,2m,8932,Regression bulk import row 432,ACTIVE,m,LENGTH,true,482.00,17.00,564.00,616.00,9,9,,37,22
+Bulk Test HW Item 0433,BULK-HW-00433,Hardware,SteelWorks,BC-HW-00433,,,8933,Regression bulk import row 433,ACTIVE,l,VOLUME,true,483.00,18.00,570.00,623.00,9,9,,38,23
+Bulk Test PT Item 0434,BULK-PT-00434,Paint,VoltEdge,BC-PT-00434,Red,10mm,8934,Regression bulk import row 434,ACTIVE,box,PACK,false,484.00,19.00,576.00,630.00,9,9,,39,24
+Bulk Test EL Item 0435,BULK-EL-00435,Electrical,PowerLine,BC-EL-00435,Blue,25mm,8935,Regression bulk import row 435,ACTIVE,pc,PIECE,false,485.00,20.00,582.00,637.00,9,9,,40,25
+Bulk Test HW Item 0436,BULK-HW-00436,Hardware,BuildPro,BC-HW-00436,White,500 ml,8936,Regression bulk import row 436,ACTIVE,kg,WEIGHT,true,486.00,21.00,588.00,644.00,9,9,,41,26
+Bulk Test PT Item 0437,BULK-PT-00437,Paint,ColorMax,BC-PT-00437,Black,1 inch,8937,Regression bulk import row 437,ACTIVE,m,LENGTH,true,487.00,22.00,594.00,651.00,9,9,,42,27
+Bulk Test EL Item 0438,BULK-EL-00438,Electrical,SteelWorks,BC-EL-00438,Green,M6,8938,Regression bulk import row 438,ACTIVE,l,VOLUME,true,488.00,23.00,600.00,658.00,9,9,,43,28
+Bulk Test HW Item 0439,BULK-HW-00439,Hardware,VoltEdge,BC-HW-00439,Yellow,2m,8939,Regression bulk import row 439,ACTIVE,box,PACK,false,489.00,24.00,606.00,665.00,9,9,,44,29
+Bulk Test PT Item 0440,BULK-PT-00440,Paint,PowerLine,BC-PT-00440,,,8940,Regression bulk import row 440,ACTIVE,pc,PIECE,false,490.00,25.00,613.00,673.00,9,9,,45,10
+Bulk Test EL Item 0441,BULK-EL-00441,Electrical,BuildPro,BC-EL-00441,Red,10mm,8941,Regression bulk import row 441,ACTIVE,kg,WEIGHT,true,491.00,26.00,619.00,680.00,9,9,,46,11
+Bulk Test HW Item 0442,BULK-HW-00442,Hardware,ColorMax,BC-HW-00442,Blue,25mm,8942,Regression bulk import row 442,ACTIVE,m,LENGTH,true,492.00,27.00,625.00,687.00,9,9,,47,12
+Bulk Test PT Item 0443,BULK-PT-00443,Paint,SteelWorks,BC-PT-00443,White,500 ml,8943,Regression bulk import row 443,ACTIVE,l,VOLUME,true,493.00,28.00,631.00,694.00,9,9,,48,13
+Bulk Test EL Item 0444,BULK-EL-00444,Electrical,VoltEdge,BC-EL-00444,Black,1 inch,8944,Regression bulk import row 444,ACTIVE,box,PACK,false,494.00,29.00,637.00,701.00,9,9,,49,14
+Bulk Test HW Item 0445,BULK-HW-00445,Hardware,PowerLine,BC-HW-00445,Green,M6,8945,Regression bulk import row 445,ACTIVE,pc,PIECE,false,495.00,30.00,644.00,709.00,9,9,,50,15
+Bulk Test PT Item 0446,BULK-PT-00446,Paint,BuildPro,BC-PT-00446,Yellow,2m,8946,Regression bulk import row 446,ACTIVE,kg,WEIGHT,true,496.00,31.00,650.00,716.00,9,9,,51,16
+Bulk Test EL Item 0447,BULK-EL-00447,Electrical,ColorMax,BC-EL-00447,,,8947,Regression bulk import row 447,ACTIVE,m,LENGTH,true,497.00,32.00,656.00,723.00,9,9,,52,17
+Bulk Test HW Item 0448,BULK-HW-00448,Hardware,SteelWorks,BC-HW-00448,Red,10mm,8948,Regression bulk import row 448,ACTIVE,l,VOLUME,true,498.00,33.00,662.00,730.00,9,9,,53,18
+Bulk Test PT Item 0449,BULK-PT-00449,Paint,VoltEdge,BC-PT-00449,Blue,25mm,8949,Regression bulk import row 449,ACTIVE,box,PACK,false,499.00,34.00,669.00,738.00,9,9,,54,19
+Bulk Test EL Item 0450,BULK-EL-00450,Electrical,PowerLine,BC-EL-00450,White,500 ml,8950,Regression bulk import row 450,ACTIVE,pc,PIECE,false,50.00,10.00,55.00,125.00,9,9,,5,20
+Bulk Test HW Item 0451,BULK-HW-00451,Hardware,BuildPro,BC-HW-00451,Black,1 inch,8951,Regression bulk import row 451,ACTIVE,kg,WEIGHT,true,51.00,11.00,57.00,128.00,9,9,,6,21
+Bulk Test PT Item 0452,BULK-PT-00452,Paint,ColorMax,BC-PT-00452,Green,M6,8952,Regression bulk import row 452,ACTIVE,m,LENGTH,true,52.00,12.00,58.00,130.00,9,9,,7,22
+Bulk Test EL Item 0453,BULK-EL-00453,Electrical,SteelWorks,BC-EL-00453,Yellow,2m,8953,Regression bulk import row 453,ACTIVE,l,VOLUME,true,53.00,13.00,60.00,133.00,9,9,,8,23
+Bulk Test HW Item 0454,BULK-HW-00454,Hardware,VoltEdge,BC-HW-00454,,,8954,Regression bulk import row 454,ACTIVE,box,PACK,false,54.00,14.00,62.00,136.00,9,9,,9,24
+Bulk Test PT Item 0455,BULK-PT-00455,Paint,PowerLine,BC-PT-00455,Red,10mm,8955,Regression bulk import row 455,ACTIVE,pc,PIECE,false,55.00,15.00,63.00,138.00,9,9,,10,25
+Bulk Test EL Item 0456,BULK-EL-00456,Electrical,BuildPro,BC-EL-00456,Blue,25mm,8956,Regression bulk import row 456,ACTIVE,kg,WEIGHT,true,56.00,16.00,65.00,141.00,9,9,,11,26
+Bulk Test HW Item 0457,BULK-HW-00457,Hardware,ColorMax,BC-HW-00457,White,500 ml,8957,Regression bulk import row 457,ACTIVE,m,LENGTH,true,57.00,17.00,67.00,144.00,9,9,,12,27
+Bulk Test PT Item 0458,BULK-PT-00458,Paint,SteelWorks,BC-PT-00458,Black,1 inch,8958,Regression bulk import row 458,ACTIVE,l,VOLUME,true,58.00,18.00,68.00,146.00,9,9,,13,28
+Bulk Test EL Item 0459,BULK-EL-00459,Electrical,VoltEdge,BC-EL-00459,Green,M6,8959,Regression bulk import row 459,ACTIVE,box,PACK,false,59.00,19.00,70.00,149.00,9,9,,14,29
+Bulk Test HW Item 0460,BULK-HW-00460,Hardware,PowerLine,BC-HW-00460,Yellow,2m,8960,Regression bulk import row 460,ACTIVE,pc,PIECE,false,60.00,20.00,72.00,152.00,9,9,,15,10
+Bulk Test PT Item 0461,BULK-PT-00461,Paint,BuildPro,BC-PT-00461,,,8961,Regression bulk import row 461,ACTIVE,kg,WEIGHT,true,61.00,21.00,74.00,155.00,9,9,,16,11
+Bulk Test EL Item 0462,BULK-EL-00462,Electrical,ColorMax,BC-EL-00462,Red,10mm,8962,Regression bulk import row 462,ACTIVE,m,LENGTH,true,62.00,22.00,76.00,158.00,9,9,,17,12
+Bulk Test HW Item 0463,BULK-HW-00463,Hardware,SteelWorks,BC-HW-00463,Blue,25mm,8963,Regression bulk import row 463,ACTIVE,l,VOLUME,true,63.00,23.00,77.00,160.00,9,9,,18,13
+Bulk Test PT Item 0464,BULK-PT-00464,Paint,VoltEdge,BC-PT-00464,White,500 ml,8964,Regression bulk import row 464,ACTIVE,box,PACK,false,64.00,24.00,79.00,163.00,9,9,,19,14
+Bulk Test EL Item 0465,BULK-EL-00465,Electrical,PowerLine,BC-EL-00465,Black,1 inch,8965,Regression bulk import row 465,ACTIVE,pc,PIECE,false,65.00,25.00,81.00,166.00,9,9,,20,15
+Bulk Test HW Item 0466,BULK-HW-00466,Hardware,BuildPro,BC-HW-00466,Green,M6,8966,Regression bulk import row 466,ACTIVE,kg,WEIGHT,true,66.00,26.00,83.00,169.00,9,9,,21,16
+Bulk Test PT Item 0467,BULK-PT-00467,Paint,ColorMax,BC-PT-00467,Yellow,2m,8967,Regression bulk import row 467,ACTIVE,m,LENGTH,true,67.00,27.00,85.00,172.00,9,9,,22,17
+Bulk Test EL Item 0468,BULK-EL-00468,Electrical,SteelWorks,BC-EL-00468,,,8968,Regression bulk import row 468,ACTIVE,l,VOLUME,true,68.00,28.00,87.00,175.00,9,9,,23,18
+Bulk Test HW Item 0469,BULK-HW-00469,Hardware,VoltEdge,BC-HW-00469,Red,10mm,8969,Regression bulk import row 469,ACTIVE,box,PACK,false,69.00,29.00,89.00,178.00,9,9,,24,19
+Bulk Test PT Item 0470,BULK-PT-00470,Paint,PowerLine,BC-PT-00470,Blue,25mm,8970,Regression bulk import row 470,ACTIVE,pc,PIECE,false,70.00,30.00,91.00,181.00,9,9,,25,20
+Bulk Test EL Item 0471,BULK-EL-00471,Electrical,BuildPro,BC-EL-00471,White,500 ml,8971,Regression bulk import row 471,ACTIVE,kg,WEIGHT,true,71.00,31.00,93.00,184.00,9,9,,26,21
+Bulk Test HW Item 0472,BULK-HW-00472,Hardware,ColorMax,BC-HW-00472,Black,1 inch,8972,Regression bulk import row 472,ACTIVE,m,LENGTH,true,72.00,32.00,95.00,187.00,9,9,,27,22
+Bulk Test PT Item 0473,BULK-PT-00473,Paint,SteelWorks,BC-PT-00473,Green,M6,8973,Regression bulk import row 473,ACTIVE,l,VOLUME,true,73.00,33.00,97.00,190.00,9,9,,28,23
+Bulk Test EL Item 0474,BULK-EL-00474,Electrical,VoltEdge,BC-EL-00474,Yellow,2m,8974,Regression bulk import row 474,ACTIVE,box,PACK,false,74.00,34.00,99.00,193.00,9,9,,29,24
+Bulk Test HW Item 0475,BULK-HW-00475,Hardware,PowerLine,BC-HW-00475,,,8975,Regression bulk import row 475,ACTIVE,pc,PIECE,false,75.00,10.00,83.00,178.00,9,9,,30,25
+Bulk Test PT Item 0476,BULK-PT-00476,Paint,BuildPro,BC-PT-00476,Red,10mm,8976,Regression bulk import row 476,ACTIVE,kg,WEIGHT,true,76.00,11.00,84.00,180.00,9,9,,31,26
+Bulk Test EL Item 0477,BULK-EL-00477,Electrical,ColorMax,BC-EL-00477,Blue,25mm,8977,Regression bulk import row 477,ACTIVE,m,LENGTH,true,77.00,12.00,86.00,183.00,9,9,,32,27
+Bulk Test HW Item 0478,BULK-HW-00478,Hardware,SteelWorks,BC-HW-00478,White,500 ml,8978,Regression bulk import row 478,ACTIVE,l,VOLUME,true,78.00,13.00,88.00,186.00,9,9,,33,28
+Bulk Test PT Item 0479,BULK-PT-00479,Paint,VoltEdge,BC-PT-00479,Black,1 inch,8979,Regression bulk import row 479,ACTIVE,box,PACK,false,79.00,14.00,90.00,189.00,9,9,,34,29
+Bulk Test EL Item 0480,BULK-EL-00480,Electrical,PowerLine,BC-EL-00480,Green,M6,8980,Regression bulk import row 480,ACTIVE,pc,PIECE,false,80.00,15.00,92.00,112.00,9,9,,35,10
+Bulk Test HW Item 0481,BULK-HW-00481,Hardware,BuildPro,BC-HW-00481,Yellow,2m,8981,Regression bulk import row 481,ACTIVE,kg,WEIGHT,true,81.00,16.00,94.00,115.00,9,9,,36,11
+Bulk Test PT Item 0482,BULK-PT-00482,Paint,ColorMax,BC-PT-00482,,,8982,Regression bulk import row 482,ACTIVE,m,LENGTH,true,82.00,17.00,96.00,118.00,9,9,,37,12
+Bulk Test EL Item 0483,BULK-EL-00483,Electrical,SteelWorks,BC-EL-00483,Red,10mm,8983,Regression bulk import row 483,ACTIVE,l,VOLUME,true,83.00,18.00,98.00,121.00,9,9,,38,13
+Bulk Test HW Item 0484,BULK-HW-00484,Hardware,VoltEdge,BC-HW-00484,Blue,25mm,8984,Regression bulk import row 484,ACTIVE,box,PACK,false,84.00,19.00,100.00,124.00,9,9,,39,14
+Bulk Test PT Item 0485,BULK-PT-00485,Paint,PowerLine,BC-PT-00485,White,500 ml,8985,Regression bulk import row 485,ACTIVE,pc,PIECE,false,85.00,20.00,102.00,127.00,9,9,,40,15
+Bulk Test EL Item 0486,BULK-EL-00486,Electrical,BuildPro,BC-EL-00486,Black,1 inch,8986,Regression bulk import row 486,ACTIVE,kg,WEIGHT,true,86.00,21.00,104.00,130.00,9,9,,41,16
+Bulk Test HW Item 0487,BULK-HW-00487,Hardware,ColorMax,BC-HW-00487,Green,M6,8987,Regression bulk import row 487,ACTIVE,m,LENGTH,true,87.00,22.00,106.00,133.00,9,9,,42,17
+Bulk Test PT Item 0488,BULK-PT-00488,Paint,SteelWorks,BC-PT-00488,Yellow,2m,8988,Regression bulk import row 488,ACTIVE,l,VOLUME,true,88.00,23.00,108.00,136.00,9,9,,43,18
+Bulk Test EL Item 0489,BULK-EL-00489,Electrical,VoltEdge,BC-EL-00489,,,8989,Regression bulk import row 489,ACTIVE,box,PACK,false,89.00,24.00,110.00,139.00,9,9,,44,19
+Bulk Test HW Item 0490,BULK-HW-00490,Hardware,PowerLine,BC-HW-00490,Red,10mm,8990,Regression bulk import row 490,ACTIVE,pc,PIECE,false,90.00,25.00,113.00,143.00,9,9,,45,20
+Bulk Test PT Item 0491,BULK-PT-00491,Paint,BuildPro,BC-PT-00491,Blue,25mm,8991,Regression bulk import row 491,ACTIVE,kg,WEIGHT,true,91.00,26.00,115.00,146.00,9,9,,46,21
+Bulk Test EL Item 0492,BULK-EL-00492,Electrical,ColorMax,BC-EL-00492,White,500 ml,8992,Regression bulk import row 492,ACTIVE,m,LENGTH,true,92.00,27.00,117.00,149.00,9,9,,47,22
+Bulk Test HW Item 0493,BULK-HW-00493,Hardware,SteelWorks,BC-HW-00493,Black,1 inch,8993,Regression bulk import row 493,ACTIVE,l,VOLUME,true,93.00,28.00,119.00,152.00,9,9,,48,23
+Bulk Test PT Item 0494,BULK-PT-00494,Paint,VoltEdge,BC-PT-00494,Green,M6,8994,Regression bulk import row 494,ACTIVE,box,PACK,false,94.00,29.00,121.00,155.00,9,9,,49,24
+Bulk Test EL Item 0495,BULK-EL-00495,Electrical,PowerLine,BC-EL-00495,Yellow,2m,8995,Regression bulk import row 495,ACTIVE,pc,PIECE,false,95.00,30.00,124.00,159.00,9,9,,50,25
+Bulk Test HW Item 0496,BULK-HW-00496,Hardware,BuildPro,BC-HW-00496,,,8996,Regression bulk import row 496,ACTIVE,kg,WEIGHT,true,96.00,31.00,126.00,162.00,9,9,,51,26
+Bulk Test PT Item 0497,BULK-PT-00497,Paint,ColorMax,BC-PT-00497,Red,10mm,8997,Regression bulk import row 497,ACTIVE,m,LENGTH,true,97.00,32.00,128.00,165.00,9,9,,52,27
+Bulk Test EL Item 0498,BULK-EL-00498,Electrical,SteelWorks,BC-EL-00498,Blue,25mm,8998,Regression bulk import row 498,ACTIVE,l,VOLUME,true,98.00,33.00,130.00,168.00,9,9,,53,28
+Bulk Test HW Item 0499,BULK-HW-00499,Hardware,VoltEdge,BC-HW-00499,White,500 ml,8999,Regression bulk import row 499,ACTIVE,box,PACK,false,99.00,34.00,133.00,172.00,9,9,,54,29
+Bulk Test PT Item 0500,BULK-PT-00500,Paint,PowerLine,BC-PT-00500,Black,1 inch,8500,Regression bulk import row 500,ACTIVE,pc,PIECE,false,100.00,10.00,110.00,150.00,9,9,,5,10
+Bulk Test EL Item 0501,BULK-EL-00501,Electrical,BuildPro,BC-EL-00501,Green,M6,8501,Regression bulk import row 501,ACTIVE,kg,WEIGHT,true,101.00,11.00,112.00,153.00,9,9,,6,11
+Bulk Test HW Item 0502,BULK-HW-00502,Hardware,ColorMax,BC-HW-00502,Yellow,2m,8502,Regression bulk import row 502,ACTIVE,m,LENGTH,true,102.00,12.00,114.00,156.00,9,9,,7,12
+Bulk Test PT Item 0503,BULK-PT-00503,Paint,SteelWorks,BC-PT-00503,,,8503,Regression bulk import row 503,ACTIVE,l,VOLUME,true,103.00,13.00,116.00,159.00,9,9,,8,13
+Bulk Test EL Item 0504,BULK-EL-00504,Electrical,VoltEdge,BC-EL-00504,Red,10mm,8504,Regression bulk import row 504,ACTIVE,box,PACK,false,104.00,14.00,119.00,163.00,9,9,,9,14
+Bulk Test HW Item 0505,BULK-HW-00505,Hardware,PowerLine,BC-HW-00505,Blue,25mm,8505,Regression bulk import row 505,ACTIVE,pc,PIECE,false,105.00,15.00,121.00,166.00,9,9,,10,15
+Bulk Test PT Item 0506,BULK-PT-00506,Paint,BuildPro,BC-PT-00506,White,500 ml,8506,Regression bulk import row 506,ACTIVE,kg,WEIGHT,true,106.00,16.00,123.00,169.00,9,9,,11,16
+Bulk Test EL Item 0507,BULK-EL-00507,Electrical,ColorMax,BC-EL-00507,Black,1 inch,8507,Regression bulk import row 507,ACTIVE,m,LENGTH,true,107.00,17.00,125.00,172.00,9,9,,12,17
+Bulk Test HW Item 0508,BULK-HW-00508,Hardware,SteelWorks,BC-HW-00508,Green,M6,8508,Regression bulk import row 508,ACTIVE,l,VOLUME,true,108.00,18.00,127.00,175.00,9,9,,13,18
+Bulk Test PT Item 0509,BULK-PT-00509,Paint,VoltEdge,BC-PT-00509,Yellow,2m,8509,Regression bulk import row 509,ACTIVE,box,PACK,false,109.00,19.00,130.00,179.00,9,9,,14,19
+Bulk Test EL Item 0510,BULK-EL-00510,Electrical,PowerLine,BC-EL-00510,,,8510,Regression bulk import row 510,ACTIVE,pc,PIECE,false,110.00,20.00,132.00,182.00,9,9,,15,20
+Bulk Test HW Item 0511,BULK-HW-00511,Hardware,BuildPro,BC-HW-00511,Red,10mm,8511,Regression bulk import row 511,ACTIVE,kg,WEIGHT,true,111.00,21.00,134.00,185.00,9,9,,16,21
+Bulk Test PT Item 0512,BULK-PT-00512,Paint,ColorMax,BC-PT-00512,Blue,25mm,8512,Regression bulk import row 512,ACTIVE,m,LENGTH,true,112.00,22.00,137.00,189.00,9,9,,17,22
+Bulk Test EL Item 0513,BULK-EL-00513,Electrical,SteelWorks,BC-EL-00513,White,500 ml,8513,Regression bulk import row 513,ACTIVE,l,VOLUME,true,113.00,23.00,139.00,192.00,9,9,,18,23
+Bulk Test HW Item 0514,BULK-HW-00514,Hardware,VoltEdge,BC-HW-00514,Black,1 inch,8514,Regression bulk import row 514,ACTIVE,box,PACK,false,114.00,24.00,141.00,195.00,9,9,,19,24
+Bulk Test PT Item 0515,BULK-PT-00515,Paint,PowerLine,BC-PT-00515,Green,M6,8515,Regression bulk import row 515,ACTIVE,pc,PIECE,false,115.00,25.00,144.00,199.00,9,9,,20,25
+Bulk Test EL Item 0516,BULK-EL-00516,Electrical,BuildPro,BC-EL-00516,Yellow,2m,8516,Regression bulk import row 516,ACTIVE,kg,WEIGHT,true,116.00,26.00,146.00,202.00,9,9,,21,26
+Bulk Test HW Item 0517,BULK-HW-00517,Hardware,ColorMax,BC-HW-00517,,,8517,Regression bulk import row 517,ACTIVE,m,LENGTH,true,117.00,27.00,149.00,206.00,9,9,,22,27
+Bulk Test PT Item 0518,BULK-PT-00518,Paint,SteelWorks,BC-PT-00518,Red,10mm,8518,Regression bulk import row 518,ACTIVE,l,VOLUME,true,118.00,28.00,151.00,209.00,9,9,,23,28
+Bulk Test EL Item 0519,BULK-EL-00519,Electrical,VoltEdge,BC-EL-00519,Blue,25mm,8519,Regression bulk import row 519,ACTIVE,box,PACK,false,119.00,29.00,154.00,213.00,9,9,,24,29
+Bulk Test HW Item 0520,BULK-HW-00520,Hardware,PowerLine,BC-HW-00520,White,500 ml,8520,Regression bulk import row 520,ACTIVE,pc,PIECE,false,120.00,30.00,156.00,216.00,9,9,,25,10
+Bulk Test PT Item 0521,BULK-PT-00521,Paint,BuildPro,BC-PT-00521,Black,1 inch,8521,Regression bulk import row 521,ACTIVE,kg,WEIGHT,true,121.00,31.00,159.00,220.00,9,9,,26,11
+Bulk Test EL Item 0522,BULK-EL-00522,Electrical,ColorMax,BC-EL-00522,Green,M6,8522,Regression bulk import row 522,ACTIVE,m,LENGTH,true,122.00,32.00,161.00,223.00,9,9,,27,12
+Bulk Test HW Item 0523,BULK-HW-00523,Hardware,SteelWorks,BC-HW-00523,Yellow,2m,8523,Regression bulk import row 523,ACTIVE,l,VOLUME,true,123.00,33.00,164.00,227.00,9,9,,28,13
+Bulk Test PT Item 0524,BULK-PT-00524,Paint,VoltEdge,BC-PT-00524,,,8524,Regression bulk import row 524,ACTIVE,box,PACK,false,124.00,34.00,166.00,230.00,9,9,,29,14
+Bulk Test EL Item 0525,BULK-EL-00525,Electrical,PowerLine,BC-EL-00525,Red,10mm,8525,Regression bulk import row 525,ACTIVE,pc,PIECE,false,125.00,10.00,138.00,203.00,9,9,,30,15
+Bulk Test HW Item 0526,BULK-HW-00526,Hardware,BuildPro,BC-HW-00526,Blue,25mm,8526,Regression bulk import row 526,ACTIVE,kg,WEIGHT,true,126.00,11.00,140.00,206.00,9,9,,31,16
+Bulk Test PT Item 0527,BULK-PT-00527,Paint,ColorMax,BC-PT-00527,White,500 ml,8527,Regression bulk import row 527,ACTIVE,m,LENGTH,true,127.00,12.00,142.00,209.00,9,9,,32,17
+Bulk Test EL Item 0528,BULK-EL-00528,Electrical,SteelWorks,BC-EL-00528,Black,1 inch,8528,Regression bulk import row 528,ACTIVE,l,VOLUME,true,128.00,13.00,145.00,213.00,9,9,,33,18
+Bulk Test HW Item 0529,BULK-HW-00529,Hardware,VoltEdge,BC-HW-00529,Green,M6,8529,Regression bulk import row 529,ACTIVE,box,PACK,false,129.00,14.00,147.00,216.00,9,9,,34,19
+Bulk Test PT Item 0530,BULK-PT-00530,Paint,PowerLine,BC-PT-00530,Yellow,2m,8530,Regression bulk import row 530,ACTIVE,pc,PIECE,false,130.00,15.00,150.00,220.00,9,9,,35,20
+Bulk Test EL Item 0531,BULK-EL-00531,Electrical,BuildPro,BC-EL-00531,,,8531,Regression bulk import row 531,ACTIVE,kg,WEIGHT,true,131.00,16.00,152.00,223.00,9,9,,36,21
+Bulk Test HW Item 0532,BULK-HW-00532,Hardware,ColorMax,BC-HW-00532,Red,10mm,8532,Regression bulk import row 532,ACTIVE,m,LENGTH,true,132.00,17.00,154.00,226.00,9,9,,37,22
+Bulk Test PT Item 0533,BULK-PT-00533,Paint,SteelWorks,BC-PT-00533,Blue,25mm,8533,Regression bulk import row 533,ACTIVE,l,VOLUME,true,133.00,18.00,157.00,230.00,9,9,,38,23
+Bulk Test EL Item 0534,BULK-EL-00534,Electrical,VoltEdge,BC-EL-00534,White,500 ml,8534,Regression bulk import row 534,ACTIVE,box,PACK,false,134.00,19.00,159.00,233.00,9,9,,39,24
+Bulk Test HW Item 0535,BULK-HW-00535,Hardware,PowerLine,BC-HW-00535,Black,1 inch,8535,Regression bulk import row 535,ACTIVE,pc,PIECE,false,135.00,20.00,162.00,237.00,9,9,,40,25
+Bulk Test PT Item 0536,BULK-PT-00536,Paint,BuildPro,BC-PT-00536,Green,M6,8536,Regression bulk import row 536,ACTIVE,kg,WEIGHT,true,136.00,21.00,165.00,241.00,9,9,,41,26
+Bulk Test EL Item 0537,BULK-EL-00537,Electrical,ColorMax,BC-EL-00537,Yellow,2m,8537,Regression bulk import row 537,ACTIVE,m,LENGTH,true,137.00,22.00,167.00,244.00,9,9,,42,27
+Bulk Test HW Item 0538,BULK-HW-00538,Hardware,SteelWorks,BC-HW-00538,,,8538,Regression bulk import row 538,ACTIVE,l,VOLUME,true,138.00,23.00,170.00,248.00,9,9,,43,28
+Bulk Test PT Item 0539,BULK-PT-00539,Paint,VoltEdge,BC-PT-00539,Red,10mm,8539,Regression bulk import row 539,ACTIVE,box,PACK,false,139.00,24.00,172.00,251.00,9,9,,44,29
+Bulk Test EL Item 0540,BULK-EL-00540,Electrical,PowerLine,BC-EL-00540,Blue,25mm,8540,Regression bulk import row 540,ACTIVE,pc,PIECE,false,140.00,25.00,175.00,255.00,9,9,,45,10
+Bulk Test HW Item 0541,BULK-HW-00541,Hardware,BuildPro,BC-HW-00541,White,500 ml,8541,Regression bulk import row 541,ACTIVE,kg,WEIGHT,true,141.00,26.00,178.00,259.00,9,9,,46,11
+Bulk Test PT Item 0542,BULK-PT-00542,Paint,ColorMax,BC-PT-00542,Black,1 inch,8542,Regression bulk import row 542,ACTIVE,m,LENGTH,true,142.00,27.00,180.00,262.00,9,9,,47,12
+Bulk Test EL Item 0543,BULK-EL-00543,Electrical,SteelWorks,BC-EL-00543,Green,M6,8543,Regression bulk import row 543,ACTIVE,l,VOLUME,true,143.00,28.00,183.00,266.00,9,9,,48,13
+Bulk Test HW Item 0544,BULK-HW-00544,Hardware,VoltEdge,BC-HW-00544,Yellow,2m,8544,Regression bulk import row 544,ACTIVE,box,PACK,false,144.00,29.00,186.00,270.00,9,9,,49,14
+Bulk Test PT Item 0545,BULK-PT-00545,Paint,PowerLine,BC-PT-00545,,,8545,Regression bulk import row 545,ACTIVE,pc,PIECE,false,145.00,30.00,189.00,274.00,9,9,,50,15
+Bulk Test EL Item 0546,BULK-EL-00546,Electrical,BuildPro,BC-EL-00546,Red,10mm,8546,Regression bulk import row 546,ACTIVE,kg,WEIGHT,true,146.00,31.00,191.00,277.00,9,9,,51,16
+Bulk Test HW Item 0547,BULK-HW-00547,Hardware,ColorMax,BC-HW-00547,Blue,25mm,8547,Regression bulk import row 547,ACTIVE,m,LENGTH,true,147.00,32.00,194.00,281.00,9,9,,52,17
+Bulk Test PT Item 0548,BULK-PT-00548,Paint,SteelWorks,BC-PT-00548,White,500 ml,8548,Regression bulk import row 548,ACTIVE,l,VOLUME,true,148.00,33.00,197.00,285.00,9,9,,53,18
+Bulk Test EL Item 0549,BULK-EL-00549,Electrical,VoltEdge,BC-EL-00549,Black,1 inch,8549,Regression bulk import row 549,ACTIVE,box,PACK,false,149.00,34.00,200.00,289.00,9,9,,54,19
+Bulk Test HW Item 0550,BULK-HW-00550,Hardware,PowerLine,BC-HW-00550,Green,M6,8550,Regression bulk import row 550,ACTIVE,pc,PIECE,false,150.00,10.00,165.00,255.00,9,9,,5,20
+Bulk Test PT Item 0551,BULK-PT-00551,Paint,BuildPro,BC-PT-00551,Yellow,2m,8551,Regression bulk import row 551,ACTIVE,kg,WEIGHT,true,151.00,11.00,168.00,259.00,9,9,,6,21
+Bulk Test EL Item 0552,BULK-EL-00552,Electrical,ColorMax,BC-EL-00552,,,8552,Regression bulk import row 552,ACTIVE,m,LENGTH,true,152.00,12.00,170.00,262.00,9,9,,7,22
+Bulk Test HW Item 0553,BULK-HW-00553,Hardware,SteelWorks,BC-HW-00553,Red,10mm,8553,Regression bulk import row 553,ACTIVE,l,VOLUME,true,153.00,13.00,173.00,266.00,9,9,,8,23
+Bulk Test PT Item 0554,BULK-PT-00554,Paint,VoltEdge,BC-PT-00554,Blue,25mm,8554,Regression bulk import row 554,ACTIVE,box,PACK,false,154.00,14.00,176.00,270.00,9,9,,9,24
+Bulk Test EL Item 0555,BULK-EL-00555,Electrical,PowerLine,BC-EL-00555,White,500 ml,8555,Regression bulk import row 555,ACTIVE,pc,PIECE,false,155.00,15.00,178.00,273.00,9,9,,10,25
+Bulk Test HW Item 0556,BULK-HW-00556,Hardware,BuildPro,BC-HW-00556,Black,1 inch,8556,Regression bulk import row 556,ACTIVE,kg,WEIGHT,true,156.00,16.00,181.00,277.00,9,9,,11,26
+Bulk Test PT Item 0557,BULK-PT-00557,Paint,ColorMax,BC-PT-00557,Green,M6,8557,Regression bulk import row 557,ACTIVE,m,LENGTH,true,157.00,17.00,184.00,281.00,9,9,,12,27
+Bulk Test EL Item 0558,BULK-EL-00558,Electrical,SteelWorks,BC-EL-00558,Yellow,2m,8558,Regression bulk import row 558,ACTIVE,l,VOLUME,true,158.00,18.00,186.00,284.00,9,9,,13,28
+Bulk Test HW Item 0559,BULK-HW-00559,Hardware,VoltEdge,BC-HW-00559,,,8559,Regression bulk import row 559,ACTIVE,box,PACK,false,159.00,19.00,189.00,288.00,9,9,,14,29
+Bulk Test PT Item 0560,BULK-PT-00560,Paint,PowerLine,BC-PT-00560,Red,10mm,8560,Regression bulk import row 560,ACTIVE,pc,PIECE,false,160.00,20.00,192.00,212.00,9,9,,15,10
+Bulk Test EL Item 0561,BULK-EL-00561,Electrical,BuildPro,BC-EL-00561,Blue,25mm,8561,Regression bulk import row 561,ACTIVE,kg,WEIGHT,true,161.00,21.00,195.00,216.00,9,9,,16,11
+Bulk Test HW Item 0562,BULK-HW-00562,Hardware,ColorMax,BC-HW-00562,White,500 ml,8562,Regression bulk import row 562,ACTIVE,m,LENGTH,true,162.00,22.00,198.00,220.00,9,9,,17,12
+Bulk Test PT Item 0563,BULK-PT-00563,Paint,SteelWorks,BC-PT-00563,Black,1 inch,8563,Regression bulk import row 563,ACTIVE,l,VOLUME,true,163.00,23.00,200.00,223.00,9,9,,18,13
+Bulk Test EL Item 0564,BULK-EL-00564,Electrical,VoltEdge,BC-EL-00564,Green,M6,8564,Regression bulk import row 564,ACTIVE,box,PACK,false,164.00,24.00,203.00,227.00,9,9,,19,14
+Bulk Test HW Item 0565,BULK-HW-00565,Hardware,PowerLine,BC-HW-00565,Yellow,2m,8565,Regression bulk import row 565,ACTIVE,pc,PIECE,false,165.00,25.00,206.00,231.00,9,9,,20,15
+Bulk Test PT Item 0566,BULK-PT-00566,Paint,BuildPro,BC-PT-00566,,,8566,Regression bulk import row 566,ACTIVE,kg,WEIGHT,true,166.00,26.00,209.00,235.00,9,9,,21,16
+Bulk Test EL Item 0567,BULK-EL-00567,Electrical,ColorMax,BC-EL-00567,Red,10mm,8567,Regression bulk import row 567,ACTIVE,m,LENGTH,true,167.00,27.00,212.00,239.00,9,9,,22,17
+Bulk Test HW Item 0568,BULK-HW-00568,Hardware,SteelWorks,BC-HW-00568,Blue,25mm,8568,Regression bulk import row 568,ACTIVE,l,VOLUME,true,168.00,28.00,215.00,243.00,9,9,,23,18
+Bulk Test PT Item 0569,BULK-PT-00569,Paint,VoltEdge,BC-PT-00569,White,500 ml,8569,Regression bulk import row 569,ACTIVE,box,PACK,false,169.00,29.00,218.00,247.00,9,9,,24,19
+Bulk Test EL Item 0570,BULK-EL-00570,Electrical,PowerLine,BC-EL-00570,Black,1 inch,8570,Regression bulk import row 570,ACTIVE,pc,PIECE,false,170.00,30.00,221.00,251.00,9,9,,25,20
+Bulk Test HW Item 0571,BULK-HW-00571,Hardware,BuildPro,BC-HW-00571,Green,M6,8571,Regression bulk import row 571,ACTIVE,kg,WEIGHT,true,171.00,31.00,224.00,255.00,9,9,,26,21
+Bulk Test PT Item 0572,BULK-PT-00572,Paint,ColorMax,BC-PT-00572,Yellow,2m,8572,Regression bulk import row 572,ACTIVE,m,LENGTH,true,172.00,32.00,227.00,259.00,9,9,,27,22
+Bulk Test EL Item 0573,BULK-EL-00573,Electrical,SteelWorks,BC-EL-00573,,,8573,Regression bulk import row 573,ACTIVE,l,VOLUME,true,173.00,33.00,230.00,263.00,9,9,,28,23
+Bulk Test HW Item 0574,BULK-HW-00574,Hardware,VoltEdge,BC-HW-00574,Red,10mm,8574,Regression bulk import row 574,ACTIVE,box,PACK,false,174.00,34.00,233.00,267.00,9,9,,29,24
+Bulk Test PT Item 0575,BULK-PT-00575,Paint,PowerLine,BC-PT-00575,Blue,25mm,8575,Regression bulk import row 575,ACTIVE,pc,PIECE,false,175.00,10.00,193.00,228.00,9,9,,30,25
+Bulk Test EL Item 0576,BULK-EL-00576,Electrical,BuildPro,BC-EL-00576,White,500 ml,8576,Regression bulk import row 576,ACTIVE,kg,WEIGHT,true,176.00,11.00,195.00,231.00,9,9,,31,26
+Bulk Test HW Item 0577,BULK-HW-00577,Hardware,ColorMax,BC-HW-00577,Black,1 inch,8577,Regression bulk import row 577,ACTIVE,m,LENGTH,true,177.00,12.00,198.00,235.00,9,9,,32,27
+Bulk Test PT Item 0578,BULK-PT-00578,Paint,SteelWorks,BC-PT-00578,Green,M6,8578,Regression bulk import row 578,ACTIVE,l,VOLUME,true,178.00,13.00,201.00,239.00,9,9,,33,28
+Bulk Test EL Item 0579,BULK-EL-00579,Electrical,VoltEdge,BC-EL-00579,Yellow,2m,8579,Regression bulk import row 579,ACTIVE,box,PACK,false,179.00,14.00,204.00,243.00,9,9,,34,29
+Bulk Test HW Item 0580,BULK-HW-00580,Hardware,PowerLine,BC-HW-00580,,,8580,Regression bulk import row 580,ACTIVE,pc,PIECE,false,180.00,15.00,207.00,247.00,9,9,,35,10
+Bulk Test PT Item 0581,BULK-PT-00581,Paint,BuildPro,BC-PT-00581,Red,10mm,8581,Regression bulk import row 581,ACTIVE,kg,WEIGHT,true,181.00,16.00,210.00,251.00,9,9,,36,11
+Bulk Test EL Item 0582,BULK-EL-00582,Electrical,ColorMax,BC-EL-00582,Blue,25mm,8582,Regression bulk import row 582,ACTIVE,m,LENGTH,true,182.00,17.00,213.00,255.00,9,9,,37,12
+Bulk Test HW Item 0583,BULK-HW-00583,Hardware,SteelWorks,BC-HW-00583,White,500 ml,8583,Regression bulk import row 583,ACTIVE,l,VOLUME,true,183.00,18.00,216.00,259.00,9,9,,38,13
+Bulk Test PT Item 0584,BULK-PT-00584,Paint,VoltEdge,BC-PT-00584,Black,1 inch,8584,Regression bulk import row 584,ACTIVE,box,PACK,false,184.00,19.00,219.00,263.00,9,9,,39,14
+Bulk Test EL Item 0585,BULK-EL-00585,Electrical,PowerLine,BC-EL-00585,Green,M6,8585,Regression bulk import row 585,ACTIVE,pc,PIECE,false,185.00,20.00,222.00,267.00,9,9,,40,15
+Bulk Test HW Item 0586,BULK-HW-00586,Hardware,BuildPro,BC-HW-00586,Yellow,2m,8586,Regression bulk import row 586,ACTIVE,kg,WEIGHT,true,186.00,21.00,225.00,271.00,9,9,,41,16
+Bulk Test PT Item 0587,BULK-PT-00587,Paint,ColorMax,BC-PT-00587,,,8587,Regression bulk import row 587,ACTIVE,m,LENGTH,true,187.00,22.00,228.00,275.00,9,9,,42,17
+Bulk Test EL Item 0588,BULK-EL-00588,Electrical,SteelWorks,BC-EL-00588,Red,10mm,8588,Regression bulk import row 588,ACTIVE,l,VOLUME,true,188.00,23.00,231.00,279.00,9,9,,43,18
+Bulk Test HW Item 0589,BULK-HW-00589,Hardware,VoltEdge,BC-HW-00589,Blue,25mm,8589,Regression bulk import row 589,ACTIVE,box,PACK,false,189.00,24.00,234.00,283.00,9,9,,44,19
+Bulk Test PT Item 0590,BULK-PT-00590,Paint,PowerLine,BC-PT-00590,White,500 ml,8590,Regression bulk import row 590,ACTIVE,pc,PIECE,false,190.00,25.00,238.00,288.00,9,9,,45,20
+Bulk Test EL Item 0591,BULK-EL-00591,Electrical,BuildPro,BC-EL-00591,Black,1 inch,8591,Regression bulk import row 591,ACTIVE,kg,WEIGHT,true,191.00,26.00,241.00,292.00,9,9,,46,21
+Bulk Test HW Item 0592,BULK-HW-00592,Hardware,ColorMax,BC-HW-00592,Green,M6,8592,Regression bulk import row 592,ACTIVE,m,LENGTH,true,192.00,27.00,244.00,296.00,9,9,,47,22
+Bulk Test PT Item 0593,BULK-PT-00593,Paint,SteelWorks,BC-PT-00593,Yellow,2m,8593,Regression bulk import row 593,ACTIVE,l,VOLUME,true,193.00,28.00,247.00,300.00,9,9,,48,23
+Bulk Test EL Item 0594,BULK-EL-00594,Electrical,VoltEdge,BC-EL-00594,,,8594,Regression bulk import row 594,ACTIVE,box,PACK,false,194.00,29.00,250.00,304.00,9,9,,49,24
+Bulk Test HW Item 0595,BULK-HW-00595,Hardware,PowerLine,BC-HW-00595,Red,10mm,8595,Regression bulk import row 595,ACTIVE,pc,PIECE,false,195.00,30.00,254.00,309.00,9,9,,50,25
+Bulk Test PT Item 0596,BULK-PT-00596,Paint,BuildPro,BC-PT-00596,Blue,25mm,8596,Regression bulk import row 596,ACTIVE,kg,WEIGHT,true,196.00,31.00,257.00,313.00,9,9,,51,26
+Bulk Test EL Item 0597,BULK-EL-00597,Electrical,ColorMax,BC-EL-00597,White,500 ml,8597,Regression bulk import row 597,ACTIVE,m,LENGTH,true,197.00,32.00,260.00,317.00,9,9,,52,27
+Bulk Test HW Item 0598,BULK-HW-00598,Hardware,SteelWorks,BC-HW-00598,Black,1 inch,8598,Regression bulk import row 598,ACTIVE,l,VOLUME,true,198.00,33.00,263.00,321.00,9,9,,53,28
+Bulk Test PT Item 0599,BULK-PT-00599,Paint,VoltEdge,BC-PT-00599,Green,M6,8599,Regression bulk import row 599,ACTIVE,box,PACK,false,199.00,34.00,267.00,326.00,9,9,,54,29
+Bulk Test EL Item 0600,BULK-EL-00600,Electrical,PowerLine,BC-EL-00600,Yellow,2m,8600,Regression bulk import row 600,ACTIVE,pc,PIECE,false,200.00,10.00,220.00,280.00,9,9,,5,10
+Bulk Test HW Item 0601,BULK-HW-00601,Hardware,BuildPro,BC-HW-00601,,,8601,Regression bulk import row 601,ACTIVE,kg,WEIGHT,true,201.00,11.00,223.00,284.00,9,9,,6,11
+Bulk Test PT Item 0602,BULK-PT-00602,Paint,ColorMax,BC-PT-00602,Red,10mm,8602,Regression bulk import row 602,ACTIVE,m,LENGTH,true,202.00,12.00,226.00,288.00,9,9,,7,12
+Bulk Test EL Item 0603,BULK-EL-00603,Electrical,SteelWorks,BC-EL-00603,Blue,25mm,8603,Regression bulk import row 603,ACTIVE,l,VOLUME,true,203.00,13.00,229.00,292.00,9,9,,8,13
+Bulk Test HW Item 0604,BULK-HW-00604,Hardware,VoltEdge,BC-HW-00604,White,500 ml,8604,Regression bulk import row 604,ACTIVE,box,PACK,false,204.00,14.00,233.00,297.00,9,9,,9,14
+Bulk Test PT Item 0605,BULK-PT-00605,Paint,PowerLine,BC-PT-00605,Black,1 inch,8605,Regression bulk import row 605,ACTIVE,pc,PIECE,false,205.00,15.00,236.00,301.00,9,9,,10,15
+Bulk Test EL Item 0606,BULK-EL-00606,Electrical,BuildPro,BC-EL-00606,Green,M6,8606,Regression bulk import row 606,ACTIVE,kg,WEIGHT,true,206.00,16.00,239.00,305.00,9,9,,11,16
+Bulk Test HW Item 0607,BULK-HW-00607,Hardware,ColorMax,BC-HW-00607,Yellow,2m,8607,Regression bulk import row 607,ACTIVE,m,LENGTH,true,207.00,17.00,242.00,309.00,9,9,,12,17
+Bulk Test PT Item 0608,BULK-PT-00608,Paint,SteelWorks,BC-PT-00608,,,8608,Regression bulk import row 608,ACTIVE,l,VOLUME,true,208.00,18.00,245.00,313.00,9,9,,13,18
+Bulk Test EL Item 0609,BULK-EL-00609,Electrical,VoltEdge,BC-EL-00609,Red,10mm,8609,Regression bulk import row 609,ACTIVE,box,PACK,false,209.00,19.00,249.00,318.00,9,9,,14,19
+Bulk Test HW Item 0610,BULK-HW-00610,Hardware,PowerLine,BC-HW-00610,Blue,25mm,8610,Regression bulk import row 610,ACTIVE,pc,PIECE,false,210.00,20.00,252.00,322.00,9,9,,15,20
+Bulk Test PT Item 0611,BULK-PT-00611,Paint,BuildPro,BC-PT-00611,White,500 ml,8611,Regression bulk import row 611,ACTIVE,kg,WEIGHT,true,211.00,21.00,255.00,326.00,9,9,,16,21
+Bulk Test EL Item 0612,BULK-EL-00612,Electrical,ColorMax,BC-EL-00612,Black,1 inch,8612,Regression bulk import row 612,ACTIVE,m,LENGTH,true,212.00,22.00,259.00,331.00,9,9,,17,22
+Bulk Test HW Item 0613,BULK-HW-00613,Hardware,SteelWorks,BC-HW-00613,Green,M6,8613,Regression bulk import row 613,ACTIVE,l,VOLUME,true,213.00,23.00,262.00,335.00,9,9,,18,23
+Bulk Test PT Item 0614,BULK-PT-00614,Paint,VoltEdge,BC-PT-00614,Yellow,2m,8614,Regression bulk import row 614,ACTIVE,box,PACK,false,214.00,24.00,265.00,339.00,9,9,,19,24
+Bulk Test EL Item 0615,BULK-EL-00615,Electrical,PowerLine,BC-EL-00615,,,8615,Regression bulk import row 615,ACTIVE,pc,PIECE,false,215.00,25.00,269.00,344.00,9,9,,20,25
+Bulk Test HW Item 0616,BULK-HW-00616,Hardware,BuildPro,BC-HW-00616,Red,10mm,8616,Regression bulk import row 616,ACTIVE,kg,WEIGHT,true,216.00,26.00,272.00,348.00,9,9,,21,26
+Bulk Test PT Item 0617,BULK-PT-00617,Paint,ColorMax,BC-PT-00617,Blue,25mm,8617,Regression bulk import row 617,ACTIVE,m,LENGTH,true,217.00,27.00,276.00,353.00,9,9,,22,27
+Bulk Test EL Item 0618,BULK-EL-00618,Electrical,SteelWorks,BC-EL-00618,White,500 ml,8618,Regression bulk import row 618,ACTIVE,l,VOLUME,true,218.00,28.00,279.00,357.00,9,9,,23,28
+Bulk Test HW Item 0619,BULK-HW-00619,Hardware,VoltEdge,BC-HW-00619,Black,1 inch,8619,Regression bulk import row 619,ACTIVE,box,PACK,false,219.00,29.00,283.00,362.00,9,9,,24,29
+Bulk Test PT Item 0620,BULK-PT-00620,Paint,PowerLine,BC-PT-00620,Green,M6,8620,Regression bulk import row 620,ACTIVE,pc,PIECE,false,220.00,30.00,286.00,366.00,9,9,,25,10
+Bulk Test EL Item 0621,BULK-EL-00621,Electrical,BuildPro,BC-EL-00621,Yellow,2m,8621,Regression bulk import row 621,ACTIVE,kg,WEIGHT,true,221.00,31.00,290.00,371.00,9,9,,26,11
+Bulk Test HW Item 0622,BULK-HW-00622,Hardware,ColorMax,BC-HW-00622,,,8622,Regression bulk import row 622,ACTIVE,m,LENGTH,true,222.00,32.00,293.00,375.00,9,9,,27,12
+Bulk Test PT Item 0623,BULK-PT-00623,Paint,SteelWorks,BC-PT-00623,Red,10mm,8623,Regression bulk import row 623,ACTIVE,l,VOLUME,true,223.00,33.00,297.00,380.00,9,9,,28,13
+Bulk Test EL Item 0624,BULK-EL-00624,Electrical,VoltEdge,BC-EL-00624,Blue,25mm,8624,Regression bulk import row 624,ACTIVE,box,PACK,false,224.00,34.00,300.00,384.00,9,9,,29,14
+Bulk Test HW Item 0625,BULK-HW-00625,Hardware,PowerLine,BC-HW-00625,White,500 ml,8625,Regression bulk import row 625,ACTIVE,pc,PIECE,false,225.00,10.00,248.00,333.00,9,9,,30,15
+Bulk Test PT Item 0626,BULK-PT-00626,Paint,BuildPro,BC-PT-00626,Black,1 inch,8626,Regression bulk import row 626,ACTIVE,kg,WEIGHT,true,226.00,11.00,251.00,337.00,9,9,,31,16
+Bulk Test EL Item 0627,BULK-EL-00627,Electrical,ColorMax,BC-EL-00627,Green,M6,8627,Regression bulk import row 627,ACTIVE,m,LENGTH,true,227.00,12.00,254.00,341.00,9,9,,32,17
+Bulk Test HW Item 0628,BULK-HW-00628,Hardware,SteelWorks,BC-HW-00628,Yellow,2m,8628,Regression bulk import row 628,ACTIVE,l,VOLUME,true,228.00,13.00,258.00,346.00,9,9,,33,18
+Bulk Test PT Item 0629,BULK-PT-00629,Paint,VoltEdge,BC-PT-00629,,,8629,Regression bulk import row 629,ACTIVE,box,PACK,false,229.00,14.00,261.00,350.00,9,9,,34,19
+Bulk Test EL Item 0630,BULK-EL-00630,Electrical,PowerLine,BC-EL-00630,Red,10mm,8630,Regression bulk import row 630,ACTIVE,pc,PIECE,false,230.00,15.00,265.00,355.00,9,9,,35,20
+Bulk Test HW Item 0631,BULK-HW-00631,Hardware,BuildPro,BC-HW-00631,Blue,25mm,8631,Regression bulk import row 631,ACTIVE,kg,WEIGHT,true,231.00,16.00,268.00,359.00,9,9,,36,21
+Bulk Test PT Item 0632,BULK-PT-00632,Paint,ColorMax,BC-PT-00632,White,500 ml,8632,Regression bulk import row 632,ACTIVE,m,LENGTH,true,232.00,17.00,271.00,363.00,9,9,,37,22
+Bulk Test EL Item 0633,BULK-EL-00633,Electrical,SteelWorks,BC-EL-00633,Black,1 inch,8633,Regression bulk import row 633,ACTIVE,l,VOLUME,true,233.00,18.00,275.00,368.00,9,9,,38,23
+Bulk Test HW Item 0634,BULK-HW-00634,Hardware,VoltEdge,BC-HW-00634,Green,M6,8634,Regression bulk import row 634,ACTIVE,box,PACK,false,234.00,19.00,278.00,372.00,9,9,,39,24
+Bulk Test PT Item 0635,BULK-PT-00635,Paint,PowerLine,BC-PT-00635,Yellow,2m,8635,Regression bulk import row 635,ACTIVE,pc,PIECE,false,235.00,20.00,282.00,377.00,9,9,,40,25
+Bulk Test EL Item 0636,BULK-EL-00636,Electrical,BuildPro,BC-EL-00636,,,8636,Regression bulk import row 636,ACTIVE,kg,WEIGHT,true,236.00,21.00,286.00,382.00,9,9,,41,26
+Bulk Test HW Item 0637,BULK-HW-00637,Hardware,ColorMax,BC-HW-00637,Red,10mm,8637,Regression bulk import row 637,ACTIVE,m,LENGTH,true,237.00,22.00,289.00,386.00,9,9,,42,27
+Bulk Test PT Item 0638,BULK-PT-00638,Paint,SteelWorks,BC-PT-00638,Blue,25mm,8638,Regression bulk import row 638,ACTIVE,l,VOLUME,true,238.00,23.00,293.00,391.00,9,9,,43,28
+Bulk Test EL Item 0639,BULK-EL-00639,Electrical,VoltEdge,BC-EL-00639,White,500 ml,8639,Regression bulk import row 639,ACTIVE,box,PACK,false,239.00,24.00,296.00,395.00,9,9,,44,29
+Bulk Test HW Item 0640,BULK-HW-00640,Hardware,PowerLine,BC-HW-00640,Black,1 inch,8640,Regression bulk import row 640,ACTIVE,pc,PIECE,false,240.00,25.00,300.00,320.00,9,9,,45,10
+Bulk Test PT Item 0641,BULK-PT-00641,Paint,BuildPro,BC-PT-00641,Green,M6,8641,Regression bulk import row 641,ACTIVE,kg,WEIGHT,true,241.00,26.00,304.00,325.00,9,9,,46,11
+Bulk Test EL Item 0642,BULK-EL-00642,Electrical,ColorMax,BC-EL-00642,Yellow,2m,8642,Regression bulk import row 642,ACTIVE,m,LENGTH,true,242.00,27.00,307.00,329.00,9,9,,47,12
+Bulk Test HW Item 0643,BULK-HW-00643,Hardware,SteelWorks,BC-HW-00643,,,8643,Regression bulk import row 643,ACTIVE,l,VOLUME,true,243.00,28.00,311.00,334.00,9,9,,48,13
+Bulk Test PT Item 0644,BULK-PT-00644,Paint,VoltEdge,BC-PT-00644,Red,10mm,8644,Regression bulk import row 644,ACTIVE,box,PACK,false,244.00,29.00,315.00,339.00,9,9,,49,14
+Bulk Test EL Item 0645,BULK-EL-00645,Electrical,PowerLine,BC-EL-00645,Blue,25mm,8645,Regression bulk import row 645,ACTIVE,pc,PIECE,false,245.00,30.00,319.00,344.00,9,9,,50,15
+Bulk Test HW Item 0646,BULK-HW-00646,Hardware,BuildPro,BC-HW-00646,White,500 ml,8646,Regression bulk import row 646,ACTIVE,kg,WEIGHT,true,246.00,31.00,322.00,348.00,9,9,,51,16
+Bulk Test PT Item 0647,BULK-PT-00647,Paint,ColorMax,BC-PT-00647,Black,1 inch,8647,Regression bulk import row 647,ACTIVE,m,LENGTH,true,247.00,32.00,326.00,353.00,9,9,,52,17
+Bulk Test EL Item 0648,BULK-EL-00648,Electrical,SteelWorks,BC-EL-00648,Green,M6,8648,Regression bulk import row 648,ACTIVE,l,VOLUME,true,248.00,33.00,330.00,358.00,9,9,,53,18
+Bulk Test HW Item 0649,BULK-HW-00649,Hardware,VoltEdge,BC-HW-00649,Yellow,2m,8649,Regression bulk import row 649,ACTIVE,box,PACK,false,249.00,34.00,334.00,363.00,9,9,,54,19
+Bulk Test PT Item 0650,BULK-PT-00650,Paint,PowerLine,BC-PT-00650,,,8650,Regression bulk import row 650,ACTIVE,pc,PIECE,false,250.00,10.00,275.00,305.00,9,9,,5,20
+Bulk Test EL Item 0651,BULK-EL-00651,Electrical,BuildPro,BC-EL-00651,Red,10mm,8651,Regression bulk import row 651,ACTIVE,kg,WEIGHT,true,251.00,11.00,279.00,310.00,9,9,,6,21
+Bulk Test HW Item 0652,BULK-HW-00652,Hardware,ColorMax,BC-HW-00652,Blue,25mm,8652,Regression bulk import row 652,ACTIVE,m,LENGTH,true,252.00,12.00,282.00,314.00,9,9,,7,22
+Bulk Test PT Item 0653,BULK-PT-00653,Paint,SteelWorks,BC-PT-00653,White,500 ml,8653,Regression bulk import row 653,ACTIVE,l,VOLUME,true,253.00,13.00,286.00,319.00,9,9,,8,23
+Bulk Test EL Item 0654,BULK-EL-00654,Electrical,VoltEdge,BC-EL-00654,Black,1 inch,8654,Regression bulk import row 654,ACTIVE,box,PACK,false,254.00,14.00,290.00,324.00,9,9,,9,24
+Bulk Test HW Item 0655,BULK-HW-00655,Hardware,PowerLine,BC-HW-00655,Green,M6,8655,Regression bulk import row 655,ACTIVE,pc,PIECE,false,255.00,15.00,293.00,328.00,9,9,,10,25
+Bulk Test PT Item 0656,BULK-PT-00656,Paint,BuildPro,BC-PT-00656,Yellow,2m,8656,Regression bulk import row 656,ACTIVE,kg,WEIGHT,true,256.00,16.00,297.00,333.00,9,9,,11,26
+Bulk Test EL Item 0657,BULK-EL-00657,Electrical,ColorMax,BC-EL-00657,,,8657,Regression bulk import row 657,ACTIVE,m,LENGTH,true,257.00,17.00,301.00,338.00,9,9,,12,27
+Bulk Test HW Item 0658,BULK-HW-00658,Hardware,SteelWorks,BC-HW-00658,Red,10mm,8658,Regression bulk import row 658,ACTIVE,l,VOLUME,true,258.00,18.00,304.00,342.00,9,9,,13,28
+Bulk Test PT Item 0659,BULK-PT-00659,Paint,VoltEdge,BC-PT-00659,Blue,25mm,8659,Regression bulk import row 659,ACTIVE,box,PACK,false,259.00,19.00,308.00,347.00,9,9,,14,29
+Bulk Test EL Item 0660,BULK-EL-00660,Electrical,PowerLine,BC-EL-00660,White,500 ml,8660,Regression bulk import row 660,ACTIVE,pc,PIECE,false,260.00,20.00,312.00,352.00,9,9,,15,10
+Bulk Test HW Item 0661,BULK-HW-00661,Hardware,BuildPro,BC-HW-00661,Black,1 inch,8661,Regression bulk import row 661,ACTIVE,kg,WEIGHT,true,261.00,21.00,316.00,357.00,9,9,,16,11
+Bulk Test PT Item 0662,BULK-PT-00662,Paint,ColorMax,BC-PT-00662,Green,M6,8662,Regression bulk import row 662,ACTIVE,m,LENGTH,true,262.00,22.00,320.00,362.00,9,9,,17,12
+Bulk Test EL Item 0663,BULK-EL-00663,Electrical,SteelWorks,BC-EL-00663,Yellow,2m,8663,Regression bulk import row 663,ACTIVE,l,VOLUME,true,263.00,23.00,323.00,366.00,9,9,,18,13
+Bulk Test HW Item 0664,BULK-HW-00664,Hardware,VoltEdge,BC-HW-00664,,,8664,Regression bulk import row 664,ACTIVE,box,PACK,false,264.00,24.00,327.00,371.00,9,9,,19,14
+Bulk Test PT Item 0665,BULK-PT-00665,Paint,PowerLine,BC-PT-00665,Red,10mm,8665,Regression bulk import row 665,ACTIVE,pc,PIECE,false,265.00,25.00,331.00,376.00,9,9,,20,15
+Bulk Test EL Item 0666,BULK-EL-00666,Electrical,BuildPro,BC-EL-00666,Blue,25mm,8666,Regression bulk import row 666,ACTIVE,kg,WEIGHT,true,266.00,26.00,335.00,381.00,9,9,,21,16
+Bulk Test HW Item 0667,BULK-HW-00667,Hardware,ColorMax,BC-HW-00667,White,500 ml,8667,Regression bulk import row 667,ACTIVE,m,LENGTH,true,267.00,27.00,339.00,386.00,9,9,,22,17
+Bulk Test PT Item 0668,BULK-PT-00668,Paint,SteelWorks,BC-PT-00668,Black,1 inch,8668,Regression bulk import row 668,ACTIVE,l,VOLUME,true,268.00,28.00,343.00,391.00,9,9,,23,18
+Bulk Test EL Item 0669,BULK-EL-00669,Electrical,VoltEdge,BC-EL-00669,Green,M6,8669,Regression bulk import row 669,ACTIVE,box,PACK,false,269.00,29.00,347.00,396.00,9,9,,24,19
+Bulk Test HW Item 0670,BULK-HW-00670,Hardware,PowerLine,BC-HW-00670,Yellow,2m,8670,Regression bulk import row 670,ACTIVE,pc,PIECE,false,270.00,30.00,351.00,401.00,9,9,,25,20
+Bulk Test PT Item 0671,BULK-PT-00671,Paint,BuildPro,BC-PT-00671,,,8671,Regression bulk import row 671,ACTIVE,kg,WEIGHT,true,271.00,31.00,355.00,406.00,9,9,,26,21
+Bulk Test EL Item 0672,BULK-EL-00672,Electrical,ColorMax,BC-EL-00672,Red,10mm,8672,Regression bulk import row 672,ACTIVE,m,LENGTH,true,272.00,32.00,359.00,411.00,9,9,,27,22
+Bulk Test HW Item 0673,BULK-HW-00673,Hardware,SteelWorks,BC-HW-00673,Blue,25mm,8673,Regression bulk import row 673,ACTIVE,l,VOLUME,true,273.00,33.00,363.00,416.00,9,9,,28,23
+Bulk Test PT Item 0674,BULK-PT-00674,Paint,VoltEdge,BC-PT-00674,White,500 ml,8674,Regression bulk import row 674,ACTIVE,box,PACK,false,274.00,34.00,367.00,421.00,9,9,,29,24
+Bulk Test EL Item 0675,BULK-EL-00675,Electrical,PowerLine,BC-EL-00675,Black,1 inch,8675,Regression bulk import row 675,ACTIVE,pc,PIECE,false,275.00,10.00,303.00,358.00,9,9,,30,25
+Bulk Test HW Item 0676,BULK-HW-00676,Hardware,BuildPro,BC-HW-00676,Green,M6,8676,Regression bulk import row 676,ACTIVE,kg,WEIGHT,true,276.00,11.00,306.00,362.00,9,9,,31,26
+Bulk Test PT Item 0677,BULK-PT-00677,Paint,ColorMax,BC-PT-00677,Yellow,2m,8677,Regression bulk import row 677,ACTIVE,m,LENGTH,true,277.00,12.00,310.00,367.00,9,9,,32,27
+Bulk Test EL Item 0678,BULK-EL-00678,Electrical,SteelWorks,BC-EL-00678,,,8678,Regression bulk import row 678,ACTIVE,l,VOLUME,true,278.00,13.00,314.00,372.00,9,9,,33,28
+Bulk Test HW Item 0679,BULK-HW-00679,Hardware,VoltEdge,BC-HW-00679,Red,10mm,8679,Regression bulk import row 679,ACTIVE,box,PACK,false,279.00,14.00,318.00,377.00,9,9,,34,29
+Bulk Test PT Item 0680,BULK-PT-00680,Paint,PowerLine,BC-PT-00680,Blue,25mm,8680,Regression bulk import row 680,ACTIVE,pc,PIECE,false,280.00,15.00,322.00,382.00,9,9,,35,10
+Bulk Test EL Item 0681,BULK-EL-00681,Electrical,BuildPro,BC-EL-00681,White,500 ml,8681,Regression bulk import row 681,ACTIVE,kg,WEIGHT,true,281.00,16.00,326.00,387.00,9,9,,36,11
+Bulk Test HW Item 0682,BULK-HW-00682,Hardware,ColorMax,BC-HW-00682,Black,1 inch,8682,Regression bulk import row 682,ACTIVE,m,LENGTH,true,282.00,17.00,330.00,392.00,9,9,,37,12
+Bulk Test PT Item 0683,BULK-PT-00683,Paint,SteelWorks,BC-PT-00683,Green,M6,8683,Regression bulk import row 683,ACTIVE,l,VOLUME,true,283.00,18.00,334.00,397.00,9,9,,38,13
+Bulk Test EL Item 0684,BULK-EL-00684,Electrical,VoltEdge,BC-EL-00684,Yellow,2m,8684,Regression bulk import row 684,ACTIVE,box,PACK,false,284.00,19.00,338.00,402.00,9,9,,39,14
+Bulk Test HW Item 0685,BULK-HW-00685,Hardware,PowerLine,BC-HW-00685,,,8685,Regression bulk import row 685,ACTIVE,pc,PIECE,false,285.00,20.00,342.00,407.00,9,9,,40,15
+Bulk Test PT Item 0686,BULK-PT-00686,Paint,BuildPro,BC-PT-00686,Red,10mm,8686,Regression bulk import row 686,ACTIVE,kg,WEIGHT,true,286.00,21.00,346.00,412.00,9,9,,41,16
+Bulk Test EL Item 0687,BULK-EL-00687,Electrical,ColorMax,BC-EL-00687,Blue,25mm,8687,Regression bulk import row 687,ACTIVE,m,LENGTH,true,287.00,22.00,350.00,417.00,9,9,,42,17
+Bulk Test HW Item 0688,BULK-HW-00688,Hardware,SteelWorks,BC-HW-00688,White,500 ml,8688,Regression bulk import row 688,ACTIVE,l,VOLUME,true,288.00,23.00,354.00,422.00,9,9,,43,18
+Bulk Test PT Item 0689,BULK-PT-00689,Paint,VoltEdge,BC-PT-00689,Black,1 inch,8689,Regression bulk import row 689,ACTIVE,box,PACK,false,289.00,24.00,358.00,427.00,9,9,,44,19
+Bulk Test EL Item 0690,BULK-EL-00690,Electrical,PowerLine,BC-EL-00690,Green,M6,8690,Regression bulk import row 690,ACTIVE,pc,PIECE,false,290.00,25.00,363.00,433.00,9,9,,45,20
+Bulk Test HW Item 0691,BULK-HW-00691,Hardware,BuildPro,BC-HW-00691,Yellow,2m,8691,Regression bulk import row 691,ACTIVE,kg,WEIGHT,true,291.00,26.00,367.00,438.00,9,9,,46,21
+Bulk Test PT Item 0692,BULK-PT-00692,Paint,ColorMax,BC-PT-00692,,,8692,Regression bulk import row 692,ACTIVE,m,LENGTH,true,292.00,27.00,371.00,443.00,9,9,,47,22
+Bulk Test EL Item 0693,BULK-EL-00693,Electrical,SteelWorks,BC-EL-00693,Red,10mm,8693,Regression bulk import row 693,ACTIVE,l,VOLUME,true,293.00,28.00,375.00,448.00,9,9,,48,23
+Bulk Test HW Item 0694,BULK-HW-00694,Hardware,VoltEdge,BC-HW-00694,Blue,25mm,8694,Regression bulk import row 694,ACTIVE,box,PACK,false,294.00,29.00,379.00,453.00,9,9,,49,24
+Bulk Test PT Item 0695,BULK-PT-00695,Paint,PowerLine,BC-PT-00695,White,500 ml,8695,Regression bulk import row 695,ACTIVE,pc,PIECE,false,295.00,30.00,384.00,459.00,9,9,,50,25
+Bulk Test EL Item 0696,BULK-EL-00696,Electrical,BuildPro,BC-EL-00696,Black,1 inch,8696,Regression bulk import row 696,ACTIVE,kg,WEIGHT,true,296.00,31.00,388.00,464.00,9,9,,51,26
+Bulk Test HW Item 0697,BULK-HW-00697,Hardware,ColorMax,BC-HW-00697,Green,M6,8697,Regression bulk import row 697,ACTIVE,m,LENGTH,true,297.00,32.00,392.00,469.00,9,9,,52,27
+Bulk Test PT Item 0698,BULK-PT-00698,Paint,SteelWorks,BC-PT-00698,Yellow,2m,8698,Regression bulk import row 698,ACTIVE,l,VOLUME,true,298.00,33.00,396.00,474.00,9,9,,53,28
+Bulk Test EL Item 0699,BULK-EL-00699,Electrical,VoltEdge,BC-EL-00699,,,8699,Regression bulk import row 699,ACTIVE,box,PACK,false,299.00,34.00,401.00,480.00,9,9,,54,29
+Bulk Test HW Item 0700,BULK-HW-00700,Hardware,PowerLine,BC-HW-00700,Red,10mm,8700,Regression bulk import row 700,ACTIVE,pc,PIECE,false,300.00,10.00,330.00,410.00,9,9,,5,10
+Bulk Test PT Item 0701,BULK-PT-00701,Paint,BuildPro,BC-PT-00701,Blue,25mm,8701,Regression bulk import row 701,ACTIVE,kg,WEIGHT,true,301.00,11.00,334.00,415.00,9,9,,6,11
+Bulk Test EL Item 0702,BULK-EL-00702,Electrical,ColorMax,BC-EL-00702,White,500 ml,8702,Regression bulk import row 702,ACTIVE,m,LENGTH,true,302.00,12.00,338.00,420.00,9,9,,7,12
+Bulk Test HW Item 0703,BULK-HW-00703,Hardware,SteelWorks,BC-HW-00703,Black,1 inch,8703,Regression bulk import row 703,ACTIVE,l,VOLUME,true,303.00,13.00,342.00,425.00,9,9,,8,13
+Bulk Test PT Item 0704,BULK-PT-00704,Paint,VoltEdge,BC-PT-00704,Green,M6,8704,Regression bulk import row 704,ACTIVE,box,PACK,false,304.00,14.00,347.00,431.00,9,9,,9,14
+Bulk Test EL Item 0705,BULK-EL-00705,Electrical,PowerLine,BC-EL-00705,Yellow,2m,8705,Regression bulk import row 705,ACTIVE,pc,PIECE,false,305.00,15.00,351.00,436.00,9,9,,10,15
+Bulk Test HW Item 0706,BULK-HW-00706,Hardware,BuildPro,BC-HW-00706,,,8706,Regression bulk import row 706,ACTIVE,kg,WEIGHT,true,306.00,16.00,355.00,441.00,9,9,,11,16
+Bulk Test PT Item 0707,BULK-PT-00707,Paint,ColorMax,BC-PT-00707,Red,10mm,8707,Regression bulk import row 707,ACTIVE,m,LENGTH,true,307.00,17.00,359.00,446.00,9,9,,12,17
+Bulk Test EL Item 0708,BULK-EL-00708,Electrical,SteelWorks,BC-EL-00708,Blue,25mm,8708,Regression bulk import row 708,ACTIVE,l,VOLUME,true,308.00,18.00,363.00,451.00,9,9,,13,18
+Bulk Test HW Item 0709,BULK-HW-00709,Hardware,VoltEdge,BC-HW-00709,White,500 ml,8709,Regression bulk import row 709,ACTIVE,box,PACK,false,309.00,19.00,368.00,457.00,9,9,,14,19
+Bulk Test PT Item 0710,BULK-PT-00710,Paint,PowerLine,BC-PT-00710,Black,1 inch,8710,Regression bulk import row 710,ACTIVE,pc,PIECE,false,310.00,20.00,372.00,462.00,9,9,,15,20
+Bulk Test EL Item 0711,BULK-EL-00711,Electrical,BuildPro,BC-EL-00711,Green,M6,8711,Regression bulk import row 711,ACTIVE,kg,WEIGHT,true,311.00,21.00,376.00,467.00,9,9,,16,21
+Bulk Test HW Item 0712,BULK-HW-00712,Hardware,ColorMax,BC-HW-00712,Yellow,2m,8712,Regression bulk import row 712,ACTIVE,m,LENGTH,true,312.00,22.00,381.00,473.00,9,9,,17,22
+Bulk Test PT Item 0713,BULK-PT-00713,Paint,SteelWorks,BC-PT-00713,,,8713,Regression bulk import row 713,ACTIVE,l,VOLUME,true,313.00,23.00,385.00,478.00,9,9,,18,23
+Bulk Test EL Item 0714,BULK-EL-00714,Electrical,VoltEdge,BC-EL-00714,Red,10mm,8714,Regression bulk import row 714,ACTIVE,box,PACK,false,314.00,24.00,389.00,483.00,9,9,,19,24
+Bulk Test HW Item 0715,BULK-HW-00715,Hardware,PowerLine,BC-HW-00715,Blue,25mm,8715,Regression bulk import row 715,ACTIVE,pc,PIECE,false,315.00,25.00,394.00,489.00,9,9,,20,25
+Bulk Test PT Item 0716,BULK-PT-00716,Paint,BuildPro,BC-PT-00716,White,500 ml,8716,Regression bulk import row 716,ACTIVE,kg,WEIGHT,true,316.00,26.00,398.00,494.00,9,9,,21,26
+Bulk Test EL Item 0717,BULK-EL-00717,Electrical,ColorMax,BC-EL-00717,Black,1 inch,8717,Regression bulk import row 717,ACTIVE,m,LENGTH,true,317.00,27.00,403.00,500.00,9,9,,22,27
+Bulk Test HW Item 0718,BULK-HW-00718,Hardware,SteelWorks,BC-HW-00718,Green,M6,8718,Regression bulk import row 718,ACTIVE,l,VOLUME,true,318.00,28.00,407.00,505.00,9,9,,23,28
+Bulk Test PT Item 0719,BULK-PT-00719,Paint,VoltEdge,BC-PT-00719,Yellow,2m,8719,Regression bulk import row 719,ACTIVE,box,PACK,false,319.00,29.00,412.00,511.00,9,9,,24,29
+Bulk Test EL Item 0720,BULK-EL-00720,Electrical,PowerLine,BC-EL-00720,,,8720,Regression bulk import row 720,ACTIVE,pc,PIECE,false,320.00,30.00,416.00,436.00,9,9,,25,10
+Bulk Test HW Item 0721,BULK-HW-00721,Hardware,BuildPro,BC-HW-00721,Red,10mm,8721,Regression bulk import row 721,ACTIVE,kg,WEIGHT,true,321.00,31.00,421.00,442.00,9,9,,26,11
+Bulk Test PT Item 0722,BULK-PT-00722,Paint,ColorMax,BC-PT-00722,Blue,25mm,8722,Regression bulk import row 722,ACTIVE,m,LENGTH,true,322.00,32.00,425.00,447.00,9,9,,27,12
+Bulk Test EL Item 0723,BULK-EL-00723,Electrical,SteelWorks,BC-EL-00723,White,500 ml,8723,Regression bulk import row 723,ACTIVE,l,VOLUME,true,323.00,33.00,430.00,453.00,9,9,,28,13
+Bulk Test HW Item 0724,BULK-HW-00724,Hardware,VoltEdge,BC-HW-00724,Black,1 inch,8724,Regression bulk import row 724,ACTIVE,box,PACK,false,324.00,34.00,434.00,458.00,9,9,,29,14
+Bulk Test PT Item 0725,BULK-PT-00725,Paint,PowerLine,BC-PT-00725,Green,M6,8725,Regression bulk import row 725,ACTIVE,pc,PIECE,false,325.00,10.00,358.00,383.00,9,9,,30,15
+Bulk Test EL Item 0726,BULK-EL-00726,Electrical,BuildPro,BC-EL-00726,Yellow,2m,8726,Regression bulk import row 726,ACTIVE,kg,WEIGHT,true,326.00,11.00,362.00,388.00,9,9,,31,16
+Bulk Test HW Item 0727,BULK-HW-00727,Hardware,ColorMax,BC-HW-00727,,,8727,Regression bulk import row 727,ACTIVE,m,LENGTH,true,327.00,12.00,366.00,393.00,9,9,,32,17
+Bulk Test PT Item 0728,BULK-PT-00728,Paint,SteelWorks,BC-PT-00728,Red,10mm,8728,Regression bulk import row 728,ACTIVE,l,VOLUME,true,328.00,13.00,371.00,399.00,9,9,,33,18
+Bulk Test EL Item 0729,BULK-EL-00729,Electrical,VoltEdge,BC-EL-00729,Blue,25mm,8729,Regression bulk import row 729,ACTIVE,box,PACK,false,329.00,14.00,375.00,404.00,9,9,,34,19
+Bulk Test HW Item 0730,BULK-HW-00730,Hardware,PowerLine,BC-HW-00730,White,500 ml,8730,Regression bulk import row 730,ACTIVE,pc,PIECE,false,330.00,15.00,379.00,409.00,9,9,,35,20
+Bulk Test PT Item 0731,BULK-PT-00731,Paint,BuildPro,BC-PT-00731,Black,1 inch,8731,Regression bulk import row 731,ACTIVE,kg,WEIGHT,true,331.00,16.00,384.00,415.00,9,9,,36,21
+Bulk Test EL Item 0732,BULK-EL-00732,Electrical,ColorMax,BC-EL-00732,Green,M6,8732,Regression bulk import row 732,ACTIVE,m,LENGTH,true,332.00,17.00,388.00,420.00,9,9,,37,22
+Bulk Test HW Item 0733,BULK-HW-00733,Hardware,SteelWorks,BC-HW-00733,Yellow,2m,8733,Regression bulk import row 733,ACTIVE,l,VOLUME,true,333.00,18.00,393.00,426.00,9,9,,38,23
+Bulk Test PT Item 0734,BULK-PT-00734,Paint,VoltEdge,BC-PT-00734,,,8734,Regression bulk import row 734,ACTIVE,box,PACK,false,334.00,19.00,397.00,431.00,9,9,,39,24
+Bulk Test EL Item 0735,BULK-EL-00735,Electrical,PowerLine,BC-EL-00735,Red,10mm,8735,Regression bulk import row 735,ACTIVE,pc,PIECE,false,335.00,20.00,402.00,437.00,9,9,,40,25
+Bulk Test HW Item 0736,BULK-HW-00736,Hardware,BuildPro,BC-HW-00736,Blue,25mm,8736,Regression bulk import row 736,ACTIVE,kg,WEIGHT,true,336.00,21.00,407.00,443.00,9,9,,41,26
+Bulk Test PT Item 0737,BULK-PT-00737,Paint,ColorMax,BC-PT-00737,White,500 ml,8737,Regression bulk import row 737,ACTIVE,m,LENGTH,true,337.00,22.00,411.00,448.00,9,9,,42,27
+Bulk Test EL Item 0738,BULK-EL-00738,Electrical,SteelWorks,BC-EL-00738,Black,1 inch,8738,Regression bulk import row 738,ACTIVE,l,VOLUME,true,338.00,23.00,416.00,454.00,9,9,,43,28
+Bulk Test HW Item 0739,BULK-HW-00739,Hardware,VoltEdge,BC-HW-00739,Green,M6,8739,Regression bulk import row 739,ACTIVE,box,PACK,false,339.00,24.00,420.00,459.00,9,9,,44,29
+Bulk Test PT Item 0740,BULK-PT-00740,Paint,PowerLine,BC-PT-00740,Yellow,2m,8740,Regression bulk import row 740,ACTIVE,pc,PIECE,false,340.00,25.00,425.00,465.00,9,9,,45,10
+Bulk Test EL Item 0741,BULK-EL-00741,Electrical,BuildPro,BC-EL-00741,,,8741,Regression bulk import row 741,ACTIVE,kg,WEIGHT,true,341.00,26.00,430.00,471.00,9,9,,46,11
+Bulk Test HW Item 0742,BULK-HW-00742,Hardware,ColorMax,BC-HW-00742,Red,10mm,8742,Regression bulk import row 742,ACTIVE,m,LENGTH,true,342.00,27.00,434.00,476.00,9,9,,47,12
+Bulk Test PT Item 0743,BULK-PT-00743,Paint,SteelWorks,BC-PT-00743,Blue,25mm,8743,Regression bulk import row 743,ACTIVE,l,VOLUME,true,343.00,28.00,439.00,482.00,9,9,,48,13
+Bulk Test EL Item 0744,BULK-EL-00744,Electrical,VoltEdge,BC-EL-00744,White,500 ml,8744,Regression bulk import row 744,ACTIVE,box,PACK,false,344.00,29.00,444.00,488.00,9,9,,49,14
+Bulk Test HW Item 0745,BULK-HW-00745,Hardware,PowerLine,BC-HW-00745,Black,1 inch,8745,Regression bulk import row 745,ACTIVE,pc,PIECE,false,345.00,30.00,449.00,494.00,9,9,,50,15
+Bulk Test PT Item 0746,BULK-PT-00746,Paint,BuildPro,BC-PT-00746,Green,M6,8746,Regression bulk import row 746,ACTIVE,kg,WEIGHT,true,346.00,31.00,453.00,499.00,9,9,,51,16
+Bulk Test EL Item 0747,BULK-EL-00747,Electrical,ColorMax,BC-EL-00747,Yellow,2m,8747,Regression bulk import row 747,ACTIVE,m,LENGTH,true,347.00,32.00,458.00,505.00,9,9,,52,17
+Bulk Test HW Item 0748,BULK-HW-00748,Hardware,SteelWorks,BC-HW-00748,,,8748,Regression bulk import row 748,ACTIVE,l,VOLUME,true,348.00,33.00,463.00,511.00,9,9,,53,18
+Bulk Test PT Item 0749,BULK-PT-00749,Paint,VoltEdge,BC-PT-00749,Red,10mm,8749,Regression bulk import row 749,ACTIVE,box,PACK,false,349.00,34.00,468.00,517.00,9,9,,54,19
+Bulk Test EL Item 0750,BULK-EL-00750,Electrical,PowerLine,BC-EL-00750,Blue,25mm,8750,Regression bulk import row 750,ACTIVE,pc,PIECE,false,350.00,10.00,385.00,435.00,9,9,,5,20
+Bulk Test HW Item 0751,BULK-HW-00751,Hardware,BuildPro,BC-HW-00751,White,500 ml,8751,Regression bulk import row 751,ACTIVE,kg,WEIGHT,true,351.00,11.00,390.00,441.00,9,9,,6,21
+Bulk Test PT Item 0752,BULK-PT-00752,Paint,ColorMax,BC-PT-00752,Black,1 inch,8752,Regression bulk import row 752,ACTIVE,m,LENGTH,true,352.00,12.00,394.00,446.00,9,9,,7,22
+Bulk Test EL Item 0753,BULK-EL-00753,Electrical,SteelWorks,BC-EL-00753,Green,M6,8753,Regression bulk import row 753,ACTIVE,l,VOLUME,true,353.00,13.00,399.00,452.00,9,9,,8,23
+Bulk Test HW Item 0754,BULK-HW-00754,Hardware,VoltEdge,BC-HW-00754,Yellow,2m,8754,Regression bulk import row 754,ACTIVE,box,PACK,false,354.00,14.00,404.00,458.00,9,9,,9,24
+Bulk Test PT Item 0755,BULK-PT-00755,Paint,PowerLine,BC-PT-00755,,,8755,Regression bulk import row 755,ACTIVE,pc,PIECE,false,355.00,15.00,408.00,463.00,9,9,,10,25
+Bulk Test EL Item 0756,BULK-EL-00756,Electrical,BuildPro,BC-EL-00756,Red,10mm,8756,Regression bulk import row 756,ACTIVE,kg,WEIGHT,true,356.00,16.00,413.00,469.00,9,9,,11,26
+Bulk Test HW Item 0757,BULK-HW-00757,Hardware,ColorMax,BC-HW-00757,Blue,25mm,8757,Regression bulk import row 757,ACTIVE,m,LENGTH,true,357.00,17.00,418.00,475.00,9,9,,12,27
+Bulk Test PT Item 0758,BULK-PT-00758,Paint,SteelWorks,BC-PT-00758,White,500 ml,8758,Regression bulk import row 758,ACTIVE,l,VOLUME,true,358.00,18.00,422.00,480.00,9,9,,13,28
+Bulk Test EL Item 0759,BULK-EL-00759,Electrical,VoltEdge,BC-EL-00759,Black,1 inch,8759,Regression bulk import row 759,ACTIVE,box,PACK,false,359.00,19.00,427.00,486.00,9,9,,14,29
+Bulk Test HW Item 0760,BULK-HW-00760,Hardware,PowerLine,BC-HW-00760,Green,M6,8760,Regression bulk import row 760,ACTIVE,pc,PIECE,false,360.00,20.00,432.00,492.00,9,9,,15,10
+Bulk Test PT Item 0761,BULK-PT-00761,Paint,BuildPro,BC-PT-00761,Yellow,2m,8761,Regression bulk import row 761,ACTIVE,kg,WEIGHT,true,361.00,21.00,437.00,498.00,9,9,,16,11
+Bulk Test EL Item 0762,BULK-EL-00762,Electrical,ColorMax,BC-EL-00762,,,8762,Regression bulk import row 762,ACTIVE,m,LENGTH,true,362.00,22.00,442.00,504.00,9,9,,17,12
+Bulk Test HW Item 0763,BULK-HW-00763,Hardware,SteelWorks,BC-HW-00763,Red,10mm,8763,Regression bulk import row 763,ACTIVE,l,VOLUME,true,363.00,23.00,446.00,509.00,9,9,,18,13
+Bulk Test PT Item 0764,BULK-PT-00764,Paint,VoltEdge,BC-PT-00764,Blue,25mm,8764,Regression bulk import row 764,ACTIVE,box,PACK,false,364.00,24.00,451.00,515.00,9,9,,19,14
+Bulk Test EL Item 0765,BULK-EL-00765,Electrical,PowerLine,BC-EL-00765,White,500 ml,8765,Regression bulk import row 765,ACTIVE,pc,PIECE,false,365.00,25.00,456.00,521.00,9,9,,20,15
+Bulk Test HW Item 0766,BULK-HW-00766,Hardware,BuildPro,BC-HW-00766,Black,1 inch,8766,Regression bulk import row 766,ACTIVE,kg,WEIGHT,true,366.00,26.00,461.00,527.00,9,9,,21,16
+Bulk Test PT Item 0767,BULK-PT-00767,Paint,ColorMax,BC-PT-00767,Green,M6,8767,Regression bulk import row 767,ACTIVE,m,LENGTH,true,367.00,27.00,466.00,533.00,9,9,,22,17
+Bulk Test EL Item 0768,BULK-EL-00768,Electrical,SteelWorks,BC-EL-00768,Yellow,2m,8768,Regression bulk import row 768,ACTIVE,l,VOLUME,true,368.00,28.00,471.00,539.00,9,9,,23,18
+Bulk Test HW Item 0769,BULK-HW-00769,Hardware,VoltEdge,BC-HW-00769,,,8769,Regression bulk import row 769,ACTIVE,box,PACK,false,369.00,29.00,476.00,545.00,9,9,,24,19
+Bulk Test PT Item 0770,BULK-PT-00770,Paint,PowerLine,BC-PT-00770,Red,10mm,8770,Regression bulk import row 770,ACTIVE,pc,PIECE,false,370.00,30.00,481.00,551.00,9,9,,25,20
+Bulk Test EL Item 0771,BULK-EL-00771,Electrical,BuildPro,BC-EL-00771,Blue,25mm,8771,Regression bulk import row 771,ACTIVE,kg,WEIGHT,true,371.00,31.00,486.00,557.00,9,9,,26,21
+Bulk Test HW Item 0772,BULK-HW-00772,Hardware,ColorMax,BC-HW-00772,White,500 ml,8772,Regression bulk import row 772,ACTIVE,m,LENGTH,true,372.00,32.00,491.00,563.00,9,9,,27,22
+Bulk Test PT Item 0773,BULK-PT-00773,Paint,SteelWorks,BC-PT-00773,Black,1 inch,8773,Regression bulk import row 773,ACTIVE,l,VOLUME,true,373.00,33.00,496.00,569.00,9,9,,28,23
+Bulk Test EL Item 0774,BULK-EL-00774,Electrical,VoltEdge,BC-EL-00774,Green,M6,8774,Regression bulk import row 774,ACTIVE,box,PACK,false,374.00,34.00,501.00,575.00,9,9,,29,24
+Bulk Test HW Item 0775,BULK-HW-00775,Hardware,PowerLine,BC-HW-00775,Yellow,2m,8775,Regression bulk import row 775,ACTIVE,pc,PIECE,false,375.00,10.00,413.00,488.00,9,9,,30,25
+Bulk Test PT Item 0776,BULK-PT-00776,Paint,BuildPro,BC-PT-00776,,,8776,Regression bulk import row 776,ACTIVE,kg,WEIGHT,true,376.00,11.00,417.00,493.00,9,9,,31,26
+Bulk Test EL Item 0777,BULK-EL-00777,Electrical,ColorMax,BC-EL-00777,Red,10mm,8777,Regression bulk import row 777,ACTIVE,m,LENGTH,true,377.00,12.00,422.00,499.00,9,9,,32,27
+Bulk Test HW Item 0778,BULK-HW-00778,Hardware,SteelWorks,BC-HW-00778,Blue,25mm,8778,Regression bulk import row 778,ACTIVE,l,VOLUME,true,378.00,13.00,427.00,505.00,9,9,,33,28
+Bulk Test PT Item 0779,BULK-PT-00779,Paint,VoltEdge,BC-PT-00779,White,500 ml,8779,Regression bulk import row 779,ACTIVE,box,PACK,false,379.00,14.00,432.00,511.00,9,9,,34,29
+Bulk Test EL Item 0780,BULK-EL-00780,Electrical,PowerLine,BC-EL-00780,Black,1 inch,8780,Regression bulk import row 780,ACTIVE,pc,PIECE,false,380.00,15.00,437.00,517.00,9,9,,35,10
+Bulk Test HW Item 0781,BULK-HW-00781,Hardware,BuildPro,BC-HW-00781,Green,M6,8781,Regression bulk import row 781,ACTIVE,kg,WEIGHT,true,381.00,16.00,442.00,523.00,9,9,,36,11
+Bulk Test PT Item 0782,BULK-PT-00782,Paint,ColorMax,BC-PT-00782,Yellow,2m,8782,Regression bulk import row 782,ACTIVE,m,LENGTH,true,382.00,17.00,447.00,529.00,9,9,,37,12
+Bulk Test EL Item 0783,BULK-EL-00783,Electrical,SteelWorks,BC-EL-00783,,,8783,Regression bulk import row 783,ACTIVE,l,VOLUME,true,383.00,18.00,452.00,535.00,9,9,,38,13
+Bulk Test HW Item 0784,BULK-HW-00784,Hardware,VoltEdge,BC-HW-00784,Red,10mm,8784,Regression bulk import row 784,ACTIVE,box,PACK,false,384.00,19.00,457.00,541.00,9,9,,39,14
+Bulk Test PT Item 0785,BULK-PT-00785,Paint,PowerLine,BC-PT-00785,Blue,25mm,8785,Regression bulk import row 785,ACTIVE,pc,PIECE,false,385.00,20.00,462.00,547.00,9,9,,40,15
+Bulk Test EL Item 0786,BULK-EL-00786,Electrical,BuildPro,BC-EL-00786,White,500 ml,8786,Regression bulk import row 786,ACTIVE,kg,WEIGHT,true,386.00,21.00,467.00,553.00,9,9,,41,16
+Bulk Test HW Item 0787,BULK-HW-00787,Hardware,ColorMax,BC-HW-00787,Black,1 inch,8787,Regression bulk import row 787,ACTIVE,m,LENGTH,true,387.00,22.00,472.00,559.00,9,9,,42,17
+Bulk Test PT Item 0788,BULK-PT-00788,Paint,SteelWorks,BC-PT-00788,Green,M6,8788,Regression bulk import row 788,ACTIVE,l,VOLUME,true,388.00,23.00,477.00,565.00,9,9,,43,18
+Bulk Test EL Item 0789,BULK-EL-00789,Electrical,VoltEdge,BC-EL-00789,Yellow,2m,8789,Regression bulk import row 789,ACTIVE,box,PACK,false,389.00,24.00,482.00,571.00,9,9,,44,19
+Bulk Test HW Item 0790,BULK-HW-00790,Hardware,PowerLine,BC-HW-00790,,,8790,Regression bulk import row 790,ACTIVE,pc,PIECE,false,390.00,25.00,488.00,578.00,9,9,,45,20
+Bulk Test PT Item 0791,BULK-PT-00791,Paint,BuildPro,BC-PT-00791,Red,10mm,8791,Regression bulk import row 791,ACTIVE,kg,WEIGHT,true,391.00,26.00,493.00,584.00,9,9,,46,21
+Bulk Test EL Item 0792,BULK-EL-00792,Electrical,ColorMax,BC-EL-00792,Blue,25mm,8792,Regression bulk import row 792,ACTIVE,m,LENGTH,true,392.00,27.00,498.00,590.00,9,9,,47,22
+Bulk Test HW Item 0793,BULK-HW-00793,Hardware,SteelWorks,BC-HW-00793,White,500 ml,8793,Regression bulk import row 793,ACTIVE,l,VOLUME,true,393.00,28.00,503.00,596.00,9,9,,48,23
+Bulk Test PT Item 0794,BULK-PT-00794,Paint,VoltEdge,BC-PT-00794,Black,1 inch,8794,Regression bulk import row 794,ACTIVE,box,PACK,false,394.00,29.00,508.00,602.00,9,9,,49,24
+Bulk Test EL Item 0795,BULK-EL-00795,Electrical,PowerLine,BC-EL-00795,Green,M6,8795,Regression bulk import row 795,ACTIVE,pc,PIECE,false,395.00,30.00,514.00,609.00,9,9,,50,25
+Bulk Test HW Item 0796,BULK-HW-00796,Hardware,BuildPro,BC-HW-00796,Yellow,2m,8796,Regression bulk import row 796,ACTIVE,kg,WEIGHT,true,396.00,31.00,519.00,615.00,9,9,,51,26
+Bulk Test PT Item 0797,BULK-PT-00797,Paint,ColorMax,BC-PT-00797,,,8797,Regression bulk import row 797,ACTIVE,m,LENGTH,true,397.00,32.00,524.00,621.00,9,9,,52,27
+Bulk Test EL Item 0798,BULK-EL-00798,Electrical,SteelWorks,BC-EL-00798,Red,10mm,8798,Regression bulk import row 798,ACTIVE,l,VOLUME,true,398.00,33.00,529.00,627.00,9,9,,53,28
+Bulk Test HW Item 0799,BULK-HW-00799,Hardware,VoltEdge,BC-HW-00799,Blue,25mm,8799,Regression bulk import row 799,ACTIVE,box,PACK,false,399.00,34.00,535.00,634.00,9,9,,54,29
+Bulk Test PT Item 0800,BULK-PT-00800,Paint,PowerLine,BC-PT-00800,White,500 ml,8800,Regression bulk import row 800,ACTIVE,pc,PIECE,false,400.00,10.00,440.00,460.00,9,9,,5,10
+Bulk Test EL Item 0801,BULK-EL-00801,Electrical,BuildPro,BC-EL-00801,Black,1 inch,8801,Regression bulk import row 801,ACTIVE,kg,WEIGHT,true,401.00,11.00,445.00,466.00,9,9,,6,11
+Bulk Test HW Item 0802,BULK-HW-00802,Hardware,ColorMax,BC-HW-00802,Green,M6,8802,Regression bulk import row 802,ACTIVE,m,LENGTH,true,402.00,12.00,450.00,472.00,9,9,,7,12
+Bulk Test PT Item 0803,BULK-PT-00803,Paint,SteelWorks,BC-PT-00803,Yellow,2m,8803,Regression bulk import row 803,ACTIVE,l,VOLUME,true,403.00,13.00,455.00,478.00,9,9,,8,13
+Bulk Test EL Item 0804,BULK-EL-00804,Electrical,VoltEdge,BC-EL-00804,,,8804,Regression bulk import row 804,ACTIVE,box,PACK,false,404.00,14.00,461.00,485.00,9,9,,9,14
+Bulk Test HW Item 0805,BULK-HW-00805,Hardware,PowerLine,BC-HW-00805,Red,10mm,8805,Regression bulk import row 805,ACTIVE,pc,PIECE,false,405.00,15.00,466.00,491.00,9,9,,10,15
+Bulk Test PT Item 0806,BULK-PT-00806,Paint,BuildPro,BC-PT-00806,Blue,25mm,8806,Regression bulk import row 806,ACTIVE,kg,WEIGHT,true,406.00,16.00,471.00,497.00,9,9,,11,16
+Bulk Test EL Item 0807,BULK-EL-00807,Electrical,ColorMax,BC-EL-00807,White,500 ml,8807,Regression bulk import row 807,ACTIVE,m,LENGTH,true,407.00,17.00,476.00,503.00,9,9,,12,17
+Bulk Test HW Item 0808,BULK-HW-00808,Hardware,SteelWorks,BC-HW-00808,Black,1 inch,8808,Regression bulk import row 808,ACTIVE,l,VOLUME,true,408.00,18.00,481.00,509.00,9,9,,13,18
+Bulk Test PT Item 0809,BULK-PT-00809,Paint,VoltEdge,BC-PT-00809,Green,M6,8809,Regression bulk import row 809,ACTIVE,box,PACK,false,409.00,19.00,487.00,516.00,9,9,,14,19
+Bulk Test EL Item 0810,BULK-EL-00810,Electrical,PowerLine,BC-EL-00810,Yellow,2m,8810,Regression bulk import row 810,ACTIVE,pc,PIECE,false,410.00,20.00,492.00,522.00,9,9,,15,20
+Bulk Test HW Item 0811,BULK-HW-00811,Hardware,BuildPro,BC-HW-00811,,,8811,Regression bulk import row 811,ACTIVE,kg,WEIGHT,true,411.00,21.00,497.00,528.00,9,9,,16,21
+Bulk Test PT Item 0812,BULK-PT-00812,Paint,ColorMax,BC-PT-00812,Red,10mm,8812,Regression bulk import row 812,ACTIVE,m,LENGTH,true,412.00,22.00,503.00,535.00,9,9,,17,22
+Bulk Test EL Item 0813,BULK-EL-00813,Electrical,SteelWorks,BC-EL-00813,Blue,25mm,8813,Regression bulk import row 813,ACTIVE,l,VOLUME,true,413.00,23.00,508.00,541.00,9,9,,18,23
+Bulk Test HW Item 0814,BULK-HW-00814,Hardware,VoltEdge,BC-HW-00814,White,500 ml,8814,Regression bulk import row 814,ACTIVE,box,PACK,false,414.00,24.00,513.00,547.00,9,9,,19,24
+Bulk Test PT Item 0815,BULK-PT-00815,Paint,PowerLine,BC-PT-00815,Black,1 inch,8815,Regression bulk import row 815,ACTIVE,pc,PIECE,false,415.00,25.00,519.00,554.00,9,9,,20,25
+Bulk Test EL Item 0816,BULK-EL-00816,Electrical,BuildPro,BC-EL-00816,Green,M6,8816,Regression bulk import row 816,ACTIVE,kg,WEIGHT,true,416.00,26.00,524.00,560.00,9,9,,21,26
+Bulk Test HW Item 0817,BULK-HW-00817,Hardware,ColorMax,BC-HW-00817,Yellow,2m,8817,Regression bulk import row 817,ACTIVE,m,LENGTH,true,417.00,27.00,530.00,567.00,9,9,,22,27
+Bulk Test PT Item 0818,BULK-PT-00818,Paint,SteelWorks,BC-PT-00818,,,8818,Regression bulk import row 818,ACTIVE,l,VOLUME,true,418.00,28.00,535.00,573.00,9,9,,23,28
+Bulk Test EL Item 0819,BULK-EL-00819,Electrical,VoltEdge,BC-EL-00819,Red,10mm,8819,Regression bulk import row 819,ACTIVE,box,PACK,false,419.00,29.00,541.00,580.00,9,9,,24,29
+Bulk Test HW Item 0820,BULK-HW-00820,Hardware,PowerLine,BC-HW-00820,Blue,25mm,8820,Regression bulk import row 820,ACTIVE,pc,PIECE,false,420.00,30.00,546.00,586.00,9,9,,25,10
+Bulk Test PT Item 0821,BULK-PT-00821,Paint,BuildPro,BC-PT-00821,White,500 ml,8821,Regression bulk import row 821,ACTIVE,kg,WEIGHT,true,421.00,31.00,552.00,593.00,9,9,,26,11
+Bulk Test EL Item 0822,BULK-EL-00822,Electrical,ColorMax,BC-EL-00822,Black,1 inch,8822,Regression bulk import row 822,ACTIVE,m,LENGTH,true,422.00,32.00,557.00,599.00,9,9,,27,12
+Bulk Test HW Item 0823,BULK-HW-00823,Hardware,SteelWorks,BC-HW-00823,Green,M6,8823,Regression bulk import row 823,ACTIVE,l,VOLUME,true,423.00,33.00,563.00,606.00,9,9,,28,13
+Bulk Test PT Item 0824,BULK-PT-00824,Paint,VoltEdge,BC-PT-00824,Yellow,2m,8824,Regression bulk import row 824,ACTIVE,box,PACK,false,424.00,34.00,568.00,612.00,9,9,,29,14
+Bulk Test EL Item 0825,BULK-EL-00825,Electrical,PowerLine,BC-EL-00825,,,8825,Regression bulk import row 825,ACTIVE,pc,PIECE,false,425.00,10.00,468.00,513.00,9,9,,30,15
+Bulk Test HW Item 0826,BULK-HW-00826,Hardware,BuildPro,BC-HW-00826,Red,10mm,8826,Regression bulk import row 826,ACTIVE,kg,WEIGHT,true,426.00,11.00,473.00,519.00,9,9,,31,16
+Bulk Test PT Item 0827,BULK-PT-00827,Paint,ColorMax,BC-PT-00827,Blue,25mm,8827,Regression bulk import row 827,ACTIVE,m,LENGTH,true,427.00,12.00,478.00,525.00,9,9,,32,17
+Bulk Test EL Item 0828,BULK-EL-00828,Electrical,SteelWorks,BC-EL-00828,White,500 ml,8828,Regression bulk import row 828,ACTIVE,l,VOLUME,true,428.00,13.00,484.00,532.00,9,9,,33,18
+Bulk Test HW Item 0829,BULK-HW-00829,Hardware,VoltEdge,BC-HW-00829,Black,1 inch,8829,Regression bulk import row 829,ACTIVE,box,PACK,false,429.00,14.00,489.00,538.00,9,9,,34,19
+Bulk Test PT Item 0830,BULK-PT-00830,Paint,PowerLine,BC-PT-00830,Green,M6,8830,Regression bulk import row 830,ACTIVE,pc,PIECE,false,430.00,15.00,494.00,544.00,9,9,,35,20
+Bulk Test EL Item 0831,BULK-EL-00831,Electrical,BuildPro,BC-EL-00831,Yellow,2m,8831,Regression bulk import row 831,ACTIVE,kg,WEIGHT,true,431.00,16.00,500.00,551.00,9,9,,36,21
+Bulk Test HW Item 0832,BULK-HW-00832,Hardware,ColorMax,BC-HW-00832,,,8832,Regression bulk import row 832,ACTIVE,m,LENGTH,true,432.00,17.00,505.00,557.00,9,9,,37,22
+Bulk Test PT Item 0833,BULK-PT-00833,Paint,SteelWorks,BC-PT-00833,Red,10mm,8833,Regression bulk import row 833,ACTIVE,l,VOLUME,true,433.00,18.00,511.00,564.00,9,9,,38,23
+Bulk Test EL Item 0834,BULK-EL-00834,Electrical,VoltEdge,BC-EL-00834,Blue,25mm,8834,Regression bulk import row 834,ACTIVE,box,PACK,false,434.00,19.00,516.00,570.00,9,9,,39,24
+Bulk Test HW Item 0835,BULK-HW-00835,Hardware,PowerLine,BC-HW-00835,White,500 ml,8835,Regression bulk import row 835,ACTIVE,pc,PIECE,false,435.00,20.00,522.00,577.00,9,9,,40,25
+Bulk Test PT Item 0836,BULK-PT-00836,Paint,BuildPro,BC-PT-00836,Black,1 inch,8836,Regression bulk import row 836,ACTIVE,kg,WEIGHT,true,436.00,21.00,528.00,584.00,9,9,,41,26
+Bulk Test EL Item 0837,BULK-EL-00837,Electrical,ColorMax,BC-EL-00837,Green,M6,8837,Regression bulk import row 837,ACTIVE,m,LENGTH,true,437.00,22.00,533.00,590.00,9,9,,42,27
+Bulk Test HW Item 0838,BULK-HW-00838,Hardware,SteelWorks,BC-HW-00838,Yellow,2m,8838,Regression bulk import row 838,ACTIVE,l,VOLUME,true,438.00,23.00,539.00,597.00,9,9,,43,28
+Bulk Test PT Item 0839,BULK-PT-00839,Paint,VoltEdge,BC-PT-00839,,,8839,Regression bulk import row 839,ACTIVE,box,PACK,false,439.00,24.00,544.00,603.00,9,9,,44,29
+Bulk Test EL Item 0840,BULK-EL-00840,Electrical,PowerLine,BC-EL-00840,Red,10mm,8840,Regression bulk import row 840,ACTIVE,pc,PIECE,false,440.00,25.00,550.00,610.00,9,9,,45,10
+Bulk Test HW Item 0841,BULK-HW-00841,Hardware,BuildPro,BC-HW-00841,Blue,25mm,8841,Regression bulk import row 841,ACTIVE,kg,WEIGHT,true,441.00,26.00,556.00,617.00,9,9,,46,11
+Bulk Test PT Item 0842,BULK-PT-00842,Paint,ColorMax,BC-PT-00842,White,500 ml,8842,Regression bulk import row 842,ACTIVE,m,LENGTH,true,442.00,27.00,561.00,623.00,9,9,,47,12
+Bulk Test EL Item 0843,BULK-EL-00843,Electrical,SteelWorks,BC-EL-00843,Black,1 inch,8843,Regression bulk import row 843,ACTIVE,l,VOLUME,true,443.00,28.00,567.00,630.00,9,9,,48,13
+Bulk Test HW Item 0844,BULK-HW-00844,Hardware,VoltEdge,BC-HW-00844,Green,M6,8844,Regression bulk import row 844,ACTIVE,box,PACK,false,444.00,29.00,573.00,637.00,9,9,,49,14
+Bulk Test PT Item 0845,BULK-PT-00845,Paint,PowerLine,BC-PT-00845,Yellow,2m,8845,Regression bulk import row 845,ACTIVE,pc,PIECE,false,445.00,30.00,579.00,644.00,9,9,,50,15
+Bulk Test EL Item 0846,BULK-EL-00846,Electrical,BuildPro,BC-EL-00846,,,8846,Regression bulk import row 846,ACTIVE,kg,WEIGHT,true,446.00,31.00,584.00,650.00,9,9,,51,16
+Bulk Test HW Item 0847,BULK-HW-00847,Hardware,ColorMax,BC-HW-00847,Red,10mm,8847,Regression bulk import row 847,ACTIVE,m,LENGTH,true,447.00,32.00,590.00,657.00,9,9,,52,17
+Bulk Test PT Item 0848,BULK-PT-00848,Paint,SteelWorks,BC-PT-00848,Blue,25mm,8848,Regression bulk import row 848,ACTIVE,l,VOLUME,true,448.00,33.00,596.00,664.00,9,9,,53,18
+Bulk Test EL Item 0849,BULK-EL-00849,Electrical,VoltEdge,BC-EL-00849,White,500 ml,8849,Regression bulk import row 849,ACTIVE,box,PACK,false,449.00,34.00,602.00,671.00,9,9,,54,19
+Bulk Test HW Item 0850,BULK-HW-00850,Hardware,PowerLine,BC-HW-00850,Black,1 inch,8850,Regression bulk import row 850,ACTIVE,pc,PIECE,false,450.00,10.00,495.00,565.00,9,9,,5,20
+Bulk Test PT Item 0851,BULK-PT-00851,Paint,BuildPro,BC-PT-00851,Green,M6,8851,Regression bulk import row 851,ACTIVE,kg,WEIGHT,true,451.00,11.00,501.00,572.00,9,9,,6,21
+Bulk Test EL Item 0852,BULK-EL-00852,Electrical,ColorMax,BC-EL-00852,Yellow,2m,8852,Regression bulk import row 852,ACTIVE,m,LENGTH,true,452.00,12.00,506.00,578.00,9,9,,7,22
+Bulk Test HW Item 0853,BULK-HW-00853,Hardware,SteelWorks,BC-HW-00853,,,8853,Regression bulk import row 853,ACTIVE,l,VOLUME,true,453.00,13.00,512.00,585.00,9,9,,8,23
+Bulk Test PT Item 0854,BULK-PT-00854,Paint,VoltEdge,BC-PT-00854,Red,10mm,8854,Regression bulk import row 854,ACTIVE,box,PACK,false,454.00,14.00,518.00,592.00,9,9,,9,24
+Bulk Test EL Item 0855,BULK-EL-00855,Electrical,PowerLine,BC-EL-00855,Blue,25mm,8855,Regression bulk import row 855,ACTIVE,pc,PIECE,false,455.00,15.00,523.00,598.00,9,9,,10,25
+Bulk Test HW Item 0856,BULK-HW-00856,Hardware,BuildPro,BC-HW-00856,White,500 ml,8856,Regression bulk import row 856,ACTIVE,kg,WEIGHT,true,456.00,16.00,529.00,605.00,9,9,,11,26
+Bulk Test PT Item 0857,BULK-PT-00857,Paint,ColorMax,BC-PT-00857,Black,1 inch,8857,Regression bulk import row 857,ACTIVE,m,LENGTH,true,457.00,17.00,535.00,612.00,9,9,,12,27
+Bulk Test EL Item 0858,BULK-EL-00858,Electrical,SteelWorks,BC-EL-00858,Green,M6,8858,Regression bulk import row 858,ACTIVE,l,VOLUME,true,458.00,18.00,540.00,618.00,9,9,,13,28
+Bulk Test HW Item 0859,BULK-HW-00859,Hardware,VoltEdge,BC-HW-00859,Yellow,2m,8859,Regression bulk import row 859,ACTIVE,box,PACK,false,459.00,19.00,546.00,625.00,9,9,,14,29
+Bulk Test PT Item 0860,BULK-PT-00860,Paint,PowerLine,BC-PT-00860,,,8860,Regression bulk import row 860,ACTIVE,pc,PIECE,false,460.00,20.00,552.00,632.00,9,9,,15,10
+Bulk Test EL Item 0861,BULK-EL-00861,Electrical,BuildPro,BC-EL-00861,Red,10mm,8861,Regression bulk import row 861,ACTIVE,kg,WEIGHT,true,461.00,21.00,558.00,639.00,9,9,,16,11
+Bulk Test HW Item 0862,BULK-HW-00862,Hardware,ColorMax,BC-HW-00862,Blue,25mm,8862,Regression bulk import row 862,ACTIVE,m,LENGTH,true,462.00,22.00,564.00,646.00,9,9,,17,12
+Bulk Test PT Item 0863,BULK-PT-00863,Paint,SteelWorks,BC-PT-00863,White,500 ml,8863,Regression bulk import row 863,ACTIVE,l,VOLUME,true,463.00,23.00,569.00,652.00,9,9,,18,13
+Bulk Test EL Item 0864,BULK-EL-00864,Electrical,VoltEdge,BC-EL-00864,Black,1 inch,8864,Regression bulk import row 864,ACTIVE,box,PACK,false,464.00,24.00,575.00,659.00,9,9,,19,14
+Bulk Test HW Item 0865,BULK-HW-00865,Hardware,PowerLine,BC-HW-00865,Green,M6,8865,Regression bulk import row 865,ACTIVE,pc,PIECE,false,465.00,25.00,581.00,666.00,9,9,,20,15
+Bulk Test PT Item 0866,BULK-PT-00866,Paint,BuildPro,BC-PT-00866,Yellow,2m,8866,Regression bulk import row 866,ACTIVE,kg,WEIGHT,true,466.00,26.00,587.00,673.00,9,9,,21,16
+Bulk Test EL Item 0867,BULK-EL-00867,Electrical,ColorMax,BC-EL-00867,,,8867,Regression bulk import row 867,ACTIVE,m,LENGTH,true,467.00,27.00,593.00,680.00,9,9,,22,17
+Bulk Test HW Item 0868,BULK-HW-00868,Hardware,SteelWorks,BC-HW-00868,Red,10mm,8868,Regression bulk import row 868,ACTIVE,l,VOLUME,true,468.00,28.00,599.00,687.00,9,9,,23,18
+Bulk Test PT Item 0869,BULK-PT-00869,Paint,VoltEdge,BC-PT-00869,Blue,25mm,8869,Regression bulk import row 869,ACTIVE,box,PACK,false,469.00,29.00,605.00,694.00,9,9,,24,19
+Bulk Test EL Item 0870,BULK-EL-00870,Electrical,PowerLine,BC-EL-00870,White,500 ml,8870,Regression bulk import row 870,ACTIVE,pc,PIECE,false,470.00,30.00,611.00,701.00,9,9,,25,20
+Bulk Test HW Item 0871,BULK-HW-00871,Hardware,BuildPro,BC-HW-00871,Black,1 inch,8871,Regression bulk import row 871,ACTIVE,kg,WEIGHT,true,471.00,31.00,617.00,708.00,9,9,,26,21
+Bulk Test PT Item 0872,BULK-PT-00872,Paint,ColorMax,BC-PT-00872,Green,M6,8872,Regression bulk import row 872,ACTIVE,m,LENGTH,true,472.00,32.00,623.00,715.00,9,9,,27,22
+Bulk Test EL Item 0873,BULK-EL-00873,Electrical,SteelWorks,BC-EL-00873,Yellow,2m,8873,Regression bulk import row 873,ACTIVE,l,VOLUME,true,473.00,33.00,629.00,722.00,9,9,,28,23
+Bulk Test HW Item 0874,BULK-HW-00874,Hardware,VoltEdge,BC-HW-00874,,,8874,Regression bulk import row 874,ACTIVE,box,PACK,false,474.00,34.00,635.00,729.00,9,9,,29,24
+Bulk Test PT Item 0875,BULK-PT-00875,Paint,PowerLine,BC-PT-00875,Red,10mm,8875,Regression bulk import row 875,ACTIVE,pc,PIECE,false,475.00,10.00,523.00,618.00,9,9,,30,25
+Bulk Test EL Item 0876,BULK-EL-00876,Electrical,BuildPro,BC-EL-00876,Blue,25mm,8876,Regression bulk import row 876,ACTIVE,kg,WEIGHT,true,476.00,11.00,528.00,624.00,9,9,,31,26
+Bulk Test HW Item 0877,BULK-HW-00877,Hardware,ColorMax,BC-HW-00877,White,500 ml,8877,Regression bulk import row 877,ACTIVE,m,LENGTH,true,477.00,12.00,534.00,631.00,9,9,,32,27
+Bulk Test PT Item 0878,BULK-PT-00878,Paint,SteelWorks,BC-PT-00878,Black,1 inch,8878,Regression bulk import row 878,ACTIVE,l,VOLUME,true,478.00,13.00,540.00,638.00,9,9,,33,28
+Bulk Test EL Item 0879,BULK-EL-00879,Electrical,VoltEdge,BC-EL-00879,Green,M6,8879,Regression bulk import row 879,ACTIVE,box,PACK,false,479.00,14.00,546.00,645.00,9,9,,34,29
+Bulk Test HW Item 0880,BULK-HW-00880,Hardware,PowerLine,BC-HW-00880,Yellow,2m,8880,Regression bulk import row 880,ACTIVE,pc,PIECE,false,480.00,15.00,552.00,572.00,9,9,,35,10
+Bulk Test PT Item 0881,BULK-PT-00881,Paint,BuildPro,BC-PT-00881,,,8881,Regression bulk import row 881,ACTIVE,kg,WEIGHT,true,481.00,16.00,558.00,579.00,9,9,,36,11
+Bulk Test EL Item 0882,BULK-EL-00882,Electrical,ColorMax,BC-EL-00882,Red,10mm,8882,Regression bulk import row 882,ACTIVE,m,LENGTH,true,482.00,17.00,564.00,586.00,9,9,,37,12
+Bulk Test HW Item 0883,BULK-HW-00883,Hardware,SteelWorks,BC-HW-00883,Blue,25mm,8883,Regression bulk import row 883,ACTIVE,l,VOLUME,true,483.00,18.00,570.00,593.00,9,9,,38,13
+Bulk Test PT Item 0884,BULK-PT-00884,Paint,VoltEdge,BC-PT-00884,White,500 ml,8884,Regression bulk import row 884,ACTIVE,box,PACK,false,484.00,19.00,576.00,600.00,9,9,,39,14
+Bulk Test EL Item 0885,BULK-EL-00885,Electrical,PowerLine,BC-EL-00885,Black,1 inch,8885,Regression bulk import row 885,ACTIVE,pc,PIECE,false,485.00,20.00,582.00,607.00,9,9,,40,15
+Bulk Test HW Item 0886,BULK-HW-00886,Hardware,BuildPro,BC-HW-00886,Green,M6,8886,Regression bulk import row 886,ACTIVE,kg,WEIGHT,true,486.00,21.00,588.00,614.00,9,9,,41,16
+Bulk Test PT Item 0887,BULK-PT-00887,Paint,ColorMax,BC-PT-00887,Yellow,2m,8887,Regression bulk import row 887,ACTIVE,m,LENGTH,true,487.00,22.00,594.00,621.00,9,9,,42,17
+Bulk Test EL Item 0888,BULK-EL-00888,Electrical,SteelWorks,BC-EL-00888,,,8888,Regression bulk import row 888,ACTIVE,l,VOLUME,true,488.00,23.00,600.00,628.00,9,9,,43,18
+Bulk Test HW Item 0889,BULK-HW-00889,Hardware,VoltEdge,BC-HW-00889,Red,10mm,8889,Regression bulk import row 889,ACTIVE,box,PACK,false,489.00,24.00,606.00,635.00,9,9,,44,19
+Bulk Test PT Item 0890,BULK-PT-00890,Paint,PowerLine,BC-PT-00890,Blue,25mm,8890,Regression bulk import row 890,ACTIVE,pc,PIECE,false,490.00,25.00,613.00,643.00,9,9,,45,20
+Bulk Test EL Item 0891,BULK-EL-00891,Electrical,BuildPro,BC-EL-00891,White,500 ml,8891,Regression bulk import row 891,ACTIVE,kg,WEIGHT,true,491.00,26.00,619.00,650.00,9,9,,46,21
+Bulk Test HW Item 0892,BULK-HW-00892,Hardware,ColorMax,BC-HW-00892,Black,1 inch,8892,Regression bulk import row 892,ACTIVE,m,LENGTH,true,492.00,27.00,625.00,657.00,9,9,,47,22
+Bulk Test PT Item 0893,BULK-PT-00893,Paint,SteelWorks,BC-PT-00893,Green,M6,8893,Regression bulk import row 893,ACTIVE,l,VOLUME,true,493.00,28.00,631.00,664.00,9,9,,48,23
+Bulk Test EL Item 0894,BULK-EL-00894,Electrical,VoltEdge,BC-EL-00894,Yellow,2m,8894,Regression bulk import row 894,ACTIVE,box,PACK,false,494.00,29.00,637.00,671.00,9,9,,49,24
+Bulk Test HW Item 0895,BULK-HW-00895,Hardware,PowerLine,BC-HW-00895,,,8895,Regression bulk import row 895,ACTIVE,pc,PIECE,false,495.00,30.00,644.00,679.00,9,9,,50,25
+Bulk Test PT Item 0896,BULK-PT-00896,Paint,BuildPro,BC-PT-00896,Red,10mm,8896,Regression bulk import row 896,ACTIVE,kg,WEIGHT,true,496.00,31.00,650.00,686.00,9,9,,51,26
+Bulk Test EL Item 0897,BULK-EL-00897,Electrical,ColorMax,BC-EL-00897,Blue,25mm,8897,Regression bulk import row 897,ACTIVE,m,LENGTH,true,497.00,32.00,656.00,693.00,9,9,,52,27
+Bulk Test HW Item 0898,BULK-HW-00898,Hardware,SteelWorks,BC-HW-00898,White,500 ml,8898,Regression bulk import row 898,ACTIVE,l,VOLUME,true,498.00,33.00,662.00,700.00,9,9,,53,28
+Bulk Test PT Item 0899,BULK-PT-00899,Paint,VoltEdge,BC-PT-00899,Black,1 inch,8899,Regression bulk import row 899,ACTIVE,box,PACK,false,499.00,34.00,669.00,708.00,9,9,,54,29
+Bulk Test EL Item 0900,BULK-EL-00900,Electrical,PowerLine,BC-EL-00900,Green,M6,8900,Regression bulk import row 900,ACTIVE,pc,PIECE,false,50.00,10.00,55.00,95.00,9,9,,5,10
+Bulk Test HW Item 0901,BULK-HW-00901,Hardware,BuildPro,BC-HW-00901,Yellow,2m,8901,Regression bulk import row 901,ACTIVE,kg,WEIGHT,true,51.00,11.00,57.00,98.00,9,9,,6,11
+Bulk Test PT Item 0902,BULK-PT-00902,Paint,ColorMax,BC-PT-00902,,,8902,Regression bulk import row 902,ACTIVE,m,LENGTH,true,52.00,12.00,58.00,100.00,9,9,,7,12
+Bulk Test EL Item 0903,BULK-EL-00903,Electrical,SteelWorks,BC-EL-00903,Red,10mm,8903,Regression bulk import row 903,ACTIVE,l,VOLUME,true,53.00,13.00,60.00,103.00,9,9,,8,13
+Bulk Test HW Item 0904,BULK-HW-00904,Hardware,VoltEdge,BC-HW-00904,Blue,25mm,8904,Regression bulk import row 904,ACTIVE,box,PACK,false,54.00,14.00,62.00,106.00,9,9,,9,14
+Bulk Test PT Item 0905,BULK-PT-00905,Paint,PowerLine,BC-PT-00905,White,500 ml,8905,Regression bulk import row 905,ACTIVE,pc,PIECE,false,55.00,15.00,63.00,108.00,9,9,,10,15
+Bulk Test EL Item 0906,BULK-EL-00906,Electrical,BuildPro,BC-EL-00906,Black,1 inch,8906,Regression bulk import row 906,ACTIVE,kg,WEIGHT,true,56.00,16.00,65.00,111.00,9,9,,11,16
+Bulk Test HW Item 0907,BULK-HW-00907,Hardware,ColorMax,BC-HW-00907,Green,M6,8907,Regression bulk import row 907,ACTIVE,m,LENGTH,true,57.00,17.00,67.00,114.00,9,9,,12,17
+Bulk Test PT Item 0908,BULK-PT-00908,Paint,SteelWorks,BC-PT-00908,Yellow,2m,8908,Regression bulk import row 908,ACTIVE,l,VOLUME,true,58.00,18.00,68.00,116.00,9,9,,13,18
+Bulk Test EL Item 0909,BULK-EL-00909,Electrical,VoltEdge,BC-EL-00909,,,8909,Regression bulk import row 909,ACTIVE,box,PACK,false,59.00,19.00,70.00,119.00,9,9,,14,19
+Bulk Test HW Item 0910,BULK-HW-00910,Hardware,PowerLine,BC-HW-00910,Red,10mm,8910,Regression bulk import row 910,ACTIVE,pc,PIECE,false,60.00,20.00,72.00,122.00,9,9,,15,20
+Bulk Test PT Item 0911,BULK-PT-00911,Paint,BuildPro,BC-PT-00911,Blue,25mm,8911,Regression bulk import row 911,ACTIVE,kg,WEIGHT,true,61.00,21.00,74.00,125.00,9,9,,16,21
+Bulk Test EL Item 0912,BULK-EL-00912,Electrical,ColorMax,BC-EL-00912,White,500 ml,8912,Regression bulk import row 912,ACTIVE,m,LENGTH,true,62.00,22.00,76.00,128.00,9,9,,17,22
+Bulk Test HW Item 0913,BULK-HW-00913,Hardware,SteelWorks,BC-HW-00913,Black,1 inch,8913,Regression bulk import row 913,ACTIVE,l,VOLUME,true,63.00,23.00,77.00,130.00,9,9,,18,23
+Bulk Test PT Item 0914,BULK-PT-00914,Paint,VoltEdge,BC-PT-00914,Green,M6,8914,Regression bulk import row 914,ACTIVE,box,PACK,false,64.00,24.00,79.00,133.00,9,9,,19,24
+Bulk Test EL Item 0915,BULK-EL-00915,Electrical,PowerLine,BC-EL-00915,Yellow,2m,8915,Regression bulk import row 915,ACTIVE,pc,PIECE,false,65.00,25.00,81.00,136.00,9,9,,20,25
+Bulk Test HW Item 0916,BULK-HW-00916,Hardware,BuildPro,BC-HW-00916,,,8916,Regression bulk import row 916,ACTIVE,kg,WEIGHT,true,66.00,26.00,83.00,139.00,9,9,,21,26
+Bulk Test PT Item 0917,BULK-PT-00917,Paint,ColorMax,BC-PT-00917,Red,10mm,8917,Regression bulk import row 917,ACTIVE,m,LENGTH,true,67.00,27.00,85.00,142.00,9,9,,22,27
+Bulk Test EL Item 0918,BULK-EL-00918,Electrical,SteelWorks,BC-EL-00918,Blue,25mm,8918,Regression bulk import row 918,ACTIVE,l,VOLUME,true,68.00,28.00,87.00,145.00,9,9,,23,28
+Bulk Test HW Item 0919,BULK-HW-00919,Hardware,VoltEdge,BC-HW-00919,White,500 ml,8919,Regression bulk import row 919,ACTIVE,box,PACK,false,69.00,29.00,89.00,148.00,9,9,,24,29
+Bulk Test PT Item 0920,BULK-PT-00920,Paint,PowerLine,BC-PT-00920,Black,1 inch,8920,Regression bulk import row 920,ACTIVE,pc,PIECE,false,70.00,30.00,91.00,151.00,9,9,,25,10
+Bulk Test EL Item 0921,BULK-EL-00921,Electrical,BuildPro,BC-EL-00921,Green,M6,8921,Regression bulk import row 921,ACTIVE,kg,WEIGHT,true,71.00,31.00,93.00,154.00,9,9,,26,11
+Bulk Test HW Item 0922,BULK-HW-00922,Hardware,ColorMax,BC-HW-00922,Yellow,2m,8922,Regression bulk import row 922,ACTIVE,m,LENGTH,true,72.00,32.00,95.00,157.00,9,9,,27,12
+Bulk Test PT Item 0923,BULK-PT-00923,Paint,SteelWorks,BC-PT-00923,,,8923,Regression bulk import row 923,ACTIVE,l,VOLUME,true,73.00,33.00,97.00,160.00,9,9,,28,13
+Bulk Test EL Item 0924,BULK-EL-00924,Electrical,VoltEdge,BC-EL-00924,Red,10mm,8924,Regression bulk import row 924,ACTIVE,box,PACK,false,74.00,34.00,99.00,163.00,9,9,,29,14
+Bulk Test HW Item 0925,BULK-HW-00925,Hardware,PowerLine,BC-HW-00925,Blue,25mm,8925,Regression bulk import row 925,ACTIVE,pc,PIECE,false,75.00,10.00,83.00,148.00,9,9,,30,15
+Bulk Test PT Item 0926,BULK-PT-00926,Paint,BuildPro,BC-PT-00926,White,500 ml,8926,Regression bulk import row 926,ACTIVE,kg,WEIGHT,true,76.00,11.00,84.00,150.00,9,9,,31,16
+Bulk Test EL Item 0927,BULK-EL-00927,Electrical,ColorMax,BC-EL-00927,Black,1 inch,8927,Regression bulk import row 927,ACTIVE,m,LENGTH,true,77.00,12.00,86.00,153.00,9,9,,32,17
+Bulk Test HW Item 0928,BULK-HW-00928,Hardware,SteelWorks,BC-HW-00928,Green,M6,8928,Regression bulk import row 928,ACTIVE,l,VOLUME,true,78.00,13.00,88.00,156.00,9,9,,33,18
+Bulk Test PT Item 0929,BULK-PT-00929,Paint,VoltEdge,BC-PT-00929,Yellow,2m,8929,Regression bulk import row 929,ACTIVE,box,PACK,false,79.00,14.00,90.00,159.00,9,9,,34,19
+Bulk Test EL Item 0930,BULK-EL-00930,Electrical,PowerLine,BC-EL-00930,,,8930,Regression bulk import row 930,ACTIVE,pc,PIECE,false,80.00,15.00,92.00,162.00,9,9,,35,20
+Bulk Test HW Item 0931,BULK-HW-00931,Hardware,BuildPro,BC-HW-00931,Red,10mm,8931,Regression bulk import row 931,ACTIVE,kg,WEIGHT,true,81.00,16.00,94.00,165.00,9,9,,36,21
+Bulk Test PT Item 0932,BULK-PT-00932,Paint,ColorMax,BC-PT-00932,Blue,25mm,8932,Regression bulk import row 932,ACTIVE,m,LENGTH,true,82.00,17.00,96.00,168.00,9,9,,37,22
+Bulk Test EL Item 0933,BULK-EL-00933,Electrical,SteelWorks,BC-EL-00933,White,500 ml,8933,Regression bulk import row 933,ACTIVE,l,VOLUME,true,83.00,18.00,98.00,171.00,9,9,,38,23
+Bulk Test HW Item 0934,BULK-HW-00934,Hardware,VoltEdge,BC-HW-00934,Black,1 inch,8934,Regression bulk import row 934,ACTIVE,box,PACK,false,84.00,19.00,100.00,174.00,9,9,,39,24
+Bulk Test PT Item 0935,BULK-PT-00935,Paint,PowerLine,BC-PT-00935,Green,M6,8935,Regression bulk import row 935,ACTIVE,pc,PIECE,false,85.00,20.00,102.00,177.00,9,9,,40,25
+Bulk Test EL Item 0936,BULK-EL-00936,Electrical,BuildPro,BC-EL-00936,Yellow,2m,8936,Regression bulk import row 936,ACTIVE,kg,WEIGHT,true,86.00,21.00,104.00,180.00,9,9,,41,26
+Bulk Test HW Item 0937,BULK-HW-00937,Hardware,ColorMax,BC-HW-00937,,,8937,Regression bulk import row 937,ACTIVE,m,LENGTH,true,87.00,22.00,106.00,183.00,9,9,,42,27
+Bulk Test PT Item 0938,BULK-PT-00938,Paint,SteelWorks,BC-PT-00938,Red,10mm,8938,Regression bulk import row 938,ACTIVE,l,VOLUME,true,88.00,23.00,108.00,186.00,9,9,,43,28
+Bulk Test EL Item 0939,BULK-EL-00939,Electrical,VoltEdge,BC-EL-00939,Blue,25mm,8939,Regression bulk import row 939,ACTIVE,box,PACK,false,89.00,24.00,110.00,189.00,9,9,,44,29
+Bulk Test HW Item 0940,BULK-HW-00940,Hardware,PowerLine,BC-HW-00940,White,500 ml,8940,Regression bulk import row 940,ACTIVE,pc,PIECE,false,90.00,25.00,113.00,193.00,9,9,,45,10
+Bulk Test PT Item 0941,BULK-PT-00941,Paint,BuildPro,BC-PT-00941,Black,1 inch,8941,Regression bulk import row 941,ACTIVE,kg,WEIGHT,true,91.00,26.00,115.00,196.00,9,9,,46,11
+Bulk Test EL Item 0942,BULK-EL-00942,Electrical,ColorMax,BC-EL-00942,Green,M6,8942,Regression bulk import row 942,ACTIVE,m,LENGTH,true,92.00,27.00,117.00,199.00,9,9,,47,12
+Bulk Test HW Item 0943,BULK-HW-00943,Hardware,SteelWorks,BC-HW-00943,Yellow,2m,8943,Regression bulk import row 943,ACTIVE,l,VOLUME,true,93.00,28.00,119.00,202.00,9,9,,48,13
+Bulk Test PT Item 0944,BULK-PT-00944,Paint,VoltEdge,BC-PT-00944,,,8944,Regression bulk import row 944,ACTIVE,box,PACK,false,94.00,29.00,121.00,205.00,9,9,,49,14
+Bulk Test EL Item 0945,BULK-EL-00945,Electrical,PowerLine,BC-EL-00945,Red,10mm,8945,Regression bulk import row 945,ACTIVE,pc,PIECE,false,95.00,30.00,124.00,209.00,9,9,,50,15
+Bulk Test HW Item 0946,BULK-HW-00946,Hardware,BuildPro,BC-HW-00946,Blue,25mm,8946,Regression bulk import row 946,ACTIVE,kg,WEIGHT,true,96.00,31.00,126.00,212.00,9,9,,51,16
+Bulk Test PT Item 0947,BULK-PT-00947,Paint,ColorMax,BC-PT-00947,White,500 ml,8947,Regression bulk import row 947,ACTIVE,m,LENGTH,true,97.00,32.00,128.00,215.00,9,9,,52,17
+Bulk Test EL Item 0948,BULK-EL-00948,Electrical,SteelWorks,BC-EL-00948,Black,1 inch,8948,Regression bulk import row 948,ACTIVE,l,VOLUME,true,98.00,33.00,130.00,218.00,9,9,,53,18
+Bulk Test HW Item 0949,BULK-HW-00949,Hardware,VoltEdge,BC-HW-00949,Green,M6,8949,Regression bulk import row 949,ACTIVE,box,PACK,false,99.00,34.00,133.00,222.00,9,9,,54,19
+Bulk Test PT Item 0950,BULK-PT-00950,Paint,PowerLine,BC-PT-00950,Yellow,2m,8950,Regression bulk import row 950,ACTIVE,pc,PIECE,false,100.00,10.00,110.00,200.00,9,9,,5,20
+Bulk Test EL Item 0951,BULK-EL-00951,Electrical,BuildPro,BC-EL-00951,,,8951,Regression bulk import row 951,ACTIVE,kg,WEIGHT,true,101.00,11.00,112.00,203.00,9,9,,6,21
+Bulk Test HW Item 0952,BULK-HW-00952,Hardware,ColorMax,BC-HW-00952,Red,10mm,8952,Regression bulk import row 952,ACTIVE,m,LENGTH,true,102.00,12.00,114.00,206.00,9,9,,7,22
+Bulk Test PT Item 0953,BULK-PT-00953,Paint,SteelWorks,BC-PT-00953,Blue,25mm,8953,Regression bulk import row 953,ACTIVE,l,VOLUME,true,103.00,13.00,116.00,209.00,9,9,,8,23
+Bulk Test EL Item 0954,BULK-EL-00954,Electrical,VoltEdge,BC-EL-00954,White,500 ml,8954,Regression bulk import row 954,ACTIVE,box,PACK,false,104.00,14.00,119.00,213.00,9,9,,9,24
+Bulk Test HW Item 0955,BULK-HW-00955,Hardware,PowerLine,BC-HW-00955,Black,1 inch,8955,Regression bulk import row 955,ACTIVE,pc,PIECE,false,105.00,15.00,121.00,216.00,9,9,,10,25
+Bulk Test PT Item 0956,BULK-PT-00956,Paint,BuildPro,BC-PT-00956,Green,M6,8956,Regression bulk import row 956,ACTIVE,kg,WEIGHT,true,106.00,16.00,123.00,219.00,9,9,,11,26
+Bulk Test EL Item 0957,BULK-EL-00957,Electrical,ColorMax,BC-EL-00957,Yellow,2m,8957,Regression bulk import row 957,ACTIVE,m,LENGTH,true,107.00,17.00,125.00,222.00,9,9,,12,27
+Bulk Test HW Item 0958,BULK-HW-00958,Hardware,SteelWorks,BC-HW-00958,,,8958,Regression bulk import row 958,ACTIVE,l,VOLUME,true,108.00,18.00,127.00,225.00,9,9,,13,28
+Bulk Test PT Item 0959,BULK-PT-00959,Paint,VoltEdge,BC-PT-00959,Red,10mm,8959,Regression bulk import row 959,ACTIVE,box,PACK,false,109.00,19.00,130.00,229.00,9,9,,14,29
+Bulk Test EL Item 0960,BULK-EL-00960,Electrical,PowerLine,BC-EL-00960,Blue,25mm,8960,Regression bulk import row 960,ACTIVE,pc,PIECE,false,110.00,20.00,132.00,152.00,9,9,,15,10
+Bulk Test HW Item 0961,BULK-HW-00961,Hardware,BuildPro,BC-HW-00961,White,500 ml,8961,Regression bulk import row 961,ACTIVE,kg,WEIGHT,true,111.00,21.00,134.00,155.00,9,9,,16,11
+Bulk Test PT Item 0962,BULK-PT-00962,Paint,ColorMax,BC-PT-00962,Black,1 inch,8962,Regression bulk import row 962,ACTIVE,m,LENGTH,true,112.00,22.00,137.00,159.00,9,9,,17,12
+Bulk Test EL Item 0963,BULK-EL-00963,Electrical,SteelWorks,BC-EL-00963,Green,M6,8963,Regression bulk import row 963,ACTIVE,l,VOLUME,true,113.00,23.00,139.00,162.00,9,9,,18,13
+Bulk Test HW Item 0964,BULK-HW-00964,Hardware,VoltEdge,BC-HW-00964,Yellow,2m,8964,Regression bulk import row 964,ACTIVE,box,PACK,false,114.00,24.00,141.00,165.00,9,9,,19,14
+Bulk Test PT Item 0965,BULK-PT-00965,Paint,PowerLine,BC-PT-00965,,,8965,Regression bulk import row 965,ACTIVE,pc,PIECE,false,115.00,25.00,144.00,169.00,9,9,,20,15
+Bulk Test EL Item 0966,BULK-EL-00966,Electrical,BuildPro,BC-EL-00966,Red,10mm,8966,Regression bulk import row 966,ACTIVE,kg,WEIGHT,true,116.00,26.00,146.00,172.00,9,9,,21,16
+Bulk Test HW Item 0967,BULK-HW-00967,Hardware,ColorMax,BC-HW-00967,Blue,25mm,8967,Regression bulk import row 967,ACTIVE,m,LENGTH,true,117.00,27.00,149.00,176.00,9,9,,22,17
+Bulk Test PT Item 0968,BULK-PT-00968,Paint,SteelWorks,BC-PT-00968,White,500 ml,8968,Regression bulk import row 968,ACTIVE,l,VOLUME,true,118.00,28.00,151.00,179.00,9,9,,23,18
+Bulk Test EL Item 0969,BULK-EL-00969,Electrical,VoltEdge,BC-EL-00969,Black,1 inch,8969,Regression bulk import row 969,ACTIVE,box,PACK,false,119.00,29.00,154.00,183.00,9,9,,24,19
+Bulk Test HW Item 0970,BULK-HW-00970,Hardware,PowerLine,BC-HW-00970,Green,M6,8970,Regression bulk import row 970,ACTIVE,pc,PIECE,false,120.00,30.00,156.00,186.00,9,9,,25,20
+Bulk Test PT Item 0971,BULK-PT-00971,Paint,BuildPro,BC-PT-00971,Yellow,2m,8971,Regression bulk import row 971,ACTIVE,kg,WEIGHT,true,121.00,31.00,159.00,190.00,9,9,,26,21
+Bulk Test EL Item 0972,BULK-EL-00972,Electrical,ColorMax,BC-EL-00972,,,8972,Regression bulk import row 972,ACTIVE,m,LENGTH,true,122.00,32.00,161.00,193.00,9,9,,27,22
+Bulk Test HW Item 0973,BULK-HW-00973,Hardware,SteelWorks,BC-HW-00973,Red,10mm,8973,Regression bulk import row 973,ACTIVE,l,VOLUME,true,123.00,33.00,164.00,197.00,9,9,,28,23
+Bulk Test PT Item 0974,BULK-PT-00974,Paint,VoltEdge,BC-PT-00974,Blue,25mm,8974,Regression bulk import row 974,ACTIVE,box,PACK,false,124.00,34.00,166.00,200.00,9,9,,29,24
+Bulk Test EL Item 0975,BULK-EL-00975,Electrical,PowerLine,BC-EL-00975,White,500 ml,8975,Regression bulk import row 975,ACTIVE,pc,PIECE,false,125.00,10.00,138.00,173.00,9,9,,30,25
+Bulk Test HW Item 0976,BULK-HW-00976,Hardware,BuildPro,BC-HW-00976,Black,1 inch,8976,Regression bulk import row 976,ACTIVE,kg,WEIGHT,true,126.00,11.00,140.00,176.00,9,9,,31,26
+Bulk Test PT Item 0977,BULK-PT-00977,Paint,ColorMax,BC-PT-00977,Green,M6,8977,Regression bulk import row 977,ACTIVE,m,LENGTH,true,127.00,12.00,142.00,179.00,9,9,,32,27
+Bulk Test EL Item 0978,BULK-EL-00978,Electrical,SteelWorks,BC-EL-00978,Yellow,2m,8978,Regression bulk import row 978,ACTIVE,l,VOLUME,true,128.00,13.00,145.00,183.00,9,9,,33,28
+Bulk Test HW Item 0979,BULK-HW-00979,Hardware,VoltEdge,BC-HW-00979,,,8979,Regression bulk import row 979,ACTIVE,box,PACK,false,129.00,14.00,147.00,186.00,9,9,,34,29
+Bulk Test PT Item 0980,BULK-PT-00980,Paint,PowerLine,BC-PT-00980,Red,10mm,8980,Regression bulk import row 980,ACTIVE,pc,PIECE,false,130.00,15.00,150.00,190.00,9,9,,35,10
+Bulk Test EL Item 0981,BULK-EL-00981,Electrical,BuildPro,BC-EL-00981,Blue,25mm,8981,Regression bulk import row 981,ACTIVE,kg,WEIGHT,true,131.00,16.00,152.00,193.00,9,9,,36,11
+Bulk Test HW Item 0982,BULK-HW-00982,Hardware,ColorMax,BC-HW-00982,White,500 ml,8982,Regression bulk import row 982,ACTIVE,m,LENGTH,true,132.00,17.00,154.00,196.00,9,9,,37,12
+Bulk Test PT Item 0983,BULK-PT-00983,Paint,SteelWorks,BC-PT-00983,Black,1 inch,8983,Regression bulk import row 983,ACTIVE,l,VOLUME,true,133.00,18.00,157.00,200.00,9,9,,38,13
+Bulk Test EL Item 0984,BULK-EL-00984,Electrical,VoltEdge,BC-EL-00984,Green,M6,8984,Regression bulk import row 984,ACTIVE,box,PACK,false,134.00,19.00,159.00,203.00,9,9,,39,14
+Bulk Test HW Item 0985,BULK-HW-00985,Hardware,PowerLine,BC-HW-00985,Yellow,2m,8985,Regression bulk import row 985,ACTIVE,pc,PIECE,false,135.00,20.00,162.00,207.00,9,9,,40,15
+Bulk Test PT Item 0986,BULK-PT-00986,Paint,BuildPro,BC-PT-00986,,,8986,Regression bulk import row 986,ACTIVE,kg,WEIGHT,true,136.00,21.00,165.00,211.00,9,9,,41,16
+Bulk Test EL Item 0987,BULK-EL-00987,Electrical,ColorMax,BC-EL-00987,Red,10mm,8987,Regression bulk import row 987,ACTIVE,m,LENGTH,true,137.00,22.00,167.00,214.00,9,9,,42,17
+Bulk Test HW Item 0988,BULK-HW-00988,Hardware,SteelWorks,BC-HW-00988,Blue,25mm,8988,Regression bulk import row 988,ACTIVE,l,VOLUME,true,138.00,23.00,170.00,218.00,9,9,,43,18
+Bulk Test PT Item 0989,BULK-PT-00989,Paint,VoltEdge,BC-PT-00989,White,500 ml,8989,Regression bulk import row 989,ACTIVE,box,PACK,false,139.00,24.00,172.00,221.00,9,9,,44,19
+Bulk Test EL Item 0990,BULK-EL-00990,Electrical,PowerLine,BC-EL-00990,Black,1 inch,8990,Regression bulk import row 990,ACTIVE,pc,PIECE,false,140.00,25.00,175.00,225.00,9,9,,45,20
+Bulk Test HW Item 0991,BULK-HW-00991,Hardware,BuildPro,BC-HW-00991,Green,M6,8991,Regression bulk import row 991,ACTIVE,kg,WEIGHT,true,141.00,26.00,178.00,229.00,9,9,,46,21
+Bulk Test PT Item 0992,BULK-PT-00992,Paint,ColorMax,BC-PT-00992,Yellow,2m,8992,Regression bulk import row 992,ACTIVE,m,LENGTH,true,142.00,27.00,180.00,232.00,9,9,,47,22
+Bulk Test EL Item 0993,BULK-EL-00993,Electrical,SteelWorks,BC-EL-00993,,,8993,Regression bulk import row 993,ACTIVE,l,VOLUME,true,143.00,28.00,183.00,236.00,9,9,,48,23
+Bulk Test HW Item 0994,BULK-HW-00994,Hardware,VoltEdge,BC-HW-00994,Red,10mm,8994,Regression bulk import row 994,ACTIVE,box,PACK,false,144.00,29.00,186.00,240.00,9,9,,49,24
+Bulk Test PT Item 0995,BULK-PT-00995,Paint,PowerLine,BC-PT-00995,Blue,25mm,8995,Regression bulk import row 995,ACTIVE,pc,PIECE,false,145.00,30.00,189.00,244.00,9,9,,50,25
+Bulk Test EL Item 0996,BULK-EL-00996,Electrical,BuildPro,BC-EL-00996,White,500 ml,8996,Regression bulk import row 996,ACTIVE,kg,WEIGHT,true,146.00,31.00,191.00,247.00,9,9,,51,26
+Bulk Test HW Item 0997,BULK-HW-00997,Hardware,ColorMax,BC-HW-00997,Black,1 inch,8997,Regression bulk import row 997,ACTIVE,m,LENGTH,true,147.00,32.00,194.00,251.00,9,9,,52,27
+Bulk Test PT Item 0998,BULK-PT-00998,Paint,SteelWorks,BC-PT-00998,Green,M6,8998,Regression bulk import row 998,ACTIVE,l,VOLUME,true,148.00,33.00,197.00,255.00,9,9,,53,28
+Bulk Test EL Item 0999,BULK-EL-00999,Electrical,VoltEdge,BC-EL-00999,Yellow,2m,8999,Regression bulk import row 999,ACTIVE,box,PACK,false,149.00,34.00,200.00,259.00,9,9,,54,29
+Bulk Test HW Item 1000,BULK-HW-01000,Hardware,PowerLine,BC-HW-01000,,,8500,Regression bulk import row 1000,ACTIVE,pc,PIECE,false,150.00,10.00,165.00,225.00,9,9,,5,10

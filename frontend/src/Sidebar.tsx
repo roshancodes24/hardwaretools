@@ -12,7 +12,8 @@ export type Tab =
   | "promotion"
   | "inventory"
   | "purchase"
-  | "adjustment";
+  | "adjustment"
+  | "settings";
 
 interface SidebarProps {
   activeTab: Tab;
@@ -99,6 +100,17 @@ const NAV_ICONS: Record<Tab, ReactNode> = {
       <path d="m13 6 6 6-6 6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
+  settings: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
 };
 
 function NavButton({
@@ -132,7 +144,7 @@ function NavButton({
         border: "1px solid",
         borderColor: active ? "rgba(37,99,235,0.4)" : "transparent",
         background: active ? "rgba(18,34,78,0.72)" : "transparent",
-        color: active ? "#f8fafc" : "var(--sidebar-text)",
+        color: active ? "var(--sidebar-active-text)" : "var(--sidebar-text)",
         borderRadius: 10,
         padding: iconOnly ? "10px 0" : compact ? "8px 10px" : "10px 12px",
         fontSize: compact ? 12.5 : 13,
@@ -141,13 +153,13 @@ function NavButton({
         transition: "all 0.14s ease",
         lineHeight: 1.2,
         boxShadow: active
-          ? "inset 0 0 0 1px rgba(59,130,246,0.16), inset 3px 0 0 #3b82f6"
+          ? "inset 0 0 0 1px rgba(59,130,246,0.16), inset 3px 0 0 var(--accent)"
           : "none",
       }}
       onMouseOver={(e) => {
         if (!active) {
           e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-          e.currentTarget.style.color = "#f5f4f0";
+          e.currentTarget.style.color = "var(--sidebar-title)";
         }
       }}
       onMouseOut={(e) => {
@@ -169,7 +181,7 @@ function NavButton({
             flexShrink: 0,
             borderRadius: 6,
             background: active ? "rgba(37,99,235,0.2)" : "transparent",
-            color: active ? "#3b82f6" : "currentColor",
+            color: active ? "var(--accent)" : "currentColor",
           }}
         >
           {icon}
@@ -273,7 +285,7 @@ export function Sidebar({
         }}
       >
         <div style={{ minWidth: 0 }}>
-          <div style={{ color: "#f5f4f0", fontWeight: 700, fontSize: 13 }}>
+          <div style={{ color: "var(--sidebar-title)", fontWeight: 700, fontSize: 13 }}>
             {iconOnly ? COMPANY_SHORT_NAME : COMPANY_NAME}
           </div>
           {!mobile && !iconOnly && (
@@ -294,7 +306,7 @@ export function Sidebar({
               borderRadius: 8,
               border: "1px solid var(--sidebar-border)",
               background: "rgba(255,255,255,0.06)",
-              color: "#cbd5e1",
+              color: "var(--sidebar-muted)",
               cursor: "pointer",
               flexShrink: 0,
             }}
@@ -347,7 +359,7 @@ export function Sidebar({
           onClick={() => onTabChange("invoices")}
           iconOnly={iconOnly}
         />
-        {isAdmin ? (
+        {isAdmin && FEATURE_FLAGS.reporting ? (
           <NavButton
             label="Reporting"
             icon={NAV_ICONS.reporting}
@@ -466,6 +478,16 @@ export function Sidebar({
 
       </nav>
 
+      <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+        <NavButton
+          label="Settings"
+          icon={NAV_ICONS.settings}
+          active={activeTab === "settings"}
+          onClick={() => onTabChange("settings")}
+          iconOnly={iconOnly}
+        />
+      </div>
+
       <div style={{ flexShrink: 0, borderTop: "1px solid var(--sidebar-border)", paddingTop: 10 }}>
         {mobile && onToggleExpand && (
           <button
@@ -479,7 +501,7 @@ export function Sidebar({
               borderRadius: 8,
               border: "1px solid var(--sidebar-border)",
               background: "rgba(255,255,255,0.06)",
-              color: "#cbd5e1",
+              color: "var(--sidebar-muted)",
               cursor: "pointer",
               fontSize: 12,
               fontWeight: 600,

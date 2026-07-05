@@ -2,16 +2,19 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma";
 import { signAccessToken } from "../lib/jwt";
+import { createLoginRateLimiter } from "../middleware/loginRateLimit";
 import { validateBody } from "../middleware/validateBody";
 import { loginBodySchema, type LoginBodyValidated } from "../validation/schemas";
 
 const router = Router();
+const loginRateLimiter = createLoginRateLimiter();
 
 /**
  * POST /api/login — username + password → JWT + user profile.
  */
 router.post(
   "/",
+  loginRateLimiter,
   validateBody(loginBodySchema),
   async (req, res) => {
     const { username, password } = req.validatedBody as LoginBodyValidated;

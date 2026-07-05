@@ -73,9 +73,6 @@ export function ReprintInvoicePage() {
       {invoiceSale ? (
         <TaxInvoiceModal
           sale={invoiceSale}
-          variant={
-            invoiceSale.note?.includes("Tax invoice") ? "tax" : "normal"
-          }
           onClose={() => setInvoiceSale(null)}
         />
       ) : null}
@@ -196,7 +193,7 @@ export function ReprintInvoicePage() {
                             borderRadius: 8,
                             border: "none",
                             background: "var(--accent)",
-                            color: "#fff",
+                            color: "var(--on-accent)",
                             fontSize: 12,
                             fontWeight: 600,
                             cursor: openingId ? "wait" : "pointer",

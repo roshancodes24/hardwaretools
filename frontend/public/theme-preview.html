@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dark theme comparison — Stone vs Slate</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, "Segoe UI", system-ui, sans-serif;
+        background: #0a0a0a;
+        color: #e5e5e5;
+        line-height: 1.4;
+      }
+      header {
+        padding: 24px 32px 16px;
+        border-bottom: 1px solid #333;
+      }
+      header h1 {
+        margin: 0 0 8px;
+        font-size: 20px;
+        font-weight: 600;
+      }
+      header p {
+        margin: 0;
+        font-size: 13px;
+        color: #a3a3a3;
+        max-width: 720px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        min-height: calc(100vh - 100px);
+      }
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .panel {
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .panel + .panel {
+        border-left: 1px solid #333;
+      }
+      @media (max-width: 900px) {
+        .panel + .panel {
+          border-left: none;
+          border-top: 1px solid #333;
+        }
+      }
+      .label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        opacity: 0.7;
+      }
+      .label.current {
+        color: #d6a06a;
+      }
+      .label.proposed {
+        color: #60a5fa;
+      }
+      .title {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0;
+      }
+      .subtitle {
+        font-size: 12px;
+        margin: 4px 0 0;
+      }
+      .mock-app {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        display: flex;
+        min-height: 420px;
+        box-shadow: 0 12px 40px var(--shadow-color);
+      }
+      .mock-sidebar {
+        width: 56px;
+        background: var(--sidebar-bg);
+        border-right: 1px solid var(--sidebar-border);
+        padding: 12px 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .mock-nav-dot {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .mock-nav-dot.active {
+        background: var(--accent-soft-bg);
+        box-shadow: inset 0 0 0 1px var(--accent);
+      }
+      .mock-main {
+        flex: 1;
+        background: var(--bg);
+        display: flex;
+        flex-direction: column;
+      }
+      .mock-header {
+        height: 48px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .mock-body {
+        padding: 16px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .mock-search {
+        height: 36px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        padding: 0 12px;
+        font-size: 12px;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+      }
+      .mock-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .mock-table-head {
+        display: grid;
+        grid-template-columns: 1fr 1fr 80px 80px;
+        gap: 8px;
+        padding: 10px 12px;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--muted);
+        background: var(--surface-subtle);
+        border-bottom: 1px solid var(--border);
+      }
+      .mock-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 80px 80px;
+        gap: 8px;
+        padding: 10px 12px;
+        font-size: 12px;
+        color: var(--text);
+        border-bottom: 1px solid var(--border);
+      }
+      .mock-row.alt {
+        background: var(--surface-subtle);
+      }
+      .mock-row:last-child {
+        border-bottom: none;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 4px;
+      }
+      .badge.ok {
+        background: var(--stock-ok-bg);
+        color: var(--stock-ok-text);
+      }
+      .mock-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .btn {
+        height: 32px;
+        padding: 0 14px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        border: none;
+        cursor: default;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: var(--on-accent);
+      }
+      .btn-secondary {
+        background: var(--surface);
+        color: var(--text-strong);
+        border: 1px solid var(--border);
+      }
+      .swatches {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .swatch {
+        width: 64px;
+        text-align: center;
+      }
+      .swatch-box {
+        height: 36px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 4px;
+      }
+      .swatch code {
+        font-size: 9px;
+        color: var(--muted);
+        word-break: break-all;
+      }
+
+      /* ── Current: warm stone dark (what you have now) ── */
+      .theme-stone {
+        --bg: #141110;
+        --surface: #1f1a18;
+        --surface-subtle: #26211e;
+        --text: #f5f4f0;
+        --text-strong: #e7e5e4;
+        --muted: #b2aca6;
+        --border: #3c3531;
+        --accent: #3b82f6;
+        --accent-soft-bg: rgba(59, 130, 246, 0.12);
+        --on-accent: #ffffff;
+        --sidebar-bg: #0f0c0b;
+        --sidebar-border: #27211f;
+        --stock-ok-bg: #1a2e1f;
+        --stock-ok-text: #4ade80;
+        --shadow-color: rgba(0, 0, 0, 0.45);
+      }
+
+      /* ── Proposed: cool slate dark ── */
+      .theme-slate {
+        --bg: #0f1115;
+        --surface: #161a21;
+        --surface-subtle: #1c2129;
+        --text: #e8eaed;
+        --text-strong: #f1f3f5;
+        --muted: #9aa3af;
+        --border: #2d333b;
+        --accent: #3b82f6;
+        --accent-soft-bg: rgba(59, 130, 246, 0.14);
+        --on-accent: #ffffff;
+        --sidebar-bg: #0b0d11;
+        --sidebar-border: #222830;
+        --stock-ok-bg: #14261a;
+        --stock-ok-text: #4ade80;
+        --shadow-color: rgba(0, 0, 0, 0.5);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Dark theme sample — Stone (current) vs Slate (proposed)</h1>
+      <p>
+        Open this page while your dev server is running:
+        <strong>http://localhost:5173/theme-preview.html</strong>
+        — Compare side by side, then tell us which you prefer before we change the app.
+      </p>
+    </header>
+
+    <div class="grid">
+      <section class="panel theme-stone">
+        <div class="label current">Current — warm stone</div>
+        <h2 class="title" style="color: var(--text)">Brownish charcoal</h2>
+        <p class="subtitle" style="color: var(--muted)">
+          Matches today’s light “stone” palette. Feels like warm paper / ledger.
+        </p>
+
+        <div class="mock-app">
+          <div class="mock-sidebar">
+            <div class="mock-nav-dot active"></div>
+            <div class="mock-nav-dot"></div>
+            <div class="mock-nav-dot"></div>
+          </div>
+          <div class="mock-main">
+            <div class="mock-header">Products</div>
+            <div class="mock-body">
+              <div class="mock-search">Search by name, SKU…</div>
+              <div class="mock-card">
+                <div class="mock-table-head">
+                  <span>SKU</span><span>Name</span><span>Stock</span><span>Status</span>
+                </div>
+                <div class="mock-row">
+                  <span style="font-family: monospace; color: var(--text-strong)">EL-00042</span>
+                  <span>Hammer 500g</span>
+                  <span>24</span>
+                  <span><span class="badge ok">In Stock</span></span>
+                </div>
+                <div class="mock-row alt">
+                  <span style="font-family: monospace; color: var(--text-strong)">PL-00108</span>
+                  <span>Paint Red 1L</span>
+                  <span>3</span>
+                  <span><span class="badge ok">In Stock</span></span>
+                </div>
+              </div>
+              <div class="mock-actions">
+                <button class="btn btn-primary">+ Add Product</button>
+                <button class="btn btn-secondary">Import CSV</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="swatches">
+          <div class="swatch"><div class="swatch-box" style="background:#141110"></div><code>bg</code></div>
+          <div class="swatch"><div class="swatch-box" style="background:#1f1a18"></div><code>surface</code></div>
+          <div class="swatch"><div class="swatch-box" style="background:#3c3531"></div><code>border</code></div>
+          <div class="swatch"><div class="swatch-box" style="background:#0f0c0b"></div><code>sidebar</code></div>
+        </div>
+      </section>
+
+      <section class="panel theme-slate">
+        <div class="label proposed">Proposed — cool slate</div>
+        <h2 class="title" style="color: var(--text)">Neutral blue-gray</h2>
+        <p class="subtitle" style="color: var(--muted)">
+          Less brown; closer to VS Code / GitHub dark. Still easy on the eyes.
+        </p>
+
+        <div class="mock-app">
+          <div class="mock-sidebar">
+            <div class="mock-nav-dot active"></div>
+            <div class="mock-nav-dot"></div>
+            <div class="mock-nav-dot"></div>
+          </div>
+          <div class="mock-main">
+            <div class="mock-header">Products</div>
+            <div class="mock-body">
+              <div class="mock-search">Search by name, SKU…</div>
+              <div class="mock-card">
+                <div class="mock-table-head">
+                  <span>SKU</span><span>Name</span><span>Stock</span><span>Status</span>
+                </div>
+                <div class="mock-row">
+                  <span style="font-family: monospace; color: var(--text-strong)">EL-00042</span>
+                  <span>Hammer 500g</span>
+                  <span>24</span>
+                  <span><span class="badge ok">In Stock</span></span>
+                </div>
+                <div class="mock-row alt">
+                  <span style="font-family: monospace; color: var(--text-strong)">PL-00108</span>
+                  <span>Paint Red 1L</span>
+                  <span>3</span>
+                  <span><span class="badge ok">In Stock</span></span>
+                </div>
+              </div>
+              <div class="mock-actions">
+                <button class="btn btn-primary">+ Add Product</button>
+                <button class="btn btn-secondary">Import CSV</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="swatches">
+          <div class="swatch"><div class="swatch-box" style="background:#0f1115"></div><code>bg</code></div>
+          <div class="swatch"><div class="swatch-box" style="background:#161a21"></div><code>surface</code></div>
+          <div class="swatch"><div class="swatch-box" style="background:#2d333b"></div><code>border</code></div>
+          <div class="swatch"><div class="swatch-box" style="background:#0b0d11"></div><code>sidebar</code></div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

@@ -40,7 +40,7 @@ export function ConfirmModal({
   if (!open) return null;
 
   const confirmBg =
-    variant === "danger" ? "#dc2626" : "var(--accent)";
+    variant === "danger" ? "var(--danger-strong)" : "var(--accent)";
 
   const icon =
     variant === "default" ? null : (
@@ -52,9 +52,9 @@ export function ConfirmModal({
           marginBottom: 16,
           background:
             variant === "danger"
-              ? "rgba(220, 38, 38, 0.12)"
+              ? "var(--danger-soft)"
               : "var(--accent-soft)",
-          color: variant === "danger" ? "#dc2626" : "var(--accent)",
+          color: variant === "danger" ? "var(--danger-strong)" : "var(--accent)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -147,7 +147,7 @@ export function ConfirmModal({
             style={{
               border: "none",
               background: confirmBg,
-              color: "#fff",
+              color: "var(--on-accent)",
               borderRadius: 8,
               padding: "8px 20px",
               fontSize: 14,

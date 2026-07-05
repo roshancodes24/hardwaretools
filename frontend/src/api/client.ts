@@ -2,6 +2,8 @@ import { parseErrorResponse } from "./errors";
 import type {
   ApiCustomer,
   ApiProduct,
+  ProductsListParams,
+  ProductsListResponse,
   UpdateProductBody,
   ApiPromotion,
   ApiSupplier,
@@ -204,6 +206,18 @@ export const api = {
     return request<ApiProduct[]>("/api/products");
   },
 
+  listProducts(params: ProductsListParams = {}): Promise<ProductsListResponse> {
+    const q = new URLSearchParams();
+    if (params.page != null) q.set("page", String(params.page));
+    if (params.limit != null) q.set("limit", String(params.limit));
+    if (params.q?.trim()) q.set("q", params.q.trim());
+    if (params.priceReviewOnly) q.set("priceReviewOnly", "1");
+    const qs = q.toString();
+    return request<ProductsListResponse>(
+      qs ? `/api/products?${qs}` : "/api/products?page=1"
+    );
+  },
+
   updateProduct(id: string, payload: UpdateProductBody): Promise<ApiProduct> {
     return request<ApiProduct>(`/api/products/${encodeURIComponent(id)}`, {
       method: "PATCH",
@@ -215,6 +229,44 @@ export const api = {
     return request<void>(`/api/products/${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
+  },
+
+  /** Approve the suggested markdown for a product with a pending price review. */
+  applyPriceReview(id: string): Promise<ApiProduct> {
+    return request<ApiProduct>(
+      `/api/products/${encodeURIComponent(id)}/price-review/apply`,
+      { method: "POST" }
+    );
+  },
+
+  /** Keep the current price and clear a product's pending price review. */
+  dismissPriceReview(id: string): Promise<ApiProduct> {
+    return request<ApiProduct>(
+      `/api/products/${encodeURIComponent(id)}/price-review/dismiss`,
+      { method: "POST" }
+    );
+  },
+
+  /** Bulk approve suggested markdowns and clear reviews (all flagged, or the given ids). */
+  applyAllPriceReviews(ids?: string[]): Promise<{ updated: number }> {
+    return request<{ updated: number }>(
+      "/api/products/price-review/apply-all",
+      {
+        method: "POST",
+        body: JSON.stringify(ids && ids.length > 0 ? { ids } : {}),
+      }
+    );
+  },
+
+  /** Bulk keep current prices and clear reviews (all flagged, or the given ids). */
+  dismissAllPriceReviews(ids?: string[]): Promise<{ updated: number }> {
+    return request<{ updated: number }>(
+      "/api/products/price-review/dismiss-all",
+      {
+        method: "POST",
+        body: JSON.stringify(ids && ids.length > 0 ? { ids } : {}),
+      }
+    );
   },
 
   createSale(payload: CreateSaleBody): Promise<SaleDetail> {

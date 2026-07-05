@@ -109,7 +109,7 @@ export function LoginPage({ onLoggedIn }: LoginPageProps) {
               borderRadius: 10,
               background: "rgba(220,38,38,0.08)",
               border: "1px solid rgba(220,38,38,0.25)",
-              color: "#b91c1c",
+              color: "var(--danger-text)",
               fontSize: 13,
             }}
           >
@@ -154,7 +154,7 @@ export function LoginPage({ onLoggedIn }: LoginPageProps) {
             />
           </div>
           {formError ? (
-            <div style={{ fontSize: 12, color: "#b91c1c" }}>{formError}</div>
+            <div style={{ fontSize: 12, color: "var(--danger-text)" }}>{formError}</div>
           ) : null}
           <button
             type="submit"
@@ -165,7 +165,7 @@ export function LoginPage({ onLoggedIn }: LoginPageProps) {
               borderRadius: 10,
               border: "none",
               background: loading ? "var(--border)" : "var(--accent)",
-              color: "#fff",
+              color: "var(--on-accent)",
               fontSize: 14,
               fontWeight: 600,
               cursor: loading ? "not-allowed" : "pointer",
@@ -182,7 +182,7 @@ export function LoginPage({ onLoggedIn }: LoginPageProps) {
                     width: 18,
                     height: 18,
                     border: "2px solid rgba(255,255,255,0.35)",
-                    borderTopColor: "#fff",
+                    borderTopColor: "var(--on-accent)",
                     borderRadius: "50%",
                     display: "inline-block",
                     animation: "login-spin 0.7s linear infinite",
