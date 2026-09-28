@@ -73,6 +73,12 @@ export function NormalInvoiceDocument({ sale }: Props) {
         </p>
         <hr className="inv-rule" />
         <p className="inv-title">Bill</p>
+        {sale.status === "CANCELLED" ? (
+          <p className="inv-cancelled" role="status">
+            Cancelled
+            <span className="inv-cancelled-note">This invoice has been cancelled.</span>
+          </p>
+        ) : null}
       </header>
 
       <section className="inv-meta-card">

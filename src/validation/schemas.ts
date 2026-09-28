@@ -1,4 +1,4 @@
-import { ProductStatus } from "@prisma/client";
+import { ProductStatus, ReportPeriod } from "@prisma/client";
 import { z } from "zod";
 
 const nonNegativeMoney = z.coerce
@@ -564,3 +564,196 @@ export const loginBodySchema = z.object({
 });
 
 export type LoginBodyValidated = z.infer<typeof loginBodySchema>;
+
+const reportPeriodEnum = z.enum([
+  "DAILY",
+  "MONTHLY",
+  "QUARTERLY",
+  "YEARLY",
+] satisfies ReportPeriod[]);
+
+export const reportScheduleConfigSchema = z
+  .object({
+    notifyEmail: z
+      .string()
+      .trim()
+      .max(320, "Email is too long")
+      .refine(
+        (v) => v === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
+        "Enter a valid email address or leave blank."
+      ),
+    salesEnabled: z.boolean(),
+    salesPeriod: reportPeriodEnum.nullable(),
+    inventoryEnabled: z.boolean(),
+    inventoryPeriod: reportPeriodEnum.nullable(),
+    supplierOutstandingEnabled: z.boolean(),
+    supplierOutstandingPeriod: reportPeriodEnum.nullable(),
+    customerOutstandingEnabled: z.boolean(),
+    customerOutstandingPeriod: reportPeriodEnum.nullable(),
+  })
+  .superRefine((val, ctx) => {
+    const checks: [boolean, ReportPeriod | null, string][] = [
+      [val.salesEnabled, val.salesPeriod, "salesPeriod"],
+      [val.inventoryEnabled, val.inventoryPeriod, "inventoryPeriod"],
+      [
+        val.supplierOutstandingEnabled,
+        val.supplierOutstandingPeriod,
+        "supplierOutstandingPeriod",
+      ],
+      [
+        val.customerOutstandingEnabled,
+        val.customerOutstandingPeriod,
+        "customerOutstandingPeriod",
+      ],
+    ];
+    for (const [enabled, period, path] of checks) {
+      if (enabled && !period) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Select a frequency when this report is enabled.",
+          path: [path],
+        });
+      }
+    }
+    const anyEnabled = checks.some(([e]) => e);
+    if (anyEnabled && !val.notifyEmail.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Notification email is required when any report is enabled.",
+        path: ["notifyEmail"],
+      });
+    }
+  });
+
+export type ReportScheduleConfigValidated = z.infer<
+  typeof reportScheduleConfigSchema
+>;
+
+const blankToNull = (v: unknown) => {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  const s = String(v).trim();
+  return s === "" ? null : s;
+};
+
+const optionalSnapshotText = (max: number, label: string) =>
+  z.preprocess(
+    blankToNull,
+    z
+      .union([
+        z.null(),
+        z.string().max(max, `${label} is too long`),
+      ])
+      .optional()
+  );
+
+const optionalSnapshotPhone = z.preprocess(
+  blankToNull,
+  z.union([z.null(), indianMobile10Digits]).optional()
+);
+
+const optionalSnapshotEmail = z.preprocess(
+  blankToNull,
+  z
+    .union([
+      z.null(),
+      z.string().max(255, "Email is too long").email("Invalid email"),
+    ])
+    .optional()
+);
+
+const optionalSnapshotGst = z.preprocess(
+  (v) => {
+    const next = blankToNull(v);
+    return typeof next === "string" ? next.toUpperCase() : next;
+  },
+  z
+    .union([
+      z.null(),
+      z
+        .string()
+        .max(20, "Party GST No. is too long")
+        .regex(
+          /^[A-Z0-9]+$/,
+          "Party GST No. may only contain letters and numbers."
+        ),
+    ])
+    .optional()
+);
+
+export const quotationLineSchema = z.object({
+  productId: z.string().trim().min(1, "productId is required"),
+  productUnitId: z.preprocess(
+    (v) => {
+      if (v === null || v === undefined) return undefined;
+      const s = String(v).trim();
+      return s === "" ? undefined : s;
+    },
+    z.string().min(1, "productUnitId is invalid").optional()
+  ),
+  quantity: positiveQty,
+  lineDiscount: nonNegativeMoney.optional().default(0),
+});
+
+export const quotationWriteSchema = z
+  .object({
+    customerId: optionalCustomerId,
+    customerName: z.preprocess(
+      (v) => {
+        if (v === undefined || v === null) return undefined;
+        const s = String(v).trim();
+        return s === "" ? undefined : s;
+      },
+      z.string().max(500, "Name is too long").optional()
+    ),
+    customerContactPerson: optionalSnapshotText(200, "Contact person"),
+    customerPhone: optionalSnapshotPhone,
+    customerEmail: optionalSnapshotEmail,
+    customerAddress: optionalSnapshotText(500, "Address"),
+    customerPartyGstNo: optionalSnapshotGst,
+    customerPartyState: optionalSnapshotText(100, "State"),
+    saveAsCustomer: z.boolean().optional().default(false),
+    /** When false, the quotation is priced without CGST, SGST, or IGST. */
+    includeGst: z.boolean().optional().default(true),
+    discountPercent: z.coerce
+      .number()
+      .finite("Discount percent must be a number")
+      .min(0, "Discount percent cannot be negative")
+      .max(100, "Discount percent cannot exceed 100")
+      .optional()
+      .default(0),
+    transportAmount: nonNegativeMoney.optional().default(0),
+    note: z.string().max(5000, "Note is too long").optional(),
+    lines: z
+      .array(quotationLineSchema)
+      .min(1, "At least one line item is required")
+      .max(200, "A quotation cannot have more than 200 lines"),
+  })
+  .strict()
+  .superRefine((data, ctx) => {
+    if (!data.customerId && !data.customerName) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Customer name is required.",
+        path: ["customerName"],
+      });
+    }
+    if (data.saveAsCustomer && !data.customerId) {
+      if (!data.customerName) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Customer name is required to save a customer.",
+          path: ["customerName"],
+        });
+      }
+      if (!data.customerPhone) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Phone number is required to save a customer.",
+          path: ["customerPhone"],
+        });
+      }
+    }
+  });
+
+export type QuotationWriteValidated = z.infer<typeof quotationWriteSchema>;

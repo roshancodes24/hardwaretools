@@ -51,6 +51,13 @@ enum SaleStatus {
   RETURNED
 }
 
+/// Stored lifecycle. EXPIRED is derived when an ISSUED quotation is past validUntil.
+enum QuotationStatus {
+  DRAFT
+  ISSUED
+  CANCELLED
+}
+
 enum SalePaymentMethod {
   CASH
   ONLINE_BANKING
@@ -90,8 +97,9 @@ model User {
   createdSales     Sale[]            @relation("SaleCreatedBy")
   stockMovements   StockMovement[]
   stockAdjustments StockAdjustment[]
-  salePayments     SalePayment[]
-  purchasePayments PurchasePayment[]
+  salePayments      SalePayment[]
+  purchasePayments  PurchasePayment[]
+  createdQuotations Quotation[]      @relation("QuotationCreatedBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -125,7 +133,8 @@ model Customer {
   /// State / place (e.g. for tax invoice bill-to).
   partyState  String?
 
-  sales Sale[]
+  sales      Sale[]
+  quotations Quotation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -178,6 +187,7 @@ model Product {
   units            ProductUnit[]
   purchaseLines    PurchaseLine[]
   saleLines        SaleLine[]
+  quotationLines   QuotationLine[]
   stockMovements   StockMovement[]
   stockAdjustments StockAdjustment[]
   promotionLinks   PromotionProduct[]
@@ -239,6 +249,7 @@ model ProductUnit {
   barcodes       Barcode[]
   purchaseLines  PurchaseLine[]
   saleLines      SaleLine[]
+  quotationLines QuotationLine[]
   stockMovements StockMovement[]
 
   createdAt DateTime @default(now())
@@ -374,6 +385,8 @@ model Sale {
   lines          SaleLine[]
   stockMovements StockMovement[]
   payments       SalePayment[]
+  /// Reserved for a future quotation-to-sale conversion. Unused by sale posting.
+  convertedFromQuotation Quotation? @relation("QuotationConversion")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -421,6 +434,103 @@ model SaleLine {
 
   @@index([saleId])
   @@index([productId])
+}
+
+/// Per-calendar-year sequence for QUO-YYYY-####. Row-locked inside the create transaction.
+model QuotationCounter {
+  year       Int @id
+  lastNumber Int @default(0)
+}
+
+model Quotation {
+  id              String          @id @default(cuid())
+  quotationNumber String          @unique
+  customerId      String?
+  customer        Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  status          QuotationStatus @default(DRAFT)
+  /// Calendar date in Asia/Kolkata (stored as a date, not the browser clock).
+  quotationDate   DateTime        @db.Date
+  validUntil      DateTime        @db.Date
+
+  customerName          String
+  customerContactPerson String?
+  customerPhone         String?
+  customerEmail         String?
+  customerAddress       String?
+  customerPartyGstNo    String?
+  customerPartyState    String?
+
+  /// When false, tax amounts are zero. Line GST percents are still snapshotted.
+  includeGst Boolean @default(true)
+
+  /// Order-level percent applied when the quotation was last priced (0–100).
+  discountPercent Decimal @default(0) @db.Decimal(5, 2)
+  subtotal        Decimal @default(0) @db.Decimal(14, 2)
+  discountAmount  Decimal @default(0) @db.Decimal(14, 2)
+  taxableAmount   Decimal @default(0) @db.Decimal(14, 2)
+  cgstAmount      Decimal @default(0) @db.Decimal(14, 2)
+  sgstAmount      Decimal @default(0) @db.Decimal(14, 2)
+  igstAmount      Decimal @default(0) @db.Decimal(14, 2)
+  taxAmount       Decimal @default(0) @db.Decimal(14, 2)
+  transportAmount Decimal @default(0) @db.Decimal(14, 2)
+  totalAmount     Decimal @default(0) @db.Decimal(14, 2)
+
+  note String?
+
+  createdById String
+  createdBy   User   @relation("QuotationCreatedBy", fields: [createdById], references: [id])
+
+  /// Optional hook so a future conversion can point at a normal Sale. Not set by this feature.
+  convertedSaleId String? @unique
+  convertedSale   Sale?   @relation("QuotationConversion", fields: [convertedSaleId], references: [id], onDelete: SetNull)
+
+  lines QuotationLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@index([quotationDate])
+  @@index([validUntil])
+  @@index([createdById])
+}
+
+model QuotationLine {
+  id          String    @id @default(cuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  productUnitId String?
+  productUnit   ProductUnit? @relation(fields: [productUnitId], references: [id], onDelete: SetNull)
+
+  quantity       Decimal @db.Decimal(18, 4)
+  quantityInBase Decimal @db.Decimal(18, 4)
+
+  unitPrice    Decimal @db.Decimal(14, 4)
+  lineDiscount Decimal @default(0) @db.Decimal(14, 2)
+  lineTax      Decimal @default(0) @db.Decimal(14, 2)
+  lineTotal    Decimal @db.Decimal(14, 2)
+
+  productName     String
+  sku             String
+  description     String?
+  hsnCode         String?
+  unitCode        String
+  unitDisplayName String
+  cgstPercent     Decimal @default(0) @db.Decimal(5, 2)
+  sgstPercent     Decimal @default(0) @db.Decimal(5, 2)
+  igstPercent     Decimal @default(0) @db.Decimal(5, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([quotationId])
+  @@index([productId])
+  @@index([productUnitId])
 }
 
 model StockMovement {
@@ -474,4 +584,57 @@ model StockAdjustment {
 
   @@index([productId, createdAt])
   @@index([adjustedById, createdAt])
+}
+
+enum ScheduledReportType {
+  SALES
+  INVENTORY
+  SUPPLIER_OUTSTANDING
+  CUSTOMER_OUTSTANDING
+}
+
+enum ReportPeriod {
+  DAILY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum ReportRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model ReportScheduleConfig {
+  id                         String        @id @default("default")
+  notifyEmail                String        @default("")
+  salesEnabled               Boolean       @default(false)
+  salesPeriod                ReportPeriod?
+  inventoryEnabled           Boolean       @default(false)
+  inventoryPeriod            ReportPeriod?
+  supplierOutstandingEnabled Boolean       @default(false)
+  supplierOutstandingPeriod  ReportPeriod?
+  customerOutstandingEnabled Boolean       @default(false)
+  customerOutstandingPeriod  ReportPeriod?
+  updatedAt                  DateTime      @updatedAt
+}
+
+model ReportRun {
+  id           String              @id @default(cuid())
+  reportType   ScheduledReportType
+  period       ReportPeriod
+  periodStart  DateTime
+  periodEnd    DateTime
+  asOf         DateTime
+  status       ReportRunStatus
+  payload      Json?
+  errorMessage String?
+  emailSentAt  DateTime?
+  createdAt    DateTime            @default(now())
+
+  @@unique([reportType, period, periodStart])
+  @@index([createdAt])
+  @@index([reportType, status])
 }

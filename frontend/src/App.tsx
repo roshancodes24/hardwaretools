@@ -57,6 +57,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { ReportingPage } from "./pages/ReportingPage";
 import { ReprintInvoicePage } from "./pages/ReprintInvoicePage";
+import { QuotationsPage } from "./pages/QuotationsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { FEATURE_FLAGS } from "./featureFlags";
 import { Sidebar, type Tab } from "./Sidebar";
@@ -176,7 +177,7 @@ function POSView({
   /** Freight / transport (added to charged total). */
   const [transportStr, setTransportStr] = useState("");
   const [taxInvoiceSale, setTaxInvoiceSale] = useState<SaleDetail | null>(null);
-  /** If true, post-sale invoice opens in tax layout (chosen before Confirm Sale). */
+  /** Tax invoice checkbox on POS (document kind sent to API). Post-sale modal uses the saved sale. */
   const [posTaxInvoice, setPosTaxInvoice] = useState(false);
 
   useEffect(() => {
@@ -740,11 +741,7 @@ function POSView({
       {taxInvoiceSale ? (
         <TaxInvoiceModal
           sale={taxInvoiceSale}
-          variant={posTaxInvoice ? "tax" : "normal"}
-          onClose={() => {
-            setTaxInvoiceSale(null);
-            setPosTaxInvoice(false);
-          }}
+          onClose={() => setTaxInvoiceSale(null)}
         />
       ) : null}
       <div
@@ -3399,6 +3396,10 @@ export default function App() {
     typeof window === "undefined" ? 1280 : window.innerWidth
   );
   const [tab, setTab] = useState<Tab>("home");
+  const [pendingReportRunId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("reportRun");
+  });
   const [rawProducts, setRawProducts] = useState<ApiProduct[]>([]);
   const [products, setProducts] = useState<UiProduct[]>([]);
   const [promotions, setPromotions] = useState<ApiPromotion[]>([]);
@@ -3476,7 +3477,7 @@ export default function App() {
       const admin = u?.role === "ADMIN" || u?.role === "MANAGER";
       if (
         !admin &&
-        ["reporting", "promotion", "purchase", "adjustment"].includes(tab)
+        ["reporting", "promotion", "purchase", "adjustment", "quotations"].includes(tab)
       ) {
         setTab("home");
       }
@@ -3600,11 +3601,24 @@ export default function App() {
     }
     if (
       !isAdminUser &&
-      ["reporting", "promotion", "purchase", "adjustment"].includes(tab)
+      ["reporting", "promotion", "purchase", "adjustment", "quotations"].includes(tab)
     ) {
       setTab("home");
     }
   }, [isAdminUser, tab]);
+
+  useEffect(() => {
+    if (authPhase !== "ready" || !isAdminUser || !FEATURE_FLAGS.reporting) {
+      return;
+    }
+    if (!pendingReportRunId) return;
+    setTab("reporting");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("reportRun");
+    const next =
+      url.pathname + (url.search ? url.search : "") + (url.hash ? url.hash : "");
+    window.history.replaceState({}, "", next);
+  }, [authPhase, isAdminUser, pendingReportRunId]);
 
   if (authPhase === "anon") {
     return (
@@ -3853,7 +3867,14 @@ export default function App() {
                 {tab === "outstanding" && (
                   <OutstandingView actingUserId={actingUserId} />
                 )}
-                {tab === "invoices" && <ReprintInvoicePage />}
+                {tab === "invoices" && (
+                  <ReprintInvoicePage
+                    confirm={confirm}
+                    canCancel={isAdminUser}
+                    onInventoryRestored={refreshProducts}
+                  />
+                )}
+                {tab === "quotations" && <QuotationsPage confirm={confirm} />}
                 {tab === "inventory" && (
                   <InventoryView products={products} />
                 )}
@@ -3874,7 +3895,9 @@ export default function App() {
                     onAdjustmentComplete={refreshProducts}
                   />
                 )}
-                {FEATURE_FLAGS.reporting && tab === "reporting" && <ReportingPage />}
+                {FEATURE_FLAGS.reporting && tab === "reporting" && (
+                  <ReportingPage initialReportRunId={pendingReportRunId} />
+                )}
                 {tab === "settings" && <SettingsPage />}
               </>
             )}

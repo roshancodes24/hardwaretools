@@ -23,6 +23,8 @@ import supplierRoutes from "./routes/suppliers";
 import customerRoutes from "./routes/customers";
 import promotionRoutes from "./routes/promotions";
 import reportRoutes from "./routes/reports";
+import scheduledReportRoutes from "./routes/scheduled-reports";
+import quotationRoutes from "./routes/quotations";
 
 /** Large enough for bulk product/purchase imports (~1500 rows). Default Express limit is 100kb. */
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT ?? "15mb";
@@ -50,6 +52,8 @@ export function buildApp(): express.Express {
   app.use("/api/customers", customerRoutes);
   app.use("/api/promotions", promotionRoutes);
   app.use("/api/reports", reportRoutes);
+  app.use("/api/scheduled-reports", scheduledReportRoutes);
+  app.use("/api/quotations", quotationRoutes);
 
   app.use("/api", (_req, res) => {
     res.status(404).json({ error: "Not found" });

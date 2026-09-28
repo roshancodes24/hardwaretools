@@ -351,6 +351,26 @@ describe("R5 — Sales (read + validation)", () => {
     expect(Array.isArray(res.body)).toBe(true);
   });
 
+  it("GET /api/sales/recent lists at least 10 invoices when that many exist", async () => {
+    const res = await request(app).get("/api/sales/recent").set(authAdmin());
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    const available = await prisma.sale.count({
+      where: { status: { in: ["COMPLETED", "CANCELLED"] } },
+    });
+    expect(res.body.length).toBe(Math.min(10, available));
+    const tiny = await request(app)
+      .get("/api/sales/recent")
+      .query({ limit: 3 })
+      .set(authAdmin());
+    expect(tiny.status).toBe(200);
+    expect(tiny.body.length).toBe(Math.min(10, available));
+    if (res.body.length >= 2) {
+      expect(res.body[0].createdAt >= res.body[1].createdAt).toBe(true);
+      expect(res.body[0].saleNumber).toBeTruthy();
+    }
+  });
+
   it("GET /api/sales/by-number returns 404 when missing", async () => {
     const res = await request(app)
       .get("/api/sales/by-number/NO-SUCH-SALE-NUMBER-XYZ")
@@ -376,6 +396,27 @@ describe("R5 — Sales (read + validation)", () => {
   it("GET /api/sales/:id returns 404 for missing sale", async () => {
     const res = await request(app)
       .get("/api/sales/00000000-0000-4000-8000-000000000001")
+      .set(authAdmin());
+    expect(res.status).toBe(404);
+  });
+
+  it("POST /api/sales/:id/cancel returns 401 without auth", async () => {
+    const res = await request(app).post(
+      "/api/sales/00000000-0000-4000-8000-000000000099/cancel"
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("POST /api/sales/:id/cancel rejects cashier", async () => {
+    const res = await request(app)
+      .post("/api/sales/00000000-0000-4000-8000-000000000099/cancel")
+      .set(authCashier());
+    expect(res.status).toBe(403);
+  });
+
+  it("POST /api/sales/:id/cancel returns 404 for a missing sale", async () => {
+    const res = await request(app)
+      .post("/api/sales/00000000-0000-4000-8000-000000000099/cancel")
       .set(authAdmin());
     expect(res.status).toBe(404);
   });
@@ -533,5 +574,129 @@ describe.runIf(runWrites)("R6 — Write path: POS sale (opt-in REGRESSION_WRITES
     expect(settle.body.balanceAmount).toBe("0.00");
     expect(settle.body.paidAmount).toBe("30.00");
     expect(settle.body.payments).toHaveLength(4);
+  });
+
+  it("cancels a completed sale, restores stock, and keeps the sale", async () => {
+    const nails = await prisma.product.findFirst({
+      where: { sku: "NAILS-001" },
+      include: { units: true },
+    });
+    const kg = nails?.units.find((u) => u.code === "kg");
+    if (!nails || !kg) {
+      throw new Error("Seed product NAILS-001 with kg unit not found");
+    }
+
+    const before = await prisma.product.findUnique({
+      where: { id: nails.id },
+      select: { currentStock: true },
+    });
+    if (!before) throw new Error("NAILS-001 missing");
+
+    const customerName = `Cancel QA ${Date.now()}`;
+    const create = await request(app)
+      .post("/api/sales")
+      .set(writerAuth)
+      .send({
+        createdById: adminId,
+        customerName,
+        customerPhone: "9876543299",
+        paidAmount: 30,
+        paymentMethod: "cash",
+        note: `REGRESSION_WRITES cancel sale ${Date.now()}`,
+        lines: [
+          {
+            productId: nails.id,
+            productUnitId: kg.id,
+            quantity: 0.1,
+            unitPrice: 150,
+          },
+          {
+            productId: nails.id,
+            productUnitId: kg.id,
+            quantity: 0.1,
+            unitPrice: 150,
+          },
+        ],
+      });
+    expect(create.status, create.body?.error ?? JSON.stringify(create.body)).toBe(
+      201
+    );
+    const id = create.body.id as string;
+    expect(create.body.status).toBe("COMPLETED");
+
+    const afterSale = await prisma.product.findUnique({
+      where: { id: nails.id },
+      select: { currentStock: true },
+    });
+    expect(afterSale?.currentStock.lessThan(before.currentStock)).toBe(true);
+
+    const cashier = await request(app)
+      .post(`/api/sales/${id}/cancel`)
+      .set({ Authorization: `Bearer ${cashierToken}` });
+    expect(cashier.status).toBe(403);
+    const stillCompleted = await prisma.sale.findUnique({ where: { id } });
+    expect(stillCompleted?.status).toBe("COMPLETED");
+
+    await prisma.sale.update({
+      where: { id },
+      data: { status: "RETURNED" },
+    });
+    const returned = await request(app)
+      .post(`/api/sales/${id}/cancel`)
+      .set(writerAuth);
+    expect(returned.status).toBe(400);
+    expect(String(returned.body.error)).toMatch(/completed/i);
+    const stockWhileReturned = await prisma.product.findUnique({
+      where: { id: nails.id },
+      select: { currentStock: true },
+    });
+    expect(stockWhileReturned?.currentStock.equals(afterSale!.currentStock)).toBe(
+      true
+    );
+
+    await prisma.sale.update({
+      where: { id },
+      data: { status: "COMPLETED" },
+    });
+    const cancel = await request(app)
+      .post(`/api/sales/${id}/cancel`)
+      .set(writerAuth);
+    expect(cancel.status, cancel.body?.error ?? JSON.stringify(cancel.body)).toBe(
+      200
+    );
+    expect(cancel.body.status).toBe("CANCELLED");
+    expect(cancel.body.id).toBe(id);
+    expect(cancel.body.saleNumber).toBe(create.body.saleNumber);
+    expect(cancel.body.lines).toHaveLength(2);
+
+    const afterCancel = await prisma.product.findUnique({
+      where: { id: nails.id },
+      select: { currentStock: true },
+    });
+    expect(afterCancel?.currentStock.equals(before.currentStock)).toBe(true);
+
+    const kept = await prisma.sale.findUnique({ where: { id } });
+    expect(kept?.status).toBe("CANCELLED");
+    expect(kept?.saleNumber).toBe(create.body.saleNumber);
+
+    const movements = await prisma.stockMovement.findMany({
+      where: { saleId: id, type: "SALE_RETURN_IN" },
+    });
+    expect(movements).toHaveLength(2);
+
+    const again = await request(app)
+      .post(`/api/sales/${id}/cancel`)
+      .set(writerAuth);
+    expect(again.status).toBe(400);
+    expect(afterCancel?.currentStock.equals(before.currentStock)).toBe(true);
+
+    const search = await request(app)
+      .get(`/api/sales/search?q=${encodeURIComponent(customerName)}`)
+      .set(writerAuth);
+    expect(search.status).toBe(200);
+    const row = (search.body as Array<{ id: string; status: string }>).find(
+      (item) => item.id === id
+    );
+    expect(row?.status).toBe("CANCELLED");
   });
 });

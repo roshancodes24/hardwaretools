@@ -41,6 +41,12 @@ Use this document when rolling out a new version to the shop floor, admin users,
 - **Loading overlay** — Shows progress while the file is matched to your catalog (“Matched X of Y rows…”).
 - **After recording** — Catalog **cost** updates from unit cost; **selling price** follows your markup rules (same as manual purchase entry).
 
+### Quotations
+
+- **Quotations** in the sidebar are admin/manager only. They price from the product **selling price** and do not change stock, sales, or purchases.
+- A quotation can be for a customer already on file or for someone new. **Save as customer** is optional and needs a 10-digit phone.
+- Numbers look like `QUO-2026-0001`. Each quotation is valid for **2 days** from its quotation date. Download the PDF from the quotation screen to send to the customer.
+
 ### Test data (if you used bulk import CSVs)
 
 - Files under `testdata/` (e.g. `product-import-1000.csv`, `purchase-import-1000.csv`) are for **testing only**. Purchase test costs vary slightly per row, so many products may appear in **price review** — use **Keep all current** on the Products page if you do not want to change shelf prices.
@@ -126,6 +132,19 @@ Full install steps: **`packaging/README.md`**. Railway: **`packaging/RAILWAY.md`
 - **CI-style test script** — `npm run test:ci` runs regression + frontend tests + write-path sale tests (`REGRESSION_WRITES=1`).
 - **App structure** — Outstanding, Inventory, and Stock Adjustment views moved out of `App.tsx`; shared money/split-payment helpers live under `frontend/src/lib/`.
 - **Feature flags** — Reporting nav respects `FEATURE_FLAGS.reporting` (enabled by default).
+- **Scheduled owner reports** — Admin configures automatic daily/monthly/**Indian FY quarterly**/yearly reports under **Reporting → Scheduled owner reports**. Quarters follow the Indian financial year (Q1 Apr–Jun, Q2 Jul–Sep, Q3 Oct–Dec, Q4 Jan–Mar). Reports save to the database; optional SMTP sends an email link (`APP_PUBLIC_URL/?reportRun=…`). Enable with `REPORT_SCHEDULER_ENABLED=1` (on by default in production).
+
+---
+
+## Scheduled owner reports (optional)
+
+1. Set `REPORT_SCHEDULER_ENABLED=1` on the API server (default in production).
+2. Configure SMTP in `.env` (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`).
+3. Set `APP_PUBLIC_URL` to the URL staff use to open the app (e.g. `https://shop.example.com`).
+4. In the app: **Reporting → Scheduled owner reports** — enter owner email, enable report types, pick frequency, **Save schedule**.
+5. Reports run on a **30-minute stagger** (Sales 06:00 → Inventory 06:30 → Supplier 07:00 → Customer 07:30 IST) so multiple types due the same day do not overload the server. Default cron: `0,30 6-8 * * *` IST.
+
+Without SMTP, reports still generate and appear in history — only email is skipped.
 
 ---
 

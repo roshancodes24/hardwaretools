@@ -1,7 +1,12 @@
 "use strict";
 /**
- * Reads docs/USER_GUIDE.md, renders ```mermaid``` blocks to PNGs under docs/assets/,
+ * Renders ```mermaid``` blocks in a Markdown file to PNGs under docs/assets/,
  * and writes a processed Markdown file for Pandoc (embeds images in Word/PDF).
+ *
+ * Usage:
+ *   node scripts/render-user-guide-mermaid.js [input.md] [output.md] [assetPrefix]
+ *
+ * Defaults: docs/USER_GUIDE.md → docs/_USER_GUIDE_processed.md, prefix user-guide-flow
  */
 const fs = require("fs");
 const path = require("path");
@@ -12,6 +17,10 @@ const mdIn =
   process.argv[2] || path.join(root, "docs", "USER_GUIDE.md");
 const mdOut =
   process.argv[3] || path.join(root, "docs", "_USER_GUIDE_processed.md");
+const assetPrefix = (process.argv[4] || "user-guide-flow").replace(
+  /[^a-zA-Z0-9_-]/g,
+  "-"
+);
 
 /** Quote path for cmd.exe on Windows. */
 function q(p) {
@@ -32,9 +41,9 @@ function main() {
   let count = 0;
   md = md.replace(re, (_, body) => {
     count += 1;
-    const pngName = `user-guide-flow-${count}.png`;
+    const pngName = `${assetPrefix}-${count}.png`;
     const pngPath = path.join(assetsDir, pngName);
-    const mmdPath = path.join(assetsDir, `_tmp-${count}.mmd`);
+    const mmdPath = path.join(assetsDir, `_tmp-${assetPrefix}-${count}.mmd`);
     fs.writeFileSync(mmdPath, body.trimEnd() + "\n", "utf8");
 
     const cmd = [
@@ -54,7 +63,7 @@ function main() {
     execSync(cmd, { cwd: root, stdio: "inherit", shell: true });
     fs.unlinkSync(mmdPath);
 
-    return `\n\n![Flowchart ${count}](assets/${pngName})\n\n`;
+    return `\n\n![Diagram ${count}](assets/${pngName})\n\n`;
   });
 
   fs.writeFileSync(mdOut, md, "utf8");

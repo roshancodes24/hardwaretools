@@ -52,6 +52,7 @@ export function productSearchWhere(q: string | undefined): Prisma.ProductWhereIn
       { color: { contains: term, mode: "insensitive" } },
       { size: { contains: term, mode: "insensitive" } },
       { hsnCode: { contains: term, mode: "insensitive" } },
+      { barcodes: { some: { code: { contains: term, mode: "insensitive" } } } },
     ],
   };
 }

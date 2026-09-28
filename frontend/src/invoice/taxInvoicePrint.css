@@ -65,6 +65,31 @@
   color: var(--invoice-bar-text);
 }
 
+.tax-invoice-doc .inv-cancelled {
+  width: fit-content;
+  max-width: 100%;
+  margin: -8px auto 16px;
+  padding: 6px 14px 7px;
+  border: 2px solid var(--danger-strong, #b91c1c);
+  border-radius: 8px;
+  text-align: center;
+  color: var(--danger-strong, #b91c1c);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  font-size: 13px;
+  text-transform: uppercase;
+  line-height: 1.35;
+}
+
+.tax-invoice-doc .inv-cancelled-note {
+  display: block;
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: none;
+}
+
 .tax-invoice-doc .inv-meta-card {
   background: var(--surface-subtle);
   border: 1px solid var(--border);
@@ -585,6 +610,11 @@ html[data-theme="dark"] .tax-invoice-backdrop {
     font-size: 10.5pt !important;
     font-weight: 700 !important;
     color: var(--invoice-bar-text) !important;
+  }
+
+  html.print-tax-invoice .tax-invoice-doc .inv-cancelled {
+    color: #b91c1c !important;
+    border-color: #b91c1c !important;
   }
 
   html.print-tax-invoice .tax-invoice-doc .inv-contact {

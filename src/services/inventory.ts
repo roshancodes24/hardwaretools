@@ -806,6 +806,92 @@ export async function createSale(input: CreateSaleInput) {
   });
 }
 
+const saleDetailInclude = {
+  customer: { select: { partyGstNo: true, partyState: true } },
+  lines: {
+    include: {
+      product: true,
+      productUnit: true,
+    },
+  },
+  payments: { orderBy: { createdAt: "asc" as const } },
+} satisfies Prisma.SaleInclude;
+
+export async function cancelSale(input: { saleId: string; cancelledById: string }) {
+  return prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<Array<{ id: string; status: string }>>`
+      SELECT id, status::text AS status
+      FROM "Sale"
+      WHERE id = ${input.saleId}
+      FOR UPDATE
+    `;
+    const lockedSale = locked[0];
+    if (!lockedSale) {
+      throw new Error("Sale not found.");
+    }
+    if (lockedSale.status !== SaleStatus.COMPLETED) {
+      throw new Error("Only completed sales can be cancelled.");
+    }
+
+    const sale = await tx.sale.findUnique({
+      where: { id: input.saleId },
+      include: { lines: true },
+    });
+    if (!sale) {
+      throw new Error("Sale not found.");
+    }
+
+    const restoreByProduct = new Map<string, Prisma.Decimal>();
+    for (const line of sale.lines) {
+      const prev = restoreByProduct.get(line.productId) ?? dec(0);
+      restoreByProduct.set(line.productId, qty(prev.plus(line.quantityInBase)));
+    }
+
+    const lockedProducts = await lockProductsForStockUpdate(
+      tx,
+      [...restoreByProduct.keys()]
+    );
+
+    for (const line of sale.lines) {
+      await tx.stockMovement.create({
+        data: {
+          type: StockMovementType.SALE_RETURN_IN,
+          productId: line.productId,
+          productUnitId: line.productUnitId,
+          quantity: line.quantity,
+          quantityInBase: line.quantityInBase,
+          note: `Cancel sale ${sale.saleNumber}`,
+          saleId: sale.id,
+          createdById: input.cancelledById,
+        },
+      });
+    }
+
+    for (const [productId, restoreQty] of restoreByProduct) {
+      const product = lockedProducts.get(productId);
+      if (!product) {
+        throw new Error(`Product not found: ${productId}`);
+      }
+      await tx.product.update({
+        where: { id: productId },
+        data: {
+          currentStock: qty(dec(product.currentStock).plus(restoreQty)),
+        },
+      });
+    }
+
+    await tx.sale.update({
+      where: { id: sale.id },
+      data: { status: SaleStatus.CANCELLED },
+    });
+
+    return tx.sale.findUnique({
+      where: { id: sale.id },
+      include: saleDetailInclude,
+    });
+  });
+}
+
 export type RecordSalePaymentInput = {
   saleId: string;
   amount?: string | number;

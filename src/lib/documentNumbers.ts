@@ -42,6 +42,41 @@ export async function allocateSaleNumber(
   throw new Error("Could not allocate a unique sale number.");
 }
 
+/**
+ * Next quotation number for a calendar year: QUO-2026-0001.
+ * Locks the year row so concurrent transactions cannot take the same sequence.
+ */
+export async function allocateQuotationNumber(
+  tx: Prisma.TransactionClient,
+  year: number
+): Promise<string> {
+  if (!Number.isInteger(year) || year < 2000 || year > 9999) {
+    throw new Error("Invalid quotation year.");
+  }
+
+  await tx.$executeRaw`
+    INSERT INTO "QuotationCounter" ("year", "lastNumber")
+    VALUES (${year}, 0)
+    ON CONFLICT ("year") DO NOTHING
+  `;
+
+  const rows = await tx.$queryRaw<Array<{ lastNumber: number }>>`
+    SELECT "lastNumber" FROM "QuotationCounter" WHERE "year" = ${year} FOR UPDATE
+  `;
+  const current = Number(rows[0]?.lastNumber);
+  if (!Number.isFinite(current)) {
+    throw new Error("Could not allocate a quotation number.");
+  }
+
+  const next = current + 1;
+  await tx.quotationCounter.update({
+    where: { year },
+    data: { lastNumber: next },
+  });
+
+  return `QUO-${year}-${String(next).padStart(4, "0")}`;
+}
+
 /** Allocate a purchase number with retry on unique constraint races. */
 export function nextPurchaseNumber(): string {
   return `PUR-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;

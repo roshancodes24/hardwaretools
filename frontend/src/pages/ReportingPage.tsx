@@ -9,12 +9,20 @@ import {
 import type {
   GrossMarginReport,
   PurchasesReport,
+  ReportPeriod,
+  ReportRunSummary,
   SalesByCustomerReport,
   SalesByProductReport,
   SalesSummaryReport,
+  ScheduledReportConfig,
   SupplierPaymentsReport,
   TaxInvoiceSalesReport,
 } from "../api/types";
+import { SavedReportViewer } from "./SavedReportViewer";
+import {
+  reportSlotTimeLabel,
+  REPORT_STAGGER_NOTE,
+} from "../lib/reportScheduleSlots";
 
 function ymdToDmy(ymd: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim());
@@ -120,7 +128,90 @@ const REPORT_OPTIONS: { value: ReportKind; label: string }[] = [
   { value: "gross-margin", label: "Gross margin" },
 ];
 
-export function ReportingPage() {
+const PERIOD_OPTIONS: { value: ReportPeriod; label: string }[] = [
+  { value: "DAILY", label: "Daily" },
+  { value: "MONTHLY", label: "Monthly" },
+  { value: "QUARTERLY", label: "Quarterly (Indian FY)" },
+  { value: "YEARLY", label: "Yearly" },
+];
+
+const SCHEDULED_REPORT_ROWS: {
+  key:
+    | "sales"
+    | "inventory"
+    | "supplierOutstanding"
+    | "customerOutstanding";
+  reportType:
+    | "SALES"
+    | "INVENTORY"
+    | "SUPPLIER_OUTSTANDING"
+    | "CUSTOMER_OUTSTANDING";
+  label: string;
+  enabledKey:
+    | "salesEnabled"
+    | "inventoryEnabled"
+    | "supplierOutstandingEnabled"
+    | "customerOutstandingEnabled";
+  periodKey:
+    | "salesPeriod"
+    | "inventoryPeriod"
+    | "supplierOutstandingPeriod"
+    | "customerOutstandingPeriod";
+}[] = [
+  {
+    key: "sales",
+    reportType: "SALES",
+    label: "Sales report",
+    enabledKey: "salesEnabled",
+    periodKey: "salesPeriod",
+  },
+  {
+    key: "inventory",
+    reportType: "INVENTORY",
+    label: "Inventory report",
+    enabledKey: "inventoryEnabled",
+    periodKey: "inventoryPeriod",
+  },
+  {
+    key: "supplierOutstanding",
+    reportType: "SUPPLIER_OUTSTANDING",
+    label: "Supplier outstanding",
+    enabledKey: "supplierOutstandingEnabled",
+    periodKey: "supplierOutstandingPeriod",
+  },
+  {
+    key: "customerOutstanding",
+    reportType: "CUSTOMER_OUTSTANDING",
+    label: "Customer outstanding",
+    enabledKey: "customerOutstandingEnabled",
+    periodKey: "customerOutstandingPeriod",
+  },
+];
+
+function reportTypeDisplay(type: string): string {
+  switch (type) {
+    case "SALES":
+      return "Sales";
+    case "INVENTORY":
+      return "Inventory";
+    case "SUPPLIER_OUTSTANDING":
+      return "Supplier outstanding";
+    case "CUSTOMER_OUTSTANDING":
+      return "Customer outstanding";
+    default:
+      return type;
+  }
+}
+
+function periodDisplay(period: string): string {
+  return PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
+}
+
+type ReportingPageProps = {
+  initialReportRunId?: string | null;
+};
+
+export function ReportingPage({ initialReportRunId = null }: ReportingPageProps) {
   const defaults = useMemo(() => {
     const now = new Date();
     return {
@@ -147,6 +238,23 @@ export function ReportingPage() {
   const [margin, setMargin] = useState<GrossMarginReport | null>(null);
   const [taxInvoiceSales, setTaxInvoiceSales] =
     useState<TaxInvoiceSalesReport | null>(null);
+
+  const [scheduleConfig, setScheduleConfig] =
+    useState<ScheduledReportConfig | null>(null);
+  const [scheduleDraft, setScheduleDraft] =
+    useState<ScheduledReportConfig | null>(null);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [scheduleSaved, setScheduleSaved] = useState(false);
+  const [reportRuns, setReportRuns] = useState<ReportRunSummary[]>([]);
+  const [runsLoading, setRunsLoading] = useState(false);
+  const [viewRunId, setViewRunId] = useState<string | null>(
+    initialReportRunId
+  );
+
+  useEffect(() => {
+    if (initialReportRunId) setViewRunId(initialReportRunId);
+  }, [initialReportRunId]);
 
   const loadActiveReport = useCallback(async () => {
     setLoading(true);
@@ -223,6 +331,49 @@ export function ReportingPage() {
   useEffect(() => {
     void loadActiveReport();
   }, [loadActiveReport]);
+
+  const loadScheduleSection = useCallback(async () => {
+    setRunsLoading(true);
+    setScheduleError(null);
+    try {
+      const [config, runsRes] = await Promise.all([
+        api.getScheduledReportConfig(),
+        api.listScheduledReportRuns(50),
+      ]);
+      setScheduleConfig(config);
+      setScheduleDraft(config);
+      setReportRuns(runsRes.runs);
+    } catch (e) {
+      setScheduleError(
+        isApiError(e) ? e.message : "Failed to load scheduled report settings"
+      );
+    } finally {
+      setRunsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadScheduleSection();
+  }, [loadScheduleSection]);
+
+  const saveScheduleConfig = async () => {
+    if (!scheduleDraft) return;
+    setScheduleSaving(true);
+    setScheduleError(null);
+    setScheduleSaved(false);
+    try {
+      const saved = await api.updateScheduledReportConfig(scheduleDraft);
+      setScheduleConfig(saved);
+      setScheduleDraft(saved);
+      setScheduleSaved(true);
+    } catch (e) {
+      setScheduleError(
+        isApiError(e) ? e.message : "Failed to save schedule settings"
+      );
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
 
   const activeReportLabel =
     REPORT_OPTIONS.find((o) => o.value === reportKind)?.label ?? "Report";
@@ -1684,6 +1835,250 @@ export function ReportingPage() {
             ))}
           </div>
         </section>
+      ) : null}
+
+      <section
+        style={{
+          marginTop: 32,
+          paddingTop: 24,
+          borderTop: "1px solid var(--border)",
+        }}
+      >
+        <h2
+          style={{
+            margin: "0 0 8px",
+            fontSize: 18,
+            fontWeight: 600,
+            color: "var(--text)",
+          }}
+        >
+          Scheduled owner reports
+        </h2>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--muted)" }}>
+          Automatic reports use Indian financial year quarters (Q1 Apr–Jun through
+          Q4 Jan–Mar). {REPORT_STAGGER_NOTE} When a report is ready, an email
+          with a link is sent to the owner address below.
+        </p>
+
+        {scheduleError ? (
+          <p
+            style={{
+              margin: "0 0 12px",
+              fontSize: 13,
+              color: "var(--danger-text)",
+            }}
+          >
+            {scheduleError}
+          </p>
+        ) : null}
+        {scheduleSaved ? (
+          <p
+            style={{
+              margin: "0 0 12px",
+              fontSize: 13,
+              color: "var(--success-text, var(--text))",
+            }}
+          >
+            Schedule settings saved.
+          </p>
+        ) : null}
+
+        {scheduleDraft ? (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 14,
+              maxWidth: 720,
+            }}
+          >
+            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
+                Notification email
+              </span>
+              <input
+                type="email"
+                style={inputStyle}
+                value={scheduleDraft.notifyEmail}
+                onChange={(e) =>
+                  setScheduleDraft((d) =>
+                    d ? { ...d, notifyEmail: e.target.value } : d
+                  )
+                }
+                placeholder="owner@example.com"
+              />
+            </label>
+
+            {SCHEDULED_REPORT_ROWS.map((row) => (
+              <div
+                key={row.key}
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  background: "var(--surface-subtle)",
+                }}
+              >
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    minWidth: 200,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--text)",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={scheduleDraft[row.enabledKey]}
+                    onChange={(e) =>
+                      setScheduleDraft((d) =>
+                        d
+                          ? {
+                              ...d,
+                              [row.enabledKey]: e.target.checked,
+                              [row.periodKey]: e.target.checked
+                                ? d[row.periodKey] ?? "MONTHLY"
+                                : null,
+                            }
+                          : d
+                      )
+                    }
+                  />
+                  {row.label}
+                </label>
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: "var(--muted)",
+                    minWidth: 72,
+                  }}
+                  title="Run time when this frequency is due (IST)"
+                >
+                  {reportSlotTimeLabel(row.reportType)}
+                </span>
+                <select
+                  style={{ ...inputStyle, height: 36, minWidth: 140 }}
+                  disabled={!scheduleDraft[row.enabledKey]}
+                  value={scheduleDraft[row.periodKey] ?? "MONTHLY"}
+                  onChange={(e) =>
+                    setScheduleDraft((d) =>
+                      d
+                        ? {
+                            ...d,
+                            [row.periodKey]: e.target.value as ReportPeriod,
+                          }
+                        : d
+                    )
+                  }
+                >
+                  {PERIOD_OPTIONS.map((p) => (
+                    <option key={p.value} value={p.value}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <button
+                type="button"
+                style={{
+                  ...btnSecondary,
+                  height: 38,
+                  background: "var(--accent)",
+                  color: "var(--accent-text, #fff)",
+                  border: "none",
+                }}
+                disabled={scheduleSaving}
+                onClick={() => void saveScheduleConfig()}
+              >
+                {scheduleSaving ? "Saving…" : "Save schedule"}
+              </button>
+              {scheduleConfig?.updatedAt ? (
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                  Last saved {formatIndiaDateTime(scheduleConfig.updatedAt)}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : runsLoading ? (
+          <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+            Loading schedule settings…
+          </p>
+        ) : null}
+
+        <h3
+          style={{
+            margin: "24px 0 12px",
+            fontSize: 15,
+            fontWeight: 600,
+            color: "var(--text)",
+          }}
+        >
+          Report history
+        </h3>
+        {runsLoading && reportRuns.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+            Loading history…
+          </p>
+        ) : reportRuns.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+            No scheduled reports generated yet.
+          </p>
+        ) : (
+          <div style={tableWrap}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  {["Generated", "Report", "Frequency", "Period", "Status", ""].map(
+                    (h) => (
+                      <th key={h || "action"} style={th}>
+                        {h}
+                      </th>
+                    )
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {reportRuns.map((r) => (
+                  <tr key={r.id}>
+                    <td style={td}>{formatIndiaDateTime(r.asOf)}</td>
+                    <td style={td}>{reportTypeDisplay(r.reportType)}</td>
+                    <td style={td}>{periodDisplay(r.period)}</td>
+                    <td style={td}>{r.periodLabel ?? "—"}</td>
+                    <td style={td}>{r.status}</td>
+                    <td style={td}>
+                      {r.status === "COMPLETED" ? (
+                        <button
+                          type="button"
+                          style={btnSecondary}
+                          onClick={() => setViewRunId(r.id)}
+                        >
+                          View
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {viewRunId ? (
+        <SavedReportViewer
+          runId={viewRunId}
+          onClose={() => setViewRunId(null)}
+        />
       ) : null}
     </div>
   );

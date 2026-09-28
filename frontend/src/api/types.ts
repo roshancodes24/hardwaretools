@@ -378,6 +378,7 @@ export type SaleDetail = {
 export type SaleSearchResult = {
   id: string;
   saleNumber: string;
+  status: string;
   createdAt: string;
   totalAmount: string;
   paidAmount: string;
@@ -667,4 +668,282 @@ export type RecentActivityItem = {
 
 export type RecentActivityResponse = {
   items: RecentActivityItem[];
+};
+
+export type ReportPeriod = "DAILY" | "MONTHLY" | "QUARTERLY" | "YEARLY";
+
+export type ScheduledReportType =
+  | "SALES"
+  | "INVENTORY"
+  | "SUPPLIER_OUTSTANDING"
+  | "CUSTOMER_OUTSTANDING";
+
+export type ReportRunStatus = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED";
+
+export type ScheduledReportConfig = {
+  notifyEmail: string;
+  salesEnabled: boolean;
+  salesPeriod: ReportPeriod | null;
+  inventoryEnabled: boolean;
+  inventoryPeriod: ReportPeriod | null;
+  supplierOutstandingEnabled: boolean;
+  supplierOutstandingPeriod: ReportPeriod | null;
+  customerOutstandingEnabled: boolean;
+  customerOutstandingPeriod: ReportPeriod | null;
+  updatedAt: string;
+};
+
+export type ReportRunSummary = {
+  id: string;
+  reportType: ScheduledReportType;
+  period: ReportPeriod;
+  periodStart: string;
+  periodEnd: string;
+  asOf: string;
+  status: ReportRunStatus;
+  errorMessage: string | null;
+  emailSentAt: string | null;
+  createdAt: string;
+  periodLabel: string | null;
+};
+
+export type InventorySnapshotReport = {
+  summary: {
+    productCount: number;
+    totalUnits: string;
+    totalStockValue: string;
+    outOfStockCount: number;
+    belowReorderCount: number;
+  };
+  products: Array<{
+    sku: string;
+    name: string;
+    category: string;
+    brand: string;
+    baseUnitCode: string;
+    currentStock: string;
+    reorderLevel: string | null;
+    costPrice: string | null;
+    avgCostPrice: string | null;
+    stockValue: string;
+    outOfStock: boolean;
+    belowReorder: boolean;
+  }>;
+};
+
+export type SupplierOutstandingReport = {
+  summary: {
+    supplierCount: number;
+    invoiceCount: number;
+    totalBalance: string;
+  };
+  suppliers: Array<{
+    supplierId: string;
+    supplierName: string;
+    supplierPhone: string | null;
+    invoiceCount: number;
+    totalAmount: string;
+    paidAmount: string;
+    balanceAmount: string;
+    invoices: Array<{
+      purchaseNumber: string;
+      invoiceNumber: string | null;
+      invoiceDate: string | null;
+      createdAt: string;
+      totalAmount: string;
+      paidAmount: string;
+      balanceAmount: string;
+    }>;
+  }>;
+};
+
+export type CustomerOutstandingReport = {
+  summary: {
+    customerCount: number;
+    saleCount: number;
+    totalBalance: string;
+  };
+  customers: Array<{
+    customerId: string | null;
+    customerLabel: string;
+    saleCount: number;
+    totalAmount: string;
+    paidAmount: string;
+    balanceAmount: string;
+    sales: Array<{
+      saleNumber: string;
+      createdAt: string;
+      totalAmount: string;
+      paidAmount: string;
+      balanceAmount: string;
+    }>;
+  }>;
+};
+
+export type SavedReportPayloadMeta = {
+  reportType: ScheduledReportType;
+  reportTypeLabel: string;
+  periodLabel: string;
+  asOf: string;
+  periodStart: string;
+  periodEnd: string;
+};
+
+export type SavedSalesReportPayload = {
+  meta: SavedReportPayloadMeta;
+  sales: SalesSummaryReport;
+  grossMargin: GrossMarginReport;
+};
+
+export type SavedInventoryReportPayload = {
+  meta: SavedReportPayloadMeta;
+} & InventorySnapshotReport;
+
+export type SavedSupplierOutstandingPayload = {
+  meta: SavedReportPayloadMeta;
+} & SupplierOutstandingReport;
+
+export type SavedCustomerOutstandingPayload = {
+  meta: SavedReportPayloadMeta;
+} & CustomerOutstandingReport;
+
+export type SavedReportRunDetail = {
+  id: string;
+  reportType: ScheduledReportType;
+  period: ReportPeriod;
+  periodStart: string;
+  periodEnd: string;
+  asOf: string;
+  status: ReportRunStatus;
+  errorMessage: string | null;
+  emailSentAt: string | null;
+  createdAt: string;
+  payload: unknown;
+};
+
+export type ReportRunsListResponse = {
+  runs: ReportRunSummary[];
+};
+
+export type QuotationStatus = "DRAFT" | "ISSUED" | "EXPIRED" | "CANCELLED";
+
+export type QuotationUnitOption = {
+  id: string;
+  code: string;
+  displayName: string;
+  isBaseUnit: boolean;
+  conversionToBase: string;
+  allowsFractionalSale: boolean;
+};
+
+export type QuotationLineDetail = {
+  id: string;
+  productId: string;
+  productUnitId: string | null;
+  quantity: string;
+  quantityInBase: string;
+  unitPrice: string;
+  lineDiscount: string;
+  lineTax: string;
+  lineTotal: string;
+  productName: string;
+  sku: string;
+  description: string | null;
+  hsnCode: string | null;
+  unitCode: string;
+  unitDisplayName: string;
+  cgstPercent: string;
+  sgstPercent: string;
+  igstPercent: string;
+  currentSellingPrice: string | null;
+  currentStock: string;
+  units: QuotationUnitOption[];
+};
+
+export type QuotationDetail = {
+  id: string;
+  quotationNumber: string;
+  status: QuotationStatus;
+  recordStatus: "DRAFT" | "ISSUED" | "CANCELLED";
+  quotationDate: string;
+  validUntil: string;
+  quotationDateLabel: string;
+  validUntilLabel: string;
+  customerId: string | null;
+  customerName: string;
+  customerContactPerson: string | null;
+  customerPhone: string | null;
+  customerEmail: string | null;
+  customerAddress: string | null;
+  customerPartyGstNo: string | null;
+  customerPartyState: string | null;
+  includeGst: boolean;
+  discountPercent: string;
+  subtotal: string;
+  discountAmount: string;
+  taxableAmount: string;
+  cgstAmount: string;
+  sgstAmount: string;
+  igstAmount: string;
+  taxAmount: string;
+  transportAmount: string;
+  totalAmount: string;
+  note: string | null;
+  createdById: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+  lines: QuotationLineDetail[];
+};
+
+export type QuotationListItem = {
+  id: string;
+  quotationNumber: string;
+  quotationDate: string;
+  validUntil: string;
+  customerId: string | null;
+  customerName: string;
+  totalAmount: string;
+  includeGst: boolean;
+  status: QuotationStatus;
+  createdByName: string;
+};
+
+export type QuotationListResponse = {
+  items: QuotationListItem[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type QuotationWriteBody = {
+  customerId?: string;
+  customerName?: string;
+  customerContactPerson?: string | null;
+  customerPhone?: string | null;
+  customerEmail?: string | null;
+  customerAddress?: string | null;
+  customerPartyGstNo?: string | null;
+  customerPartyState?: string | null;
+  saveAsCustomer?: boolean;
+  includeGst?: boolean;
+  discountPercent?: number;
+  transportAmount?: number;
+  note?: string;
+  lines: Array<{
+    productId: string;
+    productUnitId?: string;
+    quantity: number;
+    lineDiscount?: number;
+  }>;
+};
+
+export type QuotationListParams = {
+  q?: string;
+  customerId?: string;
+  status?: QuotationStatus | "";
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
 };

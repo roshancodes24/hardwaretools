@@ -4,8 +4,11 @@ import { PurchaseStatus, SalePaymentMethod, SaleStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { hasAdminAccess } from "../middleware/actingUser";
 import { validateBody } from "../middleware/validateBody";
-import { assertBodyUserMatchesActing } from "../middleware/requireRole";
-import { createSale, recordSalePayment } from "../services/inventory";
+import {
+  assertBodyUserMatchesActing,
+  requireAdmin,
+} from "../middleware/requireRole";
+import { cancelSale, createSale, recordSalePayment } from "../services/inventory";
 import type {
   CreateSaleValidated,
   RecordSalePaymentValidated,
@@ -366,6 +369,68 @@ router.get("/outstanding", async (_req, res) => {
   }
 });
 
+const recentInvoiceSelect = {
+  id: true,
+  saleNumber: true,
+  status: true,
+  createdAt: true,
+  totalAmount: true,
+  paidAmount: true,
+  balanceAmount: true,
+  customerName: true,
+  customerNameSnapshot: true,
+  customerPhone: true,
+} satisfies Prisma.SaleSelect;
+
+function serializeInvoiceListRow(s: {
+  id: string;
+  saleNumber: string;
+  status: SaleStatus;
+  createdAt: Date;
+  totalAmount: Prisma.Decimal;
+  paidAmount: Prisma.Decimal;
+  balanceAmount: Prisma.Decimal;
+  customerName: string | null;
+  customerNameSnapshot: string | null;
+  customerPhone: string | null;
+}) {
+  const label =
+    (s.customerNameSnapshot ?? s.customerName ?? s.customerPhone ?? "").trim() ||
+    "—";
+  return {
+    id: s.id,
+    saleNumber: s.saleNumber,
+    status: s.status,
+    createdAt: s.createdAt.toISOString(),
+    totalAmount: decStr(s.totalAmount),
+    paidAmount: decStr(s.paidAmount),
+    balanceAmount: decStr(s.balanceAmount),
+    customerLabel: label,
+  };
+}
+
+/** Latest completed and cancelled invoices. Default 10, at least 10 when a limit is sent. */
+router.get("/recent", async (req, res) => {
+  let limit = Number.parseInt(String(req.query.limit ?? "10"), 10);
+  if (!Number.isFinite(limit) || limit < 10) limit = 10;
+  limit = Math.min(50, limit);
+
+  try {
+    const rows = await prisma.sale.findMany({
+      where: {
+        status: { in: [SaleStatus.COMPLETED, SaleStatus.CANCELLED] },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: recentInvoiceSelect,
+    });
+    res.status(200).json(rows.map(serializeInvoiceListRow));
+  } catch (error) {
+    console.error("GET /sales/recent failed:", error);
+    res.status(500).json({ error: "Failed to list recent invoices" });
+  }
+});
+
 router.get("/search", async (req, res) => {
   const q = String(req.query.q ?? "").trim();
   if (q.length < 2) {
@@ -398,7 +463,7 @@ router.get("/search", async (req, res) => {
   try {
     const rows = await prisma.sale.findMany({
       where: {
-        status: SaleStatus.COMPLETED,
+        status: { in: [SaleStatus.COMPLETED, SaleStatus.CANCELLED] },
         AND: [
           {
             OR: [
@@ -413,35 +478,10 @@ router.get("/search", async (req, res) => {
       },
       orderBy: { createdAt: "desc" },
       take: limit,
-      select: {
-        id: true,
-        saleNumber: true,
-        createdAt: true,
-        totalAmount: true,
-        paidAmount: true,
-        balanceAmount: true,
-        customerName: true,
-        customerNameSnapshot: true,
-        customerPhone: true,
-      },
+      select: recentInvoiceSelect,
     });
 
-    res.status(200).json(
-      rows.map((s) => {
-        const label =
-          (s.customerNameSnapshot ?? s.customerName ?? s.customerPhone ?? "")
-            .trim() || "—";
-        return {
-          id: s.id,
-          saleNumber: s.saleNumber,
-          createdAt: s.createdAt.toISOString(),
-          totalAmount: decStr(s.totalAmount),
-          paidAmount: decStr(s.paidAmount),
-          balanceAmount: decStr(s.balanceAmount),
-          customerLabel: label,
-        };
-      })
-    );
+    res.status(200).json(rows.map(serializeInvoiceListRow));
   } catch (error) {
     console.error("GET /sales/search failed:", error);
     res.status(500).json({ error: "Failed to search sales" });
@@ -531,5 +571,35 @@ router.post(
     }
   }
 );
+
+router.post("/:id/cancel", requireAdmin, async (req, res) => {
+  const saleId = paramStr(req.params.id);
+  if (!saleId) {
+    res.status(404).json({ error: "Sale not found" });
+    return;
+  }
+  const acting = req.actingUser;
+  if (!acting) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+  try {
+    const sale = await cancelSale({
+      saleId,
+      cancelledById: acting.id,
+    });
+    if (!sale) {
+      res.status(500).json({ error: "Sale not found after cancel" });
+      return;
+    }
+    res.status(200).json(serializeSaleDetail(sale));
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to cancel sale";
+    const status = message === "Sale not found." ? 404 : 400;
+    console.error("POST /sales/:id/cancel failed:", error);
+    res.status(status).json({ error: message });
+  }
+});
 
 export default router;

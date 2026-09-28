@@ -1,5 +1,7 @@
 # Installing this app on another computer
 
+**Start from CMD or PowerShell (dev or production):** see **`docs/START_APPLICATION.md`**.
+
 **Before go-live:** read **`packaging/GO-LIVE-NOTES.md`** for user-facing changes, admin workflows, deployment checklist, and troubleshooting.
 
 This project is a **Node.js server** (Express + Prisma) plus a **React** front end, and it uses **PostgreSQL**. There is **no supported single `.exe`** that bundles the database, Node runtime, and native Prisma engines in one click—that would be a large custom desktop product (for example Electron + an embedded database) and is not what this repository ships.

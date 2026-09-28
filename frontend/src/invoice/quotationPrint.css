@@ -1,0 +1,30 @@
+.quotation-doc .tax-invoice-table th,
+.quotation-doc .tax-invoice-table td {
+  text-align: left;
+  font-size: 11px;
+}
+
+.quotation-doc .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.quotation-doc .quo-status {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.quotation-doc .quo-no-gst {
+  margin: 6px 0 2px;
+  font-size: 12px;
+}
+
+@media print {
+  html.print-tax-invoice .quotation-doc .tax-invoice-table th,
+  html.print-tax-invoice .quotation-doc .tax-invoice-table td {
+    font-size: 10px;
+  }
+}

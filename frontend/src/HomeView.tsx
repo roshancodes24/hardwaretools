@@ -333,6 +333,17 @@ export function HomeView({ onTabChange, isAdmin, products }: HomeViewProps) {
           ...(isAdmin
             ? [
                 {
+                  label: "New Quotation",
+                  tab: "quotations" as Tab,
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.8" />
+                      <path d="M9 12h6M9 15.5h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    </svg>
+                  ),
+                  tone: "gray" as const,
+                },
+                {
                   label: "New Purchase",
                   tab: "purchase" as Tab,
                   icon: (

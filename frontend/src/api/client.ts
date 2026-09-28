@@ -37,6 +37,13 @@ import type {
   SalesRevenueSeriesResponse,
   RecentActivityResponse,
   TaxInvoiceSalesReport,
+  ScheduledReportConfig,
+  ReportRunsListResponse,
+  SavedReportRunDetail,
+  QuotationDetail,
+  QuotationListParams,
+  QuotationListResponse,
+  QuotationWriteBody,
 } from "./types";
 
 function normalizeApiBase(raw: string | undefined): string {
@@ -106,6 +113,28 @@ async function parseResponse<T>(r: Response): Promise<T> {
   }
 
   return body as T;
+}
+
+async function requestBlob(path: string): Promise<Blob> {
+  const url = `${API_BASE}${path}`;
+  const token = getAuthToken();
+  const acting = getActingUserIdForRequest();
+  const headers: Record<string, string> = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(acting ? { "X-Acting-User-Id": acting } : {}),
+  };
+  const r = await fetch(url, { headers });
+  if (!r.ok) {
+    const text = await r.text();
+    let body: unknown;
+    try {
+      body = text ? JSON.parse(text) : undefined;
+    } catch {
+      body = { error: text || "Invalid response" };
+    }
+    throw parseErrorResponse(r.status, body, text || r.statusText);
+  }
+  return r.blob();
 }
 
 /** Unauthenticated POST (login only). */
@@ -286,6 +315,11 @@ export const api = {
     );
   },
 
+  listRecentSales(limit = 10): Promise<SaleSearchResult[]> {
+    const take = Math.max(10, limit);
+    return request<SaleSearchResult[]>(`/api/sales/recent?limit=${take}`);
+  },
+
   searchSales(params: {
     q: string;
     limit?: number;
@@ -314,6 +348,13 @@ export const api = {
         method: "POST",
         body: JSON.stringify(payload),
       }
+    );
+  },
+
+  cancelSale(id: string): Promise<SaleDetail> {
+    return request<SaleDetail>(
+      `/api/sales/${encodeURIComponent(id)}/cancel`,
+      { method: "POST" }
     );
   },
 
@@ -465,5 +506,80 @@ export const api = {
     return request<RecentActivityResponse>(
       `/api/sales/recent-activity${qs ? `?${qs}` : ""}`
     );
+  },
+
+  getScheduledReportConfig(): Promise<ScheduledReportConfig> {
+    return request<ScheduledReportConfig>("/api/scheduled-reports/config");
+  },
+
+  updateScheduledReportConfig(
+    body: ScheduledReportConfig
+  ): Promise<ScheduledReportConfig> {
+    return request<ScheduledReportConfig>("/api/scheduled-reports/config", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+  },
+
+  listScheduledReportRuns(limit?: number): Promise<ReportRunsListResponse> {
+    const q = new URLSearchParams();
+    if (limit != null) q.set("limit", String(limit));
+    const qs = q.toString();
+    return request<ReportRunsListResponse>(
+      `/api/scheduled-reports/runs${qs ? `?${qs}` : ""}`
+    );
+  },
+
+  getScheduledReportRun(id: string): Promise<SavedReportRunDetail> {
+    return request<SavedReportRunDetail>(`/api/scheduled-reports/runs/${id}`);
+  },
+
+  listQuotations(params: QuotationListParams = {}): Promise<QuotationListResponse> {
+    const q = new URLSearchParams();
+    if (params.q?.trim()) q.set("q", params.q.trim());
+    if (params.customerId) q.set("customerId", params.customerId);
+    if (params.status) q.set("status", params.status);
+    if (params.from) q.set("from", params.from);
+    if (params.to) q.set("to", params.to);
+    if (params.page != null) q.set("page", String(params.page));
+    if (params.limit != null) q.set("limit", String(params.limit));
+    const qs = q.toString();
+    return request<QuotationListResponse>(`/api/quotations${qs ? `?${qs}` : ""}`);
+  },
+
+  getQuotation(id: string): Promise<QuotationDetail> {
+    return request<QuotationDetail>(`/api/quotations/${encodeURIComponent(id)}`);
+  },
+
+  createQuotation(body: QuotationWriteBody): Promise<QuotationDetail> {
+    return request<QuotationDetail>("/api/quotations", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  updateQuotation(id: string, body: QuotationWriteBody): Promise<QuotationDetail> {
+    return request<QuotationDetail>(`/api/quotations/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  },
+
+  issueQuotation(id: string): Promise<QuotationDetail> {
+    return request<QuotationDetail>(
+      `/api/quotations/${encodeURIComponent(id)}/issue`,
+      { method: "POST" }
+    );
+  },
+
+  cancelQuotation(id: string): Promise<QuotationDetail> {
+    return request<QuotationDetail>(
+      `/api/quotations/${encodeURIComponent(id)}/cancel`,
+      { method: "POST" }
+    );
+  },
+
+  downloadQuotationPdf(id: string): Promise<Blob> {
+    return requestBlob(`/api/quotations/${encodeURIComponent(id)}/pdf`);
   },
 };

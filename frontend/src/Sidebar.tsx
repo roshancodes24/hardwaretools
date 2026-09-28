@@ -7,6 +7,7 @@ export type Tab =
   | "pos"
   | "outstanding"
   | "invoices"
+  | "quotations"
   | "reporting"
   | "products"
   | "promotion"
@@ -59,6 +60,13 @@ const NAV_ICONS: Record<Tab, ReactNode> = {
         strokeLinejoin="round"
       />
       <path d="M10 9h7M10 12h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  ),
+  quotations: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M14 3.5V8h4.5" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M9 12h6M9 15.5h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
     </svg>
   ),
   reporting: (
@@ -359,6 +367,15 @@ export function Sidebar({
           onClick={() => onTabChange("invoices")}
           iconOnly={iconOnly}
         />
+        {isAdmin ? (
+          <NavButton
+            label="Quotations"
+            icon={NAV_ICONS.quotations}
+            active={activeTab === "quotations"}
+            onClick={() => onTabChange("quotations")}
+            iconOnly={iconOnly}
+          />
+        ) : null}
         {isAdmin && FEATURE_FLAGS.reporting ? (
           <NavButton
             label="Reporting"

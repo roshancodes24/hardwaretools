@@ -89,6 +89,12 @@ export function TaxInvoiceDocument({ sale }: Props) {
         </p>
         <hr className="inv-rule" />
         <p className="inv-title">Tax Invoice</p>
+        {sale.status === "CANCELLED" ? (
+          <p className="inv-cancelled" role="status">
+            Cancelled
+            <span className="inv-cancelled-note">This invoice has been cancelled.</span>
+          </p>
+        ) : null}
       </header>
 
       <section className="inv-meta-card">

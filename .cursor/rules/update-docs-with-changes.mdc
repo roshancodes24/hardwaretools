@@ -1,0 +1,43 @@
+---
+description: Keep FRD, FSD, and related docs in sync with product changes
+alwaysApply: true
+---
+
+# Update documentation with every change
+
+When you implement a feature, enhancement, bug fix that changes behavior, API, roles, data model, or user-visible flow, **update the matching docs in the same work** — do not leave documentation for a follow-up unless the user explicitly says so.
+
+## Which docs to touch
+
+| Change type | Update |
+|-------------|--------|
+| New/changed capability, acceptance, roles, NFR | [`docs/FRD.md`](docs/FRD.md) — add/revise `FR-*` / `NFR-*` + AC |
+| Flows, business rules, screens, APIs, entities, integrations | [`docs/FSD.md`](docs/FSD.md) — module section + FR→FSD traceability |
+| Schema fields / enums / FK map | [`docs/DATA_DICTIONARY.md`](docs/DATA_DICTIONARY.md) |
+| Relationships / ER visuals | [`docs/ER_DIAGRAMS.md`](docs/ER_DIAGRAMS.md) |
+| Staff-facing how-to / nav / day-to-day flow | [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) |
+| Go-live, env vars, deploy, scheduler/SMTP ops | [`packaging/GO-LIVE-NOTES.md`](packaging/GO-LIVE-NOTES.md) and/or [`.env.example`](.env.example) |
+| Doc index / export commands | [`docs/README.md`](docs/README.md) only if needed |
+
+Skip doc updates for pure refactors, typo-only edits, or internal cleanups with **no** behavior, API, schema, or UX change.
+
+## How to update
+
+1. Prefer editing **Markdown sources** (`FRD.md`, `FSD.md`, `DATA_DICTIONARY.md`, `ER_DIAGRAMS.md`, `USER_GUIDE.md`) — they are the source of truth.
+2. Keep FRD = WHAT/WHO/AC; FSD = HOW; DATA_DICTIONARY = fields; ER_DIAGRAMS = visuals; USER_GUIDE = operate the UI. Do not duplicate full API tables into the FRD.
+3. Mark feature-flagged / off-by-default items as optional — do not invent unbuilt roadmap features.
+4. After substantive doc edits (especially Mermaid), regenerate Word/PDF when practical:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-doc.ps1 -DocName FRD -Title "Hardware Inventory - Functional Requirements Document"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-doc.ps1 -DocName FSD -Title "Hardware Inventory - Functional Specification Document"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-doc.ps1 -DocName DATA_DICTIONARY -Title "Hardware Inventory - Data Dictionary"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-doc.ps1 -DocName ER_DIAGRAMS -Title "Hardware Inventory - ER Diagrams"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-user-guide.ps1
+```
+
+If Pandoc/Chrome is unavailable, still update the `.md` files and note that exports were skipped.
+
+## Done check
+
+Before finishing a behavior-changing task: docs reflect the change, requirement IDs/traceability still make sense, and the user-facing guide is not stale for that module.
