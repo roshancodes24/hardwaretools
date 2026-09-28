@@ -1,23 +1,26 @@
-/** Shop identity shown on tax invoices (print + screen). */
-export const INVOICE_BUSINESS_NAME = "RAJ HARDWARE";
+/**
+ * Shop identity shown on tax invoices (print + screen).
+ * Santosh branch values — keep these when merging main.
+ */
+export const INVOICE_BUSINESS_NAME = "Santosh Electricals Works";
 /** Shown below the Amounts table (right column). */
-export const INVOICE_AMOUNT_FOR_LABEL = "For RAJ HARDWARE";
+export const INVOICE_AMOUNT_FOR_LABEL = "For SANTOSH ELECTRICALS WORKS";
 /** Registered shop address (header, above phone / email). */
 export const INVOICE_BUSINESS_ADDRESS =
-  "Shop no. 1, Raj Shopping Complex, Kashele Village, Near HP Petrol Pump, Karjat, Raigad, Maharashtra, 410201";
-export const INVOICE_PHONE = "+91 9765480888, +91 9423378088";
+  "Shop - 6, Hira Panna Complex, Opp. to HDFC Bank Karjat - Raigad, 410 201";
+export const INVOICE_PHONE = "+91 9028186060";
 /** Contact email shown on invoices. */
-export const INVOICE_EMAIL_PLACEHOLDER = "rajhardware6060@gmail.com";
+export const INVOICE_EMAIL_PLACEHOLDER = "santosh.electricals322@gmail.com";
 
 /** Payment / bank details on tax invoices only. */
-export const INVOICE_BANK_NAME = "HDFC BANK";
+export const INVOICE_BANK_NAME = "UNION BANK OF INDIA";
 export const INVOICE_BANK_BRANCH = "KARJAT BRANCH";
-export const INVOICE_BANK_ACCOUNT_NO = "50200117858711";
-export const INVOICE_BANK_IFSC = "HDFC0002973";
+export const INVOICE_BANK_ACCOUNT_NO = "381401010533059";
+export const INVOICE_BANK_IFSC = "UBIN0561827";
 
 /** Seller registration on tax invoices (GSTIN / MSME). */
-export const INVOICE_SELLER_GSTIN = "27AFMPP4640N1ZT";
-export const INVOICE_SELLER_MSME_REG = "UDYAM-MH-27-0219309";
+export const INVOICE_SELLER_GSTIN = "27AIPPH3110B1ZT";
+export const INVOICE_SELLER_MSME_REG = "UDYAM Mh27 0114585";
 
 /** Place of supply line on tax invoice (after Invoice No). */
 export const INVOICE_PLACE_OF_SUPPLY_STATE = "Maharashtra";

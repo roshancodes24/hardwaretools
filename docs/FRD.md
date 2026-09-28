@@ -34,7 +34,7 @@ The Hardware Inventory System is a **retail point-of-sale (POS) and inventory co
 
 Currency and tax context are **India-oriented** (INR, GST/HSN fields, Indian financial-year quarters for scheduled reports, Asia/Kolkata scheduling).
 
-Brand display name is configurable at build time (e.g. shop name); default branding is “Raj Hardware.” Invoice letterhead is set separately.
+Brand display name is configurable at build time (e.g. shop name); default branding on this branch is “Santosh Electricals Works.” Invoice letterhead is set separately.
 
 ---
 

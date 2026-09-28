@@ -45,7 +45,7 @@ export async function sendReportReadyEmail(input: {
 
   const from =
     (process.env.SMTP_FROM ?? "").trim() ||
-    "Raj Hardware Reports <noreply@localhost>";
+    "Santosh Electricals Works Reports <noreply@localhost>";
   const link = `${appPublicUrl()}/?reportRun=${encodeURIComponent(input.runId)}`;
   const when = input.generatedAt.toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
