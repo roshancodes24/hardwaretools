@@ -12,6 +12,7 @@ import {
   nextPurchaseNumber,
 } from "../lib/documentNumbers";
 import { prisma } from "../lib/prisma";
+import { assertConversionAllowed } from "../lib/quotationConversion";
 
 type PurchaseLineInput = {
   productId: string;
@@ -38,6 +39,8 @@ type SaleLineInput = {
   unitPrice: string | number;
   lineDiscount?: string | number;
   lineTax?: string | number;
+  /** Quotation line this sale line was converted from (only with `quotationId`). */
+  quotationLineId?: string;
 };
 
 type SaleInitialPaymentInput = {
@@ -64,6 +67,8 @@ type CreateSaleInput = {
   paymentMethod?: "cash" | "online_banking";
   /** One row per method/amount collected at checkout (split payment). */
   initialPayments?: SaleInitialPaymentInput[];
+  /** Converts this issued quotation: the sale is validated against it and links back to it. */
+  quotationId?: string;
   lines: SaleLineInput[];
 };
 
@@ -504,9 +509,42 @@ export async function createSale(input: CreateSaleInput) {
       throw new Error("Sale must contain at least one line.");
     }
 
+    const documentKind =
+      input.documentKind === "tax_invoice" ? "tax_invoice" : "bill";
+
+    // Converting a quotation: lock it so two sales cannot convert it at once, then
+    // check the sale against what was quoted (price, quantity, GST / document type).
+    let conversion: { id: string; quotationNumber: string } | null = null;
+    if (input.quotationId) {
+      await tx.$queryRaw`
+        SELECT id FROM "Quotation" WHERE id = ${input.quotationId} FOR UPDATE
+      `;
+      const quotation = await tx.quotation.findUnique({
+        where: { id: input.quotationId },
+        include: { lines: true },
+      });
+      if (!quotation) {
+        throw new Error("Quotation not found.");
+      }
+      assertConversionAllowed(
+        quotation,
+        documentKind,
+        input.lines.map((line) => ({
+          quotationLineId: line.quotationLineId,
+          productId: line.productId,
+          productUnitId: line.productUnitId,
+          quantity: qty(dec(line.quantity)),
+          unitPrice: dec(line.unitPrice),
+          lineDiscount: money(dec(line.lineDiscount ?? 0)),
+          lineTax: money(dec(line.lineTax ?? 0)),
+        }))
+      );
+      conversion = { id: quotation.id, quotationNumber: quotation.quotationNumber };
+    }
+
     const saleNumber = await allocateSaleNumber(
       tx,
-      input.documentKind === "tax_invoice" ? "tax_invoice" : "bill",
+      documentKind,
       SALE_NUMBER_BILL_START,
       SALE_NUMBER_TAX_START
     );
@@ -582,14 +620,21 @@ export async function createSale(input: CreateSaleInput) {
       [...deductByProduct.keys()]
     );
 
+    const shortItems: string[] = [];
     for (const [productId, needed] of deductByProduct) {
       const product = lockedProducts.get(productId);
       if (!product) {
         throw new Error(`Product not found: ${productId}`);
       }
-      if (dec(product.currentStock).lessThan(needed)) {
-        throw new Error(`Insufficient stock for ${product.name}`);
+      const have = dec(product.currentStock);
+      if (have.lessThan(needed)) {
+        shortItems.push(
+          `${product.name} (need ${needed.toString()}, have ${have.toString()})`
+        );
       }
+    }
+    if (shortItems.length > 0) {
+      throw new Error(`Insufficient stock for ${shortItems.join(", ")}`);
     }
 
     const transportRaw = dec(input.transportAmount ?? 0);
@@ -696,7 +741,11 @@ export async function createSale(input: CreateSaleInput) {
         customerPhone,
         customerPartyGstNo: resolvedPartyGstNo,
         customerPartyState: resolvedPartyState,
-        note: input.note,
+        note: conversion
+          ? [input.note, `Converted from ${conversion.quotationNumber}`]
+              .filter(Boolean)
+              .join(" | ")
+          : input.note,
         subtotal: money(subtotal),
         discountAmount,
         taxAmount,
@@ -707,6 +756,13 @@ export async function createSale(input: CreateSaleInput) {
         createdById: input.createdById,
       },
     });
+
+    if (conversion) {
+      await tx.quotation.update({
+        where: { id: conversion.id },
+        data: { convertedSaleId: sale.id },
+      });
+    }
 
     for (const line of normalizedLines) {
       await tx.saleLine.create({
@@ -793,7 +849,7 @@ export async function createSale(input: CreateSaleInput) {
     return tx.sale.findUnique({
       where: { id: sale.id },
       include: {
-        customer: { select: { partyGstNo: true, partyState: true } },
+        customer: { select: { partyGstNo: true, partyState: true, address: true } },
         lines: {
           include: {
             product: true,
@@ -807,7 +863,7 @@ export async function createSale(input: CreateSaleInput) {
 }
 
 const saleDetailInclude = {
-  customer: { select: { partyGstNo: true, partyState: true } },
+  customer: { select: { partyGstNo: true, partyState: true, address: true } },
   lines: {
     include: {
       product: true,
@@ -973,7 +1029,7 @@ export async function recordSalePayment(input: RecordSalePaymentInput) {
     return tx.sale.findUnique({
       where: { id: sale.id },
       include: {
-        customer: { select: { partyGstNo: true, partyState: true } },
+        customer: { select: { partyGstNo: true, partyState: true, address: true } },
         lines: {
           include: {
             product: true,

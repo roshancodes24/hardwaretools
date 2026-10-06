@@ -75,6 +75,7 @@ router.get("/", async (req, res) => {
     statusRaw === "DRAFT" ||
     statusRaw === "ISSUED" ||
     statusRaw === "EXPIRED" ||
+    statusRaw === "CONVERTED" ||
     statusRaw === "CANCELLED"
       ? statusRaw
       : undefined;

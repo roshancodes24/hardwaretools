@@ -32,6 +32,7 @@ export class QuotationError extends Error {
 
 const detailInclude = {
   createdBy: { select: { id: true, fullName: true } },
+  convertedSale: { select: { id: true, saleNumber: true } },
   lines: {
     orderBy: [{ createdAt: "asc" as const }, { id: "asc" as const }],
     include: {
@@ -93,13 +94,16 @@ export type QuotationLineDto = {
 export type QuotationDetailDto = {
   id: string;
   quotationNumber: string;
-  /** DRAFT, ISSUED, EXPIRED (derived), or CANCELLED. */
-  status: "DRAFT" | "ISSUED" | "EXPIRED" | "CANCELLED";
+  /** DRAFT, ISSUED, EXPIRED (derived), CONVERTED (derived: a sale was created from it), or CANCELLED. */
+  status: "DRAFT" | "ISSUED" | "EXPIRED" | "CONVERTED" | "CANCELLED";
   recordStatus: QuotationStatus;
   quotationDate: string;
   validUntil: string;
   quotationDateLabel: string;
   validUntilLabel: string;
+  /** Sale created from this quotation, if any. A converted quotation cannot be converted again. */
+  convertedSaleId: string | null;
+  convertedSaleNumber: string | null;
   customerId: string | null;
   customerName: string;
   customerContactPerson: string | null;
@@ -137,6 +141,7 @@ export type QuotationListItemDto = {
   totalAmount: string;
   includeGst: boolean;
   status: QuotationDetailDto["status"];
+  convertedSaleNumber: string | null;
   createdByName: string;
 };
 
@@ -146,8 +151,12 @@ function moneyStr(value: Prisma.Decimal): string {
 
 function effectiveStatus(
   status: QuotationStatus,
-  validUntil: Date
+  validUntil: Date,
+  convertedSaleId: string | null
 ): QuotationDetailDto["status"] {
+  if (status === QuotationStatus.ISSUED && convertedSaleId) {
+    return "CONVERTED";
+  }
   if (status === QuotationStatus.ISSUED && isQuotationExpired(validUntil)) {
     return "EXPIRED";
   }
@@ -210,12 +219,14 @@ export function serializeQuotation(row: QuotationRow): QuotationDetailDto {
   return {
     id: row.id,
     quotationNumber: row.quotationNumber,
-    status: effectiveStatus(row.status, row.validUntil),
+    status: effectiveStatus(row.status, row.validUntil, row.convertedSaleId),
     recordStatus: row.status,
     quotationDate: isoDate(row.quotationDate),
     validUntil: isoDate(row.validUntil),
     quotationDateLabel: formatQuotationDate(row.quotationDate),
     validUntilLabel: formatQuotationDate(row.validUntil),
+    convertedSaleId: row.convertedSaleId,
+    convertedSaleNumber: row.convertedSale?.saleNumber ?? null,
     customerId: row.customerId,
     customerName: row.customerName,
     customerContactPerson: row.customerContactPerson,
@@ -662,6 +673,11 @@ export async function cancelQuotation(id: string): Promise<QuotationDetailDto> {
     if (existing.status === QuotationStatus.CANCELLED) {
       throw new QuotationError("Quotation is already cancelled.");
     }
+    if (existing.convertedSaleId) {
+      throw new QuotationError(
+        "A converted quotation cannot be cancelled. Cancel the sale from Invoices instead."
+      );
+    }
     await tx.quotation.update({
       where: { id },
       data: { status: QuotationStatus.CANCELLED },
@@ -677,7 +693,7 @@ export async function getQuotation(id: string): Promise<QuotationDetailDto> {
 export type QuotationListQuery = {
   q?: string;
   customerId?: string;
-  status?: "DRAFT" | "ISSUED" | "EXPIRED" | "CANCELLED";
+  status?: "DRAFT" | "ISSUED" | "EXPIRED" | "CONVERTED" | "CANCELLED";
   from?: Date;
   to?: Date;
   page: number;
@@ -717,9 +733,19 @@ export async function listQuotations(query: QuotationListQuery): Promise<{
   if (query.status === "DRAFT" || query.status === "CANCELLED") {
     and.push({ status: query.status });
   } else if (query.status === "ISSUED") {
-    and.push({ status: QuotationStatus.ISSUED, validUntil: { gte: today } });
+    and.push({
+      status: QuotationStatus.ISSUED,
+      convertedSaleId: null,
+      validUntil: { gte: today },
+    });
   } else if (query.status === "EXPIRED") {
-    and.push({ status: QuotationStatus.ISSUED, validUntil: { lt: today } });
+    and.push({
+      status: QuotationStatus.ISSUED,
+      convertedSaleId: null,
+      validUntil: { lt: today },
+    });
+  } else if (query.status === "CONVERTED") {
+    and.push({ status: QuotationStatus.ISSUED, convertedSaleId: { not: null } });
   }
   if (and.length) where.AND = and;
 
@@ -730,7 +756,10 @@ export async function listQuotations(query: QuotationListQuery): Promise<{
       orderBy: [{ quotationDate: "desc" }, { createdAt: "desc" }],
       skip: (query.page - 1) * query.limit,
       take: query.limit,
-      include: { createdBy: { select: { fullName: true } } },
+      include: {
+        createdBy: { select: { fullName: true } },
+        convertedSale: { select: { saleNumber: true } },
+      },
     }),
   ]);
 
@@ -747,7 +776,8 @@ export async function listQuotations(query: QuotationListQuery): Promise<{
       customerName: row.customerName,
       totalAmount: moneyStr(row.totalAmount),
       includeGst: row.includeGst,
-      status: effectiveStatus(row.status, row.validUntil),
+      status: effectiveStatus(row.status, row.validUntil, row.convertedSaleId),
+      convertedSaleNumber: row.convertedSale?.saleNumber ?? null,
       createdByName: row.createdBy.fullName,
     })),
   };

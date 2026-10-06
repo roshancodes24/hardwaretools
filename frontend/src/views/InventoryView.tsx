@@ -61,6 +61,7 @@ export function InventoryView({ products }: { products: UiProduct[] }) {
     { key: "sku", label: "SKU" },
     { key: "name", label: "Product" },
     { key: "category", label: "Category" },
+    { key: "color", label: "Color" },
     { key: "price", label: "Sale Price" },
     { key: "stock", label: "Stock" },
     { key: "unit", label: "Unit" },
@@ -242,6 +243,9 @@ export function InventoryView({ products }: { products: UiProduct[] }) {
                   </td>
                   <td style={{ padding: "10px 14px", color: "var(--muted)" }}>
                     {p.category}
+                  </td>
+                  <td style={{ padding: "10px 14px", color: "var(--muted)" }}>
+                    {p.color ?? "—"}
                   </td>
                   <td
                     style={{

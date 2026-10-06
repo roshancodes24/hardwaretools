@@ -8,6 +8,7 @@ export type InventorySortKey =
   | "sku"
   | "name"
   | "category"
+  | "color"
   | "price"
   | "stock"
   | "unit"
@@ -40,6 +41,14 @@ export function compareInventoryRows(
         sensitivity: "base",
       });
       break;
+    case "color": {
+      const ac = a.color ?? "";
+      const bc = b.color ?? "";
+      // Products without a colour always sort last, in either direction.
+      if (!ac !== !bc) return ac ? -1 : 1;
+      cmp = ac.localeCompare(bc, undefined, { sensitivity: "base" });
+      break;
+    }
     case "price":
       cmp = a.price - b.price;
       break;

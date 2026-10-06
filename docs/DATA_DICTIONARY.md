@@ -476,7 +476,7 @@ One row per calendar year. The create transaction locks this row so `QUO-YYYY-##
 
 ### 4.14b Quotation
 
-Does not post stock. `convertedSaleId` is reserved for a future sale created through `/api/sales`.
+Does not post stock itself. `convertedSaleId` is set when the quotation is converted: the sale is created through `/api/sales` with `quotationId`, and the sale and this link are saved in one transaction. A quotation with `convertedSaleId` is shown as `CONVERTED` and cannot be converted or cancelled again.
 
 | Field | Type | Null | Default | Keys | Description |
 |-------|------|------|---------|------|-------------|
@@ -506,7 +506,7 @@ Does not post stock. `convertedSaleId` is reserved for a future sale created thr
 | totalAmount | Decimal(14,2) | N | 0 | | Grand total |
 | note | String | Y | | | Note |
 | createdById | String | N | | FK → User | Creator |
-| convertedSaleId | String | Y | | UK, FK → Sale | Future conversion hook |
+| convertedSaleId | String | Y | | UK, FK → Sale | Sale created by Convert to sale (null until converted; unique so a quotation converts once) |
 | createdAt | DateTime | N | now() | | Created |
 | updatedAt | DateTime | N | auto | | Updated |
 

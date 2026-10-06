@@ -114,6 +114,7 @@ function stockInSelectedUnit(line: EditorLine): number {
 function statusColor(status: QuotationStatus): string {
   if (status === "ISSUED") return "var(--success-text)";
   if (status === "EXPIRED") return "var(--warning-text, #b45309)";
+  if (status === "CONVERTED") return "var(--accent)";
   if (status === "CANCELLED") return "var(--danger-text)";
   return "var(--muted)";
 }
@@ -201,8 +202,11 @@ function lineFromSaved(line: QuotationDetail["lines"][number]): EditorLine {
 
 export function QuotationsPage({
   confirm,
+  onConvertToSale,
 }: {
   confirm: (opts: ConfirmOptions) => Promise<boolean>;
+  /** Hands an issued (or expired) quotation to the POS to be sold. */
+  onConvertToSale: (quotation: QuotationDetail) => void;
 }) {
   const [mode, setMode] = useState<Mode>("list");
   const [statusMsg, setStatusMsg] = useState<{
@@ -574,6 +578,42 @@ export function QuotationsPage({
     }
   };
 
+  /** Loads the latest quotation, warns if it expired, then opens it in the POS cart. */
+  const runConvert = async (id: string) => {
+    setBusy(true);
+    setStatusMsg(null);
+    try {
+      const row = await api.getQuotation(id);
+      if (row.status === "CONVERTED") {
+        setStatusMsg({
+          type: "error",
+          msg: `${row.quotationNumber} was already converted to ${row.convertedSaleNumber ?? "a sale"}.`,
+        });
+        if (mode === "list") await loadList(page);
+        return;
+      }
+      if (row.status !== "ISSUED" && row.status !== "EXPIRED") {
+        setStatusMsg({ type: "error", msg: "Only issued quotations can be converted to a sale." });
+        return;
+      }
+      if (row.status === "EXPIRED") {
+        const ok = await confirm({
+          title: "Quotation expired",
+          message: `${row.quotationNumber} expired on ${row.validUntilLabel}. You can still convert it, and the quoted prices will be used. Continue?`,
+          confirmLabel: "Convert anyway",
+          cancelLabel: "Go back",
+          variant: "warning",
+        });
+        if (!ok) return;
+      }
+      onConvertToSale(row);
+    } catch (error) {
+      setStatusMsg({ type: "error", msg: errorText(error, "Could not open quotation for conversion") });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const runCancel = async (id: string) => {
     const ok = await confirm({
       title: "Cancel quotation",
@@ -604,7 +644,8 @@ export function QuotationsPage({
         <div>
           <h1 style={{ margin: 0, fontSize: 22, color: "var(--text)" }}>Quotations</h1>
           <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 13 }}>
-            Price from the product selling price. Quotations do not change stock or create a sale.
+            Price from the product selling price. Issuing a quotation does not change stock; convert an
+            issued quotation to a sale when the customer buys.
           </p>
         </div>
         {mode === "list" ? (
@@ -662,6 +703,7 @@ export function QuotationsPage({
               <option value="DRAFT">Draft</option>
               <option value="ISSUED">Issued</option>
               <option value="EXPIRED">Expired</option>
+              <option value="CONVERTED">Converted</option>
               <option value="CANCELLED">Cancelled</option>
             </select>
             <input style={field} type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
@@ -705,6 +747,11 @@ export function QuotationsPage({
                       </td>
                       <td style={{ padding: "8px 6px", color: statusColor(row.status), fontWeight: 700 }}>
                         {row.status}
+                        {row.status === "CONVERTED" && row.convertedSaleNumber ? (
+                          <div style={{ color: "var(--muted)", fontSize: 11, fontWeight: 500 }}>
+                            {row.convertedSaleNumber}
+                          </div>
+                        ) : null}
                       </td>
                       <td style={{ padding: "8px 6px" }}>{row.createdByName}</td>
                       <td style={{ padding: "8px 6px" }}>
@@ -734,7 +781,17 @@ export function QuotationsPage({
                           <button type="button" style={btn} onClick={() => void openView(row.id, true)}>
                             Print
                           </button>
-                          {row.status !== "CANCELLED" ? (
+                          {row.status === "ISSUED" || row.status === "EXPIRED" ? (
+                            <button
+                              type="button"
+                              style={btnPrimary}
+                              disabled={busy}
+                              onClick={() => void runConvert(row.id)}
+                            >
+                              Convert to sale
+                            </button>
+                          ) : null}
+                          {row.status !== "CANCELLED" && row.status !== "CONVERTED" ? (
                             <button type="button" style={btn} onClick={() => void runCancel(row.id)}>
                               Cancel
                             </button>
@@ -1183,10 +1240,25 @@ export function QuotationsPage({
             <button type="button" style={btn} onClick={() => printElementInBlankFrame("tax-invoice-print-area")}>
               Print
             </button>
-            {quotation.status !== "CANCELLED" ? (
+            {quotation.status === "ISSUED" || quotation.status === "EXPIRED" ? (
+              <button
+                type="button"
+                style={btnPrimary}
+                disabled={busy}
+                onClick={() => void runConvert(quotation.id)}
+              >
+                Convert to sale
+              </button>
+            ) : null}
+            {quotation.status !== "CANCELLED" && quotation.status !== "CONVERTED" ? (
               <button type="button" style={btn} onClick={() => void runCancel(quotation.id)}>
                 Cancel quotation
               </button>
+            ) : null}
+            {quotation.status === "CONVERTED" ? (
+              <span style={{ alignSelf: "center", fontSize: 13, color: "var(--muted)" }}>
+                Converted to {quotation.convertedSaleNumber ?? "a sale"}. Find it under Invoices.
+              </span>
             ) : null}
           </div>
           <div id="tax-invoice-print-area" className="tax-invoice-print-shell">
