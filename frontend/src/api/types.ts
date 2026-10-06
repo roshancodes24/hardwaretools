@@ -195,6 +195,8 @@ export type SaleLineBody = {
   unitPrice: string | number;
   lineDiscount?: string | number;
   lineTax?: string | number;
+  /** Set only when converting a quotation: the quotation line this sale line comes from. */
+  quotationLineId?: string;
 };
 
 export type SaleInitialPaymentBody = {
@@ -221,6 +223,8 @@ export type CreateSaleBody = {
   paymentMethod?: "cash" | "online_banking";
   /** Split cash / online at checkout; sum must equal paidAmount. */
   initialPayments?: SaleInitialPaymentBody[];
+  /** Admin only: converts this issued quotation. Every line must then carry `quotationLineId`. */
+  quotationId?: string;
   lines: SaleLineBody[];
 };
 
@@ -360,6 +364,8 @@ export type SaleDetail = {
   /** From linked customer when present. */
   customerPartyGstNo: string | null;
   customerPartyState: string | null;
+  /** From linked customer when present (walk-in sales have none). */
+  customerAddress?: string | null;
   note: string | null;
   subtotal: string;
   discountAmount: string;
@@ -825,7 +831,12 @@ export type ReportRunsListResponse = {
   runs: ReportRunSummary[];
 };
 
-export type QuotationStatus = "DRAFT" | "ISSUED" | "EXPIRED" | "CANCELLED";
+export type QuotationStatus =
+  | "DRAFT"
+  | "ISSUED"
+  | "EXPIRED"
+  | "CONVERTED"
+  | "CANCELLED";
 
 export type QuotationUnitOption = {
   id: string;
@@ -869,6 +880,9 @@ export type QuotationDetail = {
   validUntil: string;
   quotationDateLabel: string;
   validUntilLabel: string;
+  /** Sale created from this quotation. A converted quotation cannot be converted again. */
+  convertedSaleId: string | null;
+  convertedSaleNumber: string | null;
   customerId: string | null;
   customerName: string;
   customerContactPerson: string | null;
@@ -906,6 +920,7 @@ export type QuotationListItem = {
   totalAmount: string;
   includeGst: boolean;
   status: QuotationStatus;
+  convertedSaleNumber: string | null;
   createdByName: string;
 };
 

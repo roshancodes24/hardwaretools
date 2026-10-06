@@ -26,7 +26,7 @@ function paramStr(v: string | string[] | undefined): string {
 }
 
 const saleDetailInclude = {
-  customer: { select: { partyGstNo: true, partyState: true } },
+  customer: { select: { partyGstNo: true, partyState: true, address: true } },
   lines: {
     include: {
       product: {
@@ -88,7 +88,11 @@ function serializeSaleDetail(sale: {
   balanceAmount: Prisma.Decimal;
   createdAt: Date;
   createdById: string;
-  customer: { partyGstNo: string | null; partyState: string | null } | null;
+  customer: {
+    partyGstNo: string | null;
+    partyState: string | null;
+    address: string | null;
+  } | null;
   lines: Array<{
     id: string;
     productId: string;
@@ -130,6 +134,7 @@ function serializeSaleDetail(sale: {
       sale.customerPartyGstNo ?? sale.customer?.partyGstNo ?? null,
     customerPartyState:
       sale.customerPartyState ?? sale.customer?.partyState ?? null,
+    customerAddress: sale.customer?.address ?? null,
     note: sale.note,
     subtotal: decStr(sale.subtotal),
     discountAmount: decStr(sale.discountAmount),
@@ -176,8 +181,15 @@ router.post(
       return;
     }
     const body = req.validatedBody as CreateSaleValidated;
+    if (body.quotationId && !hasAdminAccess(req.actingUser!.role)) {
+      res
+        .status(403)
+        .json({ error: "Only an admin can convert a quotation to a sale" });
+      return;
+    }
     try {
       const sale = await createSale({
+        quotationId: body.quotationId,
         createdById: body.createdById,
         customerId: body.customerId,
         customerName: body.customerName,

@@ -209,7 +209,7 @@ describe("scheduled-reports API", () => {
 
 describe("scheduled report generation", () => {
   it("runDueScheduledReports runs only one report per invocation when all are due", async () => {
-    const ref = DateTime.fromISO("2026-07-05T07:00:00", { zone: REPORT_ZONE });
+    const ref = DateTime.fromISO("2026-07-05T07:00:00", { zone: REPORT_ZONE }) as DateTime<true>;
 
     await prisma.reportRun.deleteMany({
       where: { period: ReportPeriod.DAILY },
@@ -259,7 +259,7 @@ describe("scheduled report generation", () => {
   });
 
   it("runDueScheduledReports is idempotent for the same period", async () => {
-    const ref = DateTime.fromISO("2026-07-05T07:00:00", { zone: REPORT_ZONE });
+    const ref = DateTime.fromISO("2026-07-05T07:00:00", { zone: REPORT_ZONE }) as DateTime<true>;
     const bounds = computePreviousPeriodBounds(ReportPeriod.DAILY, ref);
 
     await prisma.reportRun.deleteMany({

@@ -1,8 +1,8 @@
-import cron from "node-cron";
+import cron, { type ScheduledTask } from "node-cron";
 import { defaultReportCronExpression } from "../lib/reportScheduleSlots";
 import { runDueScheduledReports } from "../services/scheduledReports";
 
-let cronTask: cron.ScheduledTask | null = null;
+let cronTask: ScheduledTask | null = null;
 let startupCatchUpDone = false;
 
 function schedulerEnabled(): boolean {

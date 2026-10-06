@@ -69,6 +69,8 @@ export const saleLineSchema = z.object({
   unitPrice: nonNegativeMoney,
   lineDiscount: nonNegativeMoney.optional().default(0),
   lineTax: nonNegativeMoney.optional().default(0),
+  /** Set only when converting a quotation: the quotation line this sale line comes from. */
+  quotationLineId: z.string().trim().min(1).optional(),
 });
 
 const optionalCustomerId = z.preprocess(
@@ -100,9 +102,28 @@ export const createSaleSchema = z
       .default("cash"),
     /** When set, creates one payment row per entry (split cash / online at checkout). */
     initialPayments: z.array(saleInitialPaymentSchema).optional(),
+    /** Set only when converting an issued quotation (admin). Every line must then carry `quotationLineId`. */
+    quotationId: z.string().trim().min(1).optional(),
     lines: z
       .array(saleLineSchema)
       .min(1, "At least one line item is required"),
+  })
+  .superRefine((data, ctx) => {
+    const withLineId = data.lines.filter((line) => line.quotationLineId).length;
+    if (data.quotationId && withLineId !== data.lines.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Every line must reference a quotation line when converting a quotation",
+        path: ["lines"],
+      });
+    }
+    if (!data.quotationId && withLineId > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "quotationLineId can only be used together with quotationId",
+        path: ["quotationId"],
+      });
+    }
   })
   .superRefine((data, ctx) => {
     if (!data.initialPayments?.length) return;

@@ -1,0 +1,93 @@
+/* Boxed GST tax invoice. Namespaced .gst-inv so it never touches the bill / quotation styles. */
+.gst-inv {
+  --gi-ink: #000;
+  --gi-line: #000;
+  font-family: "Segoe UI", Arial, "Helvetica Neue", sans-serif;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--gi-ink);
+  background: #fff;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 8px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.gst-inv * { box-sizing: border-box; }
+.gst-inv-box { border: 1px solid var(--gi-line); }
+.gst-inv p { margin: 0; }
+
+/* Header */
+.gst-inv-head { padding: 6px 10px 6px; border-bottom: 1px solid var(--gi-line); text-align: center; }
+.gst-inv-head-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; text-align: left; }
+.gst-inv-head-top .gst-inv-title { text-decoration: underline; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; text-align: center; }
+.gst-inv-head-top .gst-inv-copy { text-align: right; font-size: 12px; }
+.gst-inv-name { margin: 2px 0 2px; font-size: 24px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.15; }
+.gst-inv-addr { font-size: 10.5px; }
+.gst-inv-cancelled {
+  width: fit-content; margin: 6px auto 0; padding: 3px 14px;
+  border: 2px solid #b91c1c; color: #b91c1c; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; font-size: 12px;
+}
+
+/* Party + invoice meta */
+.gst-inv-parties { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--gi-line); }
+.gst-inv-parties > div { padding: 6px 10px; min-height: 84px; }
+.gst-inv-parties > div + div { border-left: 1px solid var(--gi-line); }
+.gst-inv-party-title { font-size: 12px; margin-bottom: 2px; }
+.gst-inv-kv { display: grid; grid-template-columns: 96px 8px 1fr; }
+.gst-inv-kv--party { grid-template-columns: 72px 8px 1fr; }
+.gst-inv-party-gap { height: 12px; }
+
+/* Items table */
+.gst-inv-items { width: 100%; border-collapse: collapse; table-layout: fixed; height: 110mm; }
+.gst-inv-items th, .gst-inv-items td { border-left: 1px solid var(--gi-line); padding: 3px 5px; vertical-align: top; }
+.gst-inv-items th:first-child, .gst-inv-items td:first-child { border-left: 0; }
+.gst-inv-items thead th { border-bottom: 1px solid var(--gi-line); text-align: center; font-weight: 400; font-size: 11px; }
+.gst-inv-items thead { display: table-header-group; }
+.gst-inv-items tbody tr { break-inside: avoid; }
+.gst-inv-items .gi-r { text-align: right; font-variant-numeric: tabular-nums; }
+.gst-inv-items .gi-c { text-align: center; }
+.gst-inv-items .gi-desc { overflow-wrap: anywhere; }
+.gst-inv-items tr.gst-inv-fill { height: 100%; }
+.gst-inv-items tr.gst-inv-fill td { padding: 0; }
+
+/* Totals */
+.gst-inv-totals { border-top: 1px solid var(--gi-line); break-inside: avoid; }
+.gst-inv-totals-row { display: grid; grid-template-columns: 1fr 90px 110px; padding: 1px 10px; align-items: baseline; }
+.gst-inv-totals-row > :nth-child(2) { text-align: right; padding-right: 10px; }
+.gst-inv-totals-row > :nth-child(3) { text-align: right; font-variant-numeric: tabular-nums; }
+.gst-inv-totals-row--label { grid-template-columns: 1fr 110px; }
+.gst-inv-grand { display: grid; grid-template-columns: 1fr auto; padding: 2px 10px; border-top: 1px solid var(--gi-line); font-weight: 700; }
+.gst-inv-grand .gst-inv-qty { font-weight: 400; margin-left: 12px; }
+
+/* HSN summary */
+.gst-inv-hsn { border-top: 1px solid var(--gi-line); padding: 4px 10px; break-inside: avoid; }
+.gst-inv-hsn table { border-collapse: collapse; }
+.gst-inv-hsn th { font-weight: 400; text-decoration: underline; text-align: left; padding: 0 14px 1px 0; font-size: 10px; }
+.gst-inv-hsn td { padding: 0 14px 0 0; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.gst-inv-hsn td.gi-r, .gst-inv-hsn th.gi-r { text-align: right; }
+.gst-inv-hsn tr.gi-sum td { border-top: 1px solid var(--gi-line); font-weight: 600; }
+.gst-inv-words { margin-top: 3px; font-size: 12px; }
+
+/* Footer */
+/* Terms take the free width; bank fits its content; signature is a fixed narrow block (long shop names wrap). */
+.gst-inv-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto 40mm; border-top: 1px solid var(--gi-line); break-inside: avoid; }
+.gst-inv-foot > div { padding: 5px 10px; min-height: 22mm; }
+.gst-inv-foot > div + div { border-left: 1px solid var(--gi-line); }
+.gst-inv-foot ol { margin: 0; padding-left: 14px; }
+.gst-inv-foot .gst-inv-thanks { margin-top: 4px; }
+.gst-inv-bank { display: grid; grid-template-columns: 5.5em 8px 1fr; }
+.gst-inv-sign { display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; font-size: 12px; }
+
+@media print {
+  .gst-inv { max-width: none; padding: 0; font-size: 9.5pt; }
+  .gst-inv-name { font-size: 20pt; }
+  .gst-inv-items { height: 98mm; }
+  /* Keep each footer term on one line at print size. */
+  .gst-inv-foot { grid-template-columns: minmax(0, 1fr) auto 36mm; }
+  .gst-inv-foot ol { font-size: 8.5pt; }
+}
+
+/* Totals block: right-align row labels (matches reference invoice) */
+.gst-inv-totals-row > :nth-child(1) { text-align: right; padding-right: 16px; }
+.gst-inv-totals-row--label > :nth-child(1) { text-align: right; padding-right: 16px; }

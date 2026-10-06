@@ -25,3 +25,15 @@ export const INVOICE_PLACE_OF_SUPPLY_STATE = "Maharashtra";
 /** Shown on a quotation when Include GST is off. */
 export const QUOTATION_GST_NOT_INCLUDED_NOTE =
   "GST is not included in this quotation.";
+
+/** Top-right label on the tax invoice header. */
+export const INVOICE_COPY_LABEL = "Original Copy";
+
+/** Bottom-right signature caption. */
+export const INVOICE_SIGNATORY_LABEL = "Authorised Signatory";
+
+/** Footer terms, printed in order on the tax invoice. */
+export const INVOICE_TERMS: readonly string[] = [
+  "Payment within 15 days, failing which 21% interest will be charged.",
+  "Goods once sold will not be taken back or exchanged.",
+];

@@ -205,7 +205,7 @@ erDiagram
 
 ## 4a. Quotation domain
 
-Quotations reference the existing product and an optional customer. They do not create stock movements. `convertedSaleId` is unused until a future conversion creates a normal sale.
+Quotations reference the existing product and an optional customer. They do not create stock movements. `convertedSaleId` points at the normal sale created when the quotation is converted (one sale per quotation).
 
 ```mermaid
 erDiagram

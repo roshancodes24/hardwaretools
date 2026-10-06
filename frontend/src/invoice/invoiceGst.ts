@@ -73,3 +73,74 @@ export function saleGstTotals(lines: SaleLineDetail[]): {
     sum: round2(cgst + sgst + igst),
   };
 }
+
+export function lineDiscountPercent(line: SaleLineDetail): number {
+  const qty = Number.parseFloat(line.quantity);
+  const unit = Number.parseFloat(line.unitPrice);
+  const disc = Number.parseFloat(line.lineDiscount);
+  if (!Number.isFinite(qty) || !Number.isFinite(unit) || !Number.isFinite(disc)) {
+    return 0;
+  }
+  const gross = qty * unit;
+  if (gross <= 0) return 0;
+  return round2((disc / gross) * 100);
+}
+
+/** Unit price after line discount, before GST (the "Price" column). */
+export function lineNetUnitPrice(line: SaleLineDetail): number {
+  const qty = Number.parseFloat(line.quantity);
+  const unit = Number.parseFloat(line.unitPrice);
+  if (!Number.isFinite(qty) || qty <= 0) return Number.isFinite(unit) ? unit : 0;
+  return round2(lineTaxableBase(line) / qty);
+}
+
+export type HsnTaxRow = {
+  hsn: string;
+  /** cgst + sgst + igst rates, e.g. 18 */
+  ratePct: number;
+  taxable: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  totalTax: number;
+};
+
+/** Per-HSN, per-rate tax summary (bottom table of a GST invoice). */
+export function hsnTaxSummary(lines: SaleLineDetail[]): HsnTaxRow[] {
+  const map = new Map<string, HsnTaxRow>();
+  for (const line of lines) {
+    const b = lineGstBreakdown(line);
+    const hsn = line.productHsnCode?.trim() ?? "";
+    const ratePct = round2(b.cgstRate + b.sgstRate + b.igstRate);
+    const key = `${hsn}|${ratePct}`;
+    const row =
+      map.get(key) ??
+      { hsn, ratePct, taxable: 0, cgst: 0, sgst: 0, igst: 0, totalTax: 0 };
+    row.taxable += b.taxable;
+    row.cgst += b.cgstAmt;
+    row.sgst += b.sgstAmt;
+    row.igst += b.igstAmt;
+    map.set(key, row);
+  }
+  return [...map.values()]
+    .map((r) => ({
+      ...r,
+      taxable: round2(r.taxable),
+      cgst: round2(r.cgst),
+      sgst: round2(r.sgst),
+      igst: round2(r.igst),
+      totalTax: round2(r.cgst + r.sgst + r.igst),
+    }))
+    .sort((a, b) => a.hsn.localeCompare(b.hsn) || a.ratePct - b.ratePct);
+}
+
+/** Sum of taxable values across all lines. */
+export function saleTaxableTotal(lines: SaleLineDetail[]): number {
+  return round2(lines.reduce((s, l) => s + lineTaxableBase(l), 0));
+}
+
+/** Returns the shared rate if every line uses it, otherwise null (mixed rates). */
+export function commonRate(rates: number[]): number | null {
+  if (rates.length === 0) return null;
+  return rates.every((r) => r === rates[0]) ? rates[0] : null;
+}

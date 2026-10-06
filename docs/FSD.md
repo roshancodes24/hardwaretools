@@ -259,6 +259,7 @@ flowchart TD
 #### UI
 
 - Product search/cart, discounts, payment panel, processing indicator on long confirms, invoice print integration (`frontend/src/invoice/`).
+- The **Tax invoice** checkbox is checked by default (`POS_TAX_INVOICE_DEFAULT` in `frontend/src/App.tsx`), so new sales are `documentKind: "tax_invoice"` (`INV-*`) unless the cashier unchecks it for a plain bill (`BIL-*`). **Clear all** and completing a sale return it to checked. An unchecked box counts as a draft change, so **Clear all** shows to restore it.
 
 #### API (`/api/sales`) — authenticated (no admin gate, except cancel)
 
@@ -277,7 +278,7 @@ flowchart TD
 
 #### Edges
 
-- Insufficient stock → error to client; cart may be retried with reduced qty.
+- Insufficient stock → error to client naming every short product with needed and available quantity; cart may be retried with reduced qty.
 - Body `createdById` must match acting user where enforced.
 
 ---
@@ -304,6 +305,9 @@ flowchart TD
 | API | `GET /api/sales/recent` (default 10, minimum 10), `GET /api/sales/search`, `GET /api/sales/by-number/:saleNumber`, `GET /api/sales/:id`, `POST /api/sales/:id/cancel` (admin) |
 | Branding | UI strings: `frontend/src/lib/branding.ts` (`VITE_COMPANY_NAME`); invoice letterhead fields in `frontend/src/invoice/invoiceBranding.ts` |
 
+- `INV-*` tax invoices use a boxed GST print layout with header copy label, party/invoice detail panels, HSN tax summary, and footer terms/bank/signatory blocks. `BIL-*` bills and quotations keep their existing print documents.
+- The tax invoice party box may include the linked customer address when the sale is tied to a registered customer. Reprint data now exposes that address on the sale detail payload for invoice rendering.
+
 #### Cancel a completed invoice
 
 - Confirmation (existing `ConfirmModal`) before any request. Title: `Cancel invoice {saleNumber}?`. Message: the invoice will be cancelled, items restored to inventory, and the action cannot be undone. Buttons: **Keep Invoice** (dismiss) and **Cancel Invoice** (confirm).
@@ -322,7 +326,7 @@ flowchart TD
 
 | Aspect | Design |
 |--------|--------|
-| Overview UI | `InventoryView` — levels, search/sort, in/low/out status vs reorder |
+| Overview UI | `InventoryView` — table columns SKU, Product, Category, Color, Sale Price, Stock, Unit, Status (each sortable; products without a colour always sort last), summary cards, search, category filter; in/low/out status vs reorder |
 | Adjustment UI | `AdjustmentView` — product, target/delta as implemented, reason, note |
 | API | Adjust: `POST /api/stock-adjustments` (admin). Stock read also via products. |
 | Rules | `StockAdjustment` stores before/after/difference; movements ADJUSTMENT_IN/OUT, DAMAGE_OUT, etc. as typed |
@@ -334,7 +338,7 @@ flowchart TD
 
 **FR:** FR-QUO-*
 
-Admin/Manager commercial documents. A quotation is not a sale.
+Admin/Manager commercial documents. A quotation is not a sale until it is converted (see **Convert to sale** below).
 
 #### Business rules
 
@@ -342,8 +346,16 @@ Admin/Manager commercial documents. A quotation is not a sale.
 - `includeGst` defaults to true. When it is true, GST uses the product `cgstPercent` / `sgstPercent` / `igstPercent` the same way as a tax invoice: discount is removed first, each component is rounded to paise, transport is added after tax and is not taxed. When it is false, the quotation is priced like a non-tax bill: line tax and header CGST/SGST/IGST are 0, and the total is subtotal − discount + transport. Product GST percentages are still snapshotted on the line and are not charged. The saved flag is the source of truth, so a later product-rate change does not add GST until a draft is edited with Include GST turned on. An order discount percent is allocated across lines (remainder on the last line), in addition to any per-line rupee discount.
 - Customer may be an existing `Customer` (`customerId` set) or a one-off party (`customerId` null). The quotation stores its own name, contact person, phone, email, address, GSTIN, and state snapshot. Optional save-as-customer creates a `Customer` or links an existing phone; it does not overwrite that customer.
 - Number `QUO-YYYY-####` comes from `QuotationCounter`, locked with `SELECT … FOR UPDATE` in the create transaction. `quotationDate` is the Asia/Kolkata calendar date; `validUntil` is that date plus 2 days. Issuing a draft refreshes those dates. `EXPIRED` is not stored: an `ISSUED` row is shown as expired when today’s India date is after `validUntil`.
-- Drafts can be edited. Issued rows cannot. Cancelled rows cannot be issued. Nothing in this flow writes `Sale`, `SalePayment`, `StockMovement`, or `Product.currentStock`.
-- `convertedSaleId` is an unused nullable link so a later feature can point at a normal sale created through `/api/sales`.
+- Drafts can be edited. Issued rows cannot. Cancelled rows cannot be issued. Creating, editing, issuing, and cancelling never write `Sale`, `SalePayment`, `StockMovement`, or `Product.currentStock`; only **Convert to sale** does, through the normal sale path.
+- `convertedSaleId` (unique) points at the sale created from the quotation. `CONVERTED` is derived, like `EXPIRED`: an `ISSUED` row with `convertedSaleId` set. A converted quotation cannot be converted again or cancelled (cancel the sale from Invoices). Cancelling that sale does not reopen the quotation.
+
+#### Convert to sale
+
+- Admin only. Button on `ISSUED` and `EXPIRED` quotations (list and view). `EXPIRED` asks for confirmation first; quoted prices still apply.
+- The page fetches the quotation (`GET /api/quotations/:id`) and hands it to the POS (`App` holds it in `quotationToConvert`; `POSView` loads it once). The cart is built by `frontend/src/lib/quotationConversion.ts` (`buildConversionCart`): quoted price per quoted unit, quantity, GST rates, and per-line quoted discount/tax (`CartLine.quote`). Customer: the registered customer if `customerId` is set, otherwise name, phone, GSTIN, and state go into the walk-in fields. Transport is carried over. Lines whose product or unit no longer exists are listed as not added.
+- In the POS the **Tax invoice** box is locked to the quotation (`includeGst` true gives a tax invoice `INV-*`, false gives a bill `BIL-*`), the discount and promotion inputs are replaced by a read-only **Quotation discount**, other products cannot be added, a line quantity cannot exceed the quoted quantity, and lines can be lowered or removed. For a quantity below the quoted one, the quoted line discount is pro-rated and GST is recalculated on the discounted amount (`computePosTotals`, `PosCartLineInput.quote`); at the full quoted quantity the quoted discount and tax are kept exactly. Everything else (customer rules, payment methods, split payment, below-cost warning) is the normal POS checkout.
+- Lines asking for more than the stock are shown with their shortfall and **Confirm Sale** is blocked until they are lowered or removed.
+- Submit: `POST /api/sales` with `quotationId` and, on every line, `quotationLineId`. `createSale` locks the quotation row (`SELECT … FOR UPDATE`) and `assertConversionAllowed` (`src/lib/quotationConversion.ts`) checks: the quotation is `ISSUED` and not converted; `documentKind` matches `includeGst`; every line is a distinct line of that quotation with the same product and unit; the unit price equals the quoted price; the quantity does not exceed the quoted quantity; the discount does not exceed the quoted line discount pro-rated to the quantity (1 paisa tolerance); no tax when `includeGst` is false. The route returns 403 for non-admins. All short products are collected and reported together (`Insufficient stock for A (need n, have m), B (…)`). In the same transaction the sale is created (its note ends with `Converted from QUO-…`) and `Quotation.convertedSaleId` is set.
 
 #### UI
 
@@ -366,6 +378,7 @@ Admin/Manager commercial documents. A quotation is not a sale.
 #### Edges
 
 - Cashier: 403. Missing selling price, inactive product, bad quantity/unit, or discount above the line amount: 400/422.
+- Listing: `status` accepts `DRAFT`, `ISSUED`, `EXPIRED`, `CONVERTED`, `CANCELLED`. `ISSUED` and `EXPIRED` exclude converted rows. List and detail include `convertedSaleNumber`; detail also has `convertedSaleId`.
 - Issuing reprices from the current selling price, keeping the saved line discounts and `includeGst`. When `includeGst` is false, refreshed product GST rates may be snapshotted but are not charged.
 
 ---
@@ -522,7 +535,7 @@ erDiagram
 | Supplier / Customer | Parties |
 | Purchase / PurchaseLine / PurchasePayment | Stock in + payables |
 | Sale / SaleLine / SalePayment | Stock out + receivables |
-| Quotation / QuotationLine | Commercial quote; no stock movement. Optional future `convertedSaleId` |
+| Quotation / QuotationLine | Commercial quote; no stock movement until converted. `convertedSaleId` links the sale created by Convert to sale |
 | StockMovement | Immutable-style ledger of qty changes |
 | StockAdjustment | Explicit correction audit |
 | Promotion* | Optional discounts |

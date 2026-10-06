@@ -16,11 +16,11 @@ import type {
   ApiSupplier,
   CreateSaleBody,
   PurchaseListRow,
+  QuotationDetail,
   SaleDetail,
   SessionUserRow,
 } from "./api/types";
 import { TaxInvoiceModal } from "./invoice/TaxInvoiceModal";
-import { allocateLineDiscounts } from "./lib/allocateLineDiscounts";
 import {
   lineErrorsFromDetails,
   recordFieldErrors,
@@ -38,6 +38,12 @@ import {
 import { mapApiProduct, type UiProduct } from "./lib/mapProduct";
 import { fmt, parseMoneyField } from "./lib/formatMoney";
 import { computePosTotals } from "./lib/posCartTotals";
+import {
+  buildConversionCart,
+  cartLineKey,
+  stockShortfalls,
+  type CartLine,
+} from "./lib/quotationConversion";
 import { resolveSplitPayment } from "./lib/splitPayment";
 import { stockStatus } from "./lib/inventoryTable";
 import { inputStyle } from "./styles/formStyles";
@@ -63,6 +69,9 @@ import { FEATURE_FLAGS } from "./featureFlags";
 import { Sidebar, type Tab } from "./Sidebar";
 import { useConfirm } from "./useConfirm";
 import type { ConfirmOptions } from "./useConfirm";
+
+/** POS "Tax invoice" checkbox starts checked, and returns to checked after each sale / Clear all. */
+const POS_TAX_INVOICE_DEFAULT = true;
 
 // ═══════════════════════════════════════════════════════════════════
 // SHARED COMPONENTS
@@ -114,8 +123,13 @@ function FieldWrap({
 }
 
 
-type CartLine = UiProduct & { qty: number };
-
+/** A quotation being converted in the POS (cart lines carry the quoted price, discount and tax). */
+type ConvertingQuotation = {
+  id: string;
+  number: string;
+  validUntilLabel: string;
+  expired: boolean;
+};
 
 // ═══════════════════════════════════════════════════════════════════
 // POS VIEW
@@ -128,6 +142,8 @@ function POSView({
   refreshCustomers,
   onSaleComplete,
   confirm,
+  quotationToConvert,
+  onQuotationConsumed,
 }: {
   products: UiProduct[];
   promotions: ApiPromotion[];
@@ -136,6 +152,9 @@ function POSView({
   refreshCustomers: () => Promise<void>;
   onSaleComplete: () => Promise<void>;
   confirm: (opts: ConfirmOptions) => Promise<boolean>;
+  /** Issued quotation handed over from the Quotations page; loaded into the cart once. */
+  quotationToConvert: QuotationDetail | null;
+  onQuotationConsumed: () => void;
 }) {
   const promotionsUi = FEATURE_FLAGS.catalogPromotions;
   const [search, setSearch] = useState("");
@@ -178,12 +197,69 @@ function POSView({
   const [transportStr, setTransportStr] = useState("");
   const [taxInvoiceSale, setTaxInvoiceSale] = useState<SaleDetail | null>(null);
   /** Tax invoice checkbox on POS (document kind sent to API). Post-sale modal uses the saved sale. */
-  const [posTaxInvoice, setPosTaxInvoice] = useState(false);
+  const [posTaxInvoice, setPosTaxInvoice] = useState(POS_TAX_INVOICE_DEFAULT);
+  /** Set while the cart was filled from a quotation; sale is then sent with `quotationId`. */
+  const [convertingQuotation, setConvertingQuotation] =
+    useState<ConvertingQuotation | null>(null);
+  /** Quotation lines that could not be put in the cart (product removed, unit removed). */
+  const [conversionSkipped, setConversionSkipped] = useState<string[]>([]);
 
   useEffect(() => {
     setFieldErrors({});
     setLineErrors(new Map());
   }, [cart, discount]);
+
+  useEffect(() => {
+    if (!quotationToConvert) return;
+    const q = quotationToConvert;
+    const { lines, skipped } = buildConversionCart(q, products);
+    setCart(lines);
+    setConversionSkipped(skipped);
+    setDiscount(0);
+    setPromotionCode("");
+    const transport = Number.parseFloat(q.transportAmount);
+    setTransportStr(Number.isFinite(transport) && transport > 0 ? String(transport) : "");
+    setPosTaxInvoice(q.includeGst);
+    setPosSplitPayment(false);
+    setPosCashStr("");
+    setPosOnlineStr("");
+    setAmountPaidStr("");
+    setCustomerPhoneError(null);
+
+    const registered = q.customerId
+      ? customers.find((c) => c.id === q.customerId)
+      : undefined;
+    if (registered) {
+      setPosCustomerId(registered.id);
+      setCustomerQuery("");
+      setWalkInPhone("");
+      setWalkInPartyGstNo("");
+      setWalkInPartyState("");
+    } else {
+      const digits = (q.customerPhone ?? "").replace(/\D/g, "");
+      setPosCustomerId("");
+      setCustomerQuery(q.customerName);
+      setWalkInPhone(digits.length > 10 ? digits.slice(-10) : digits);
+      setWalkInPartyGstNo(sanitizeGstinInput(q.customerPartyGstNo ?? "", 20));
+      setWalkInPartyState(q.customerPartyState ?? "");
+    }
+
+    setConvertingQuotation({
+      id: q.id,
+      number: q.quotationNumber,
+      validUntilLabel: q.validUntilLabel,
+      expired: q.status === "EXPIRED",
+    });
+    setStatus(null);
+    onQuotationConsumed();
+    // Runs once per hand-over; products/customers are the lists at that moment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quotationToConvert]);
+
+  const shortfalls = useMemo(
+    () => (convertingQuotation ? stockShortfalls(cart) : []),
+    [convertingQuotation, cart]
+  );
 
   const categories = useMemo(
     () => ["All", ...new Set(products.map((p) => p.category))],
@@ -280,6 +356,14 @@ function POSView({
 
   const addToCart = (p: UiProduct) => {
     if (p.stock === 0) return;
+    if (convertingQuotation) {
+      setStatus({
+        type: "error",
+        msg: `Converting ${convertingQuotation.number}: only its lines can be sold. Finish or clear this sale to add other items.`,
+      });
+      setTimeout(() => setStatus(null), 4000);
+      return;
+    }
     setCart((c) => {
       const existing = c.find((x) => x.id === p.id);
       return existing
@@ -288,11 +372,12 @@ function POSView({
     });
   };
 
-  const updateQty = (id: string, qtyVal: number) => {
-    const line = cart.find((x) => x.id === id);
+  /** `key` is the row key (see `cartLineKey`): product id, or the quotation line when converting. */
+  const updateQty = (key: string, qtyVal: number) => {
+    const line = cart.find((x) => cartLineKey(x) === key);
     if (!line) return;
     if (qtyVal <= 0) {
-      setCart((c) => c.filter((x) => x.id !== id));
+      setCart((c) => c.filter((x) => cartLineKey(x) !== key));
       return;
     }
     if (!line.allowsFractionalSale && !Number.isInteger(qtyVal)) {
@@ -303,16 +388,25 @@ function POSView({
       setTimeout(() => setStatus(null), 4000);
       return;
     }
-    if (qtyVal > line.stock) {
+    if (line.quote && qtyVal > line.quote.quotedQty) {
       setStatus({
         type: "error",
-        msg: `Max available: ${line.stock} ${line.unit}.`,
+        msg: `Quoted quantity for ${line.name} is ${line.quote.quotedQty} ${line.unit}.`,
+      });
+      setTimeout(() => setStatus(null), 4000);
+      return;
+    }
+    // Lowering a line that is already over stock (quotation lines) is always allowed.
+    if (qtyVal > line.stock && qtyVal > line.qty) {
+      setStatus({
+        type: "error",
+        msg: `Max available: ${Number(line.stock.toFixed(4))} ${line.unit}.`,
       });
       setTimeout(() => setStatus(null), 4000);
       return;
     }
     setCart((c) =>
-      c.map((x) => (x.id === id ? { ...x, qty: qtyVal } : x))
+      c.map((x) => (cartLineKey(x) === key ? { ...x, qty: qtyVal } : x))
     );
   };
 
@@ -325,14 +419,13 @@ function POSView({
   const cartPromoPercent = cartPromotion ? Number(cartPromotion.percentage) : 0;
 
   const {
-    lineSubtotals,
-    linePromotionDiscounts,
     subtotal,
     productCategoryPromoAmt,
-    subtotalAfterLinePromos,
     discountAmt,
     cartPromoAmt,
     lineDiscountsForPos,
+    quoteDiscountAmt,
+    lineTaxesForPos,
     grandTotal,
   } = useMemo(
     () =>
@@ -345,9 +438,11 @@ function POSView({
           cgstPercent: line.cgstPercent ?? undefined,
           sgstPercent: line.sgstPercent ?? undefined,
           igstPercent: line.igstPercent ?? undefined,
+          quote: line.quote,
         })),
-        discountPercent: discount,
-        cartPromoPercent,
+        // A quotation keeps its own discount per line; no extra discount or promotion on top.
+        discountPercent: convertingQuotation ? 0 : discount,
+        cartPromoPercent: convertingQuotation ? 0 : cartPromoPercent,
         productPromotionPctById,
         categoryPromotionPctByName,
         posTaxInvoice,
@@ -355,6 +450,7 @@ function POSView({
       }),
     [
       cart,
+      convertingQuotation,
       discount,
       cartPromoPercent,
       productPromotionPctById,
@@ -398,7 +494,8 @@ function POSView({
       discount > 0 ||
       Boolean(promotionCode.trim()) ||
       Boolean(transportStr.trim()) ||
-      posTaxInvoice,
+      convertingQuotation != null ||
+      posTaxInvoice !== POS_TAX_INVOICE_DEFAULT,
     [
       cart.length,
       posCustomerId,
@@ -409,6 +506,7 @@ function POSView({
       discount,
       promotionCode,
       transportStr,
+      convertingQuotation,
       posTaxInvoice,
     ],
   );
@@ -446,7 +544,9 @@ function POSView({
     setWalkInPartyGstNo("");
     setWalkInPartyState("");
     setTransportStr("");
-    setPosTaxInvoice(false);
+    setPosTaxInvoice(POS_TAX_INVOICE_DEFAULT);
+    setConvertingQuotation(null);
+    setConversionSkipped([]);
     setPosSplitPayment(false);
     setPosCashStr("");
     setPosOnlineStr("");
@@ -524,18 +624,14 @@ function POSView({
         setStatus({ type: "error", msg: "Promotion code is not valid or inactive." });
         return;
       }
-      const orderLevelDiscountAmt = discountAmt + cartPromoAmt;
-      const orderLevelDiscountPercent =
-        subtotalAfterLinePromos > 0
-          ? (orderLevelDiscountAmt / subtotalAfterLinePromos) * 100
-          : 0;
-      const orderLevelLineDiscounts = allocateLineDiscounts(
-        lineSubtotals.map((v, i) => Math.max(0, v - linePromotionDiscounts[i])),
-        orderLevelDiscountPercent
-      );
-      const lineDiscounts = linePromotionDiscounts.map(
-        (v, i) => v + (orderLevelLineDiscounts[i] ?? 0)
-      );
+      if (convertingQuotation && shortfalls.length > 0) {
+        setStatus({
+          type: "error",
+          msg: `Not enough stock: ${shortfalls.join("; ")}. Reduce or remove these lines to continue.`,
+        });
+        return;
+      }
+      const lineDiscounts = lineDiscountsForPos;
 
       let clampedPaid: number;
       let initialPayments:
@@ -610,22 +706,16 @@ function POSView({
           ? { initialPayments }
           : { paymentMethod: posPaymentMethod }),
         transportAmount,
-        lines: cart.map((x, i) => {
-          const disc = lineDiscounts[i] ?? 0;
-          const taxable = Math.max(0, x.price * x.qty - disc);
-          const rateSum =
-            (x.cgstPercent ?? 0) + (x.sgstPercent ?? 0) + (x.igstPercent ?? 0);
-          const lineTaxRaw = posTaxInvoice && rateSum > 0 ? (taxable * rateSum) / 100 : 0;
-          const lineTax = Math.round(lineTaxRaw * 100) / 100;
-          return {
-            productId: x.id,
-            productUnitId: x.baseUnitId,
-            quantity: x.qty,
-            unitPrice: x.price,
-            lineDiscount: disc,
-            lineTax,
-          };
-        }),
+        ...(convertingQuotation ? { quotationId: convertingQuotation.id } : {}),
+        lines: cart.map((x, i) => ({
+          productId: x.id,
+          productUnitId: x.baseUnitId,
+          quantity: x.qty,
+          unitPrice: x.price,
+          lineDiscount: lineDiscounts[i] ?? 0,
+          lineTax: lineTaxesForPos[i] ?? 0,
+          ...(x.quote ? { quotationLineId: x.quote.lineId } : {}),
+        })),
       };
       if (posCustomerId) {
         saleBody.customerId = posCustomerId;
@@ -977,6 +1067,46 @@ function POSView({
           )}
         </div>
 
+        {convertingQuotation ? (
+          <div
+            style={{
+              padding: "8px 12px",
+              background: "var(--surface-subtle)",
+              borderBottom: "1px solid var(--border)",
+              fontSize: 12,
+              lineHeight: 1.45,
+              color: "var(--text)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 3,
+            }}
+          >
+            <div style={{ fontWeight: 700 }}>
+              Converting quotation {convertingQuotation.number}
+            </div>
+            <div style={{ color: "var(--muted)" }}>
+              Quoted prices, discount and GST are kept. Lower a quantity or remove a line to sell
+              only part of it; items left out cannot be converted later.
+            </div>
+            {convertingQuotation.expired ? (
+              <div style={{ color: "var(--warning-text, #b45309)", fontWeight: 600 }}>
+                This quotation expired on {convertingQuotation.validUntilLabel}. Quoted prices
+                still apply.
+              </div>
+            ) : null}
+            {conversionSkipped.length > 0 ? (
+              <div style={{ color: "var(--danger-text)" }}>
+                Not added: {conversionSkipped.join("; ")}
+              </div>
+            ) : null}
+            {shortfalls.length > 0 ? (
+              <div style={{ color: "var(--danger-text)", fontWeight: 600 }}>
+                Not enough stock, reduce or remove: {shortfalls.join("; ")}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         <div style={{ flex: 1, overflowY: "auto" }}>
           {cart.length === 0 ? (
             <div
@@ -1000,7 +1130,7 @@ function POSView({
                 : "";
               return (
                 <div
-                  key={item.id}
+                  key={cartLineKey(item)}
                   style={{ borderBottom: "1px solid var(--surface-subtle)" }}
                 >
                   <div
@@ -1026,7 +1156,13 @@ function POSView({
                       </div>
                       <div style={{ fontSize: 11, color: "var(--muted)" }}>
                         {fmt(item.price)}/{item.unit}
+                        {item.quote ? ` · quoted ${item.quote.quotedQty}` : ""}
                       </div>
+                      {item.quote && item.qty > item.stock + 1e-9 ? (
+                        <div style={{ fontSize: 11, color: "var(--danger-text)" }}>
+                          Only {Number(item.stock.toFixed(4))} {item.unit} in stock
+                        </div>
+                      ) : null}
                       {item.avgCost != null &&
                         item.avgCost > 0 &&
                         item.price < item.avgCost && (
@@ -1040,7 +1176,7 @@ function POSView({
                     >
                       <button
                         type="button"
-                        onClick={() => updateQty(item.id, item.qty - 1)}
+                        onClick={() => updateQty(cartLineKey(item), item.qty - 1)}
                         style={{
                           width: 22,
                           height: 22,
@@ -1064,7 +1200,7 @@ function POSView({
                         step={item.allowsFractionalSale ? "any" : 1}
                         value={item.qty}
                         onChange={(e) =>
-                          updateQty(item.id, Number(e.target.value))
+                          updateQty(cartLineKey(item), Number(e.target.value))
                         }
                         style={{
                           width: 44,
@@ -1080,7 +1216,7 @@ function POSView({
                       />
                       <button
                         type="button"
-                        onClick={() => updateQty(item.id, item.qty + 1)}
+                        onClick={() => updateQty(cartLineKey(item), item.qty + 1)}
                         style={{
                           width: 22,
                           height: 22,
@@ -1431,18 +1567,43 @@ function POSView({
             <input
               type="checkbox"
               checked={posTaxInvoice}
-              disabled={loading}
+              disabled={loading || convertingQuotation != null}
               onChange={(e) => setPosTaxInvoice(e.target.checked)}
               style={{
                 width: 16,
                 height: 16,
                 marginTop: 2,
-                cursor: loading ? "not-allowed" : "pointer",
+                cursor: loading || convertingQuotation ? "not-allowed" : "pointer",
                 flexShrink: 0,
               }}
             />
-            <span>Tax invoice</span>
+            <span>
+              Tax invoice
+              {convertingQuotation
+                ? posTaxInvoice
+                  ? " (set by the quotation: GST included)"
+                  : " (set by the quotation: no GST, so a plain bill)"
+                : ""}
+            </span>
           </label>
+          {convertingQuotation ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 13, color: "var(--muted)", flex: 1 }}>
+                Quotation discount
+              </span>
+              <span
+                style={{
+                  fontSize: 13,
+                  color: "var(--danger)",
+                  fontFamily: "monospace",
+                  minWidth: 64,
+                  textAlign: "right",
+                }}
+              >
+                −{fmt(quoteDiscountAmt)}
+              </span>
+            </div>
+          ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <label style={{ fontSize: 13, color: "var(--muted)", flex: 1 }}>
               Discount %
@@ -1484,7 +1645,8 @@ function POSView({
               −{fmt(discountAmt)}
             </span>
           </div>
-          {promotionsUi ? (
+          )}
+          {promotionsUi && !convertingQuotation ? (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <label style={{ fontSize: 13, color: "var(--muted)", flex: 1 }}>
@@ -3396,6 +3558,9 @@ export default function App() {
     typeof window === "undefined" ? 1280 : window.innerWidth
   );
   const [tab, setTab] = useState<Tab>("home");
+  /** Issued quotation chosen on the Quotations page; the POS loads it into the cart once. */
+  const [quotationToConvert, setQuotationToConvert] =
+    useState<QuotationDetail | null>(null);
   const [pendingReportRunId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return new URLSearchParams(window.location.search).get("reportRun");
@@ -3862,6 +4027,8 @@ export default function App() {
                     refreshCustomers={refreshCustomers}
                     onSaleComplete={refreshProducts}
                     confirm={confirm}
+                    quotationToConvert={quotationToConvert}
+                    onQuotationConsumed={() => setQuotationToConvert(null)}
                   />
                 )}
                 {tab === "outstanding" && (
@@ -3874,7 +4041,15 @@ export default function App() {
                     onInventoryRestored={refreshProducts}
                   />
                 )}
-                {tab === "quotations" && <QuotationsPage confirm={confirm} />}
+                {tab === "quotations" && (
+                  <QuotationsPage
+                    confirm={confirm}
+                    onConvertToSale={(quotation) => {
+                      setQuotationToConvert(quotation);
+                      setTab("pos");
+                    }}
+                  />
+                )}
                 {tab === "inventory" && (
                   <InventoryView products={products} />
                 )}

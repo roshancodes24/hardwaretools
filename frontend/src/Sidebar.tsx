@@ -376,15 +376,6 @@ export function Sidebar({
             iconOnly={iconOnly}
           />
         ) : null}
-        {isAdmin && FEATURE_FLAGS.reporting ? (
-          <NavButton
-            label="Reporting"
-            icon={NAV_ICONS.reporting}
-            active={activeTab === "reporting"}
-            onClick={() => onTabChange("reporting")}
-            iconOnly={iconOnly}
-          />
-        ) : null}
       </div>
 
       <div style={{ borderTop: "1px solid var(--sidebar-border)", margin: "4px 2px" }} />
@@ -492,6 +483,19 @@ export function Sidebar({
           )}
         </div>
       )}
+
+      {isAdmin && FEATURE_FLAGS.reporting ? (
+        <>
+          <div style={{ borderTop: "1px solid var(--sidebar-border)", margin: "4px 2px" }} />
+          <NavButton
+            label="Reporting"
+            icon={NAV_ICONS.reporting}
+            active={activeTab === "reporting"}
+            onClick={() => onTabChange("reporting")}
+            iconOnly={iconOnly}
+          />
+        </>
+      ) : null}
 
       </nav>
 
