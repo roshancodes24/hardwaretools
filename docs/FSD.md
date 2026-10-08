@@ -327,7 +327,7 @@ flowchart TD
 | Aspect | Design |
 |--------|--------|
 | Overview UI | `InventoryView` — table columns SKU, Product, Category, Color, Sale Price, Stock, Unit, Status (each sortable; products without a colour always sort last), summary cards, search, category filter; in/low/out status vs reorder |
-| Adjustment UI | `AdjustmentView` — product, target/delta as implemented, reason, note |
+| Adjustment UI | `AdjustmentView` — left-hand product list (SKU, Name, Category, Color, Size, Price, Stock; search plus All / Low Stock / Out of Stock filters; no status column), then product, target/delta as implemented, reason, note |
 | API | Adjust: `POST /api/stock-adjustments` (admin). Stock read also via products. |
 | Rules | `StockAdjustment` stores before/after/difference; movements ADJUSTMENT_IN/OUT, DAMAGE_OUT, etc. as typed |
 | Edges | Cashiers see overview only |

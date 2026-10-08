@@ -256,7 +256,7 @@ export function AdjustmentView({
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface-subtle)" }}>
-                {["SKU", "Name", "Category", "Price", "Stock", "Status"].map((h) => (
+                {["SKU", "Name", "Category", "Color", "Size", "Price", "Stock"].map((h) => (
                   <th
                     key={h}
                     style={{
@@ -277,14 +277,13 @@ export function AdjustmentView({
             <tbody>
               {pagedProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: "16px 12px", color: "var(--text-faint)" }}>
+                  <td colSpan={7} style={{ padding: "16px 12px", color: "var(--text-faint)" }}>
                     No products match your filter.
                   </td>
                 </tr>
               ) : (
                 pagedProducts.map((p, idx) => {
                   const active = p.id === form.productId;
-                  const statusLabel = p.stock === 0 ? "OUT" : p.stock <= p.lowStock ? "LOW" : "OK";
                   return (
                     <tr
                       key={p.id}
@@ -298,14 +297,13 @@ export function AdjustmentView({
                       <td style={{ padding: "8px 10px", fontFamily: "monospace", color: "var(--muted)" }}>{p.sku}</td>
                       <td style={{ padding: "8px 10px", color: "var(--text)", fontWeight: 500 }}>{p.name}</td>
                       <td style={{ padding: "8px 10px", color: "var(--muted)" }}>{p.category}</td>
+                      <td style={{ padding: "8px 10px", color: "var(--muted)" }}>{p.color ?? "—"}</td>
+                      <td style={{ padding: "8px 10px", color: "var(--muted)" }}>{p.size ?? "—"}</td>
                       <td style={{ padding: "8px 10px", fontFamily: "monospace", color: "var(--muted)" }}>
                         {fmt(p.price)}
                       </td>
                       <td style={{ padding: "8px 10px", fontFamily: "monospace", color: "var(--muted)" }}>
                         {p.stock} {p.unit}
-                      </td>
-                      <td style={{ padding: "8px 10px", fontWeight: 700, fontSize: 11, color: statusLabel === "OUT" ? "var(--danger-strong)" : statusLabel === "LOW" ? "var(--stock-low-text)" : "var(--stock-ok-text)" }}>
-                        {statusLabel}
                       </td>
                     </tr>
                   );
@@ -354,7 +352,9 @@ export function AdjustmentView({
               <>
                 <div style={{ fontWeight: 600, color: "var(--text)" }}>{selectedProduct.name}</div>
                 <div style={{ marginTop: 4, fontSize: 12, color: "var(--muted)" }}>
-                  {selectedProduct.sku} · {selectedProduct.category}
+                  {[selectedProduct.sku, selectedProduct.category, selectedProduct.color]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </div>
                 <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-strong)" }}>
                   Current: <strong>{selectedProduct.stock} {selectedProduct.unit}</strong>
